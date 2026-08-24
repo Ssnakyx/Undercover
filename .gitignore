@@ -6,3 +6,4 @@ build/
 test-results/
 playwright-report/
 .env
+champions.ts

@@ -3,9 +3,10 @@
 Client React + TypeScript + Vite pour lolCover. Implémente les écrans du contrat
 (`docs/CONTRACT.md`) en suivant les maquettes statiques `/design/*.html` comme source de
 vérité visuelle, branchées sur le contrat socket exact (`src/types.ts`, miroir de
-`server/src/types.ts` — pas de package partagé, voir CONTRACT.md §1). L'écran `Voting` des
-maquettes originales a été retiré : le vote a été remplacé par une élimination décidée par
-l'hôte (voir décision 7 ci-dessous et `docs/CONTRACT.md` §3).
+`server/src/types.ts` — pas de package partagé, voir CONTRACT.md §1). La phase de discussion
+(`Discussion`, ex-`Clues`) n'a plus de saisie d'indice ni de minuteur — juste l'ordre de
+passage affiché — et l'hôte déclenche lui-même le passage au vote (voir décision 7 ci-dessous
+et `docs/CONTRACT.md` §3).
 
 ## Installation
 
@@ -84,13 +85,13 @@ qu'improvisée silencieusement (même esprit que `server/README.md`) :
 6. **Routing** : une seule route de jeu `/room/:roomCode` (pas une route par écran) — les
    transitions d'écran sont pilotées par `roomState.phase` (source de vérité serveur), pas par
    l'historique de navigation du navigateur.
-7. **Élimination par l'hôte au lieu du vote** : la phase `clues` n'a plus de minuteur — l'écran
-   `Clues` affiche uniquement l'ordre de passage. Une fois tous les indices donnés
-   (`currentTurnPlayerId === null`), l'hôte voit apparaître une liste des joueurs vivants avec
-   un bouton "Éliminer" par ligne (le reste de la room voit un message d'attente). Un
-   `window.confirm` protège contre le clic accidentel, l'action étant irréversible. L'écran
-   `Voting` a été supprimé ; ses classes `.vote-row`/`.vote-btn` sont réutilisées telles
-   quelles pour cette liste (même rythme visuel avatar + bouton), voir `docs/CONTRACT.md` §3.
+7. **`Discussion` sans indice ni minuteur, vote déclenché par l'hôte** : l'écran (ex-`Clues`)
+   affiche uniquement `turnOrder` — les joueurs décrivent leur champion à voix haute, hors
+   app, dans cet ordre. Aucune saisie, aucun minuteur, aucune notion de "tour courant" côté
+   client. L'hôte seul déclenche `round:startVoting` (bouton "Passer au vote") quand il juge la
+   discussion terminée ; les autres joueurs voient un message d'attente. L'écran `Voting`
+   reste ensuite un vote secret simultané classique (comme la toute première version du
+   contrat), simplement sans minuteur — voir `docs/CONTRACT.md` §3.
 
 ## Structure
 
@@ -102,7 +103,7 @@ src/
     RoomProvider.tsx     contexte React : état de room, session, tous les emit typés
   routes/
     GameRoute.tsx        /room/:roomCode — reconnexion + switch d'écran sur roomState.phase
-  screens/               Home, Lobby, Reveal, Clues, RoundResult, MrWhiteGuess, GameOver
+  screens/               Home, Lobby, Reveal, Discussion, Voting, RoundResult, MrWhiteGuess, GameOver
   components/            Avatar, AppBar, ActionBar, LaneIcon, RoleBadge, IconDefs
   lib/                   session (localStorage), roles (aperçu répartition), avatar (couleurs)
   styles/

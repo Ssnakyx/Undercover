@@ -25,7 +25,8 @@ export interface RejoinFailure {
 
 const PHASES_WITH_ROLE = new Set([
   'reveal',
-  'clues',
+  'discussion',
+  'voting',
   'round_result',
   'mrwhite_guess',
   'game_over',

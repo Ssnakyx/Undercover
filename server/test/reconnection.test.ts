@@ -93,7 +93,7 @@ describe('reconnection', () => {
       let result = attemptRejoin(room, { playerId: player.playerId, sessionToken: player.sessionToken }, 's1');
       expect(result.ok && result.shouldResendRolePrivate).toBe(false);
 
-      for (const phase of ['reveal', 'clues', 'round_result', 'mrwhite_guess', 'game_over'] as const) {
+      for (const phase of ['reveal', 'discussion', 'voting', 'round_result', 'mrwhite_guess', 'game_over'] as const) {
         room.phase = phase;
         result = attemptRejoin(room, { playerId: player.playerId, sessionToken: player.sessionToken }, 's2');
         expect(result.ok && result.shouldResendRolePrivate).toBe(true);

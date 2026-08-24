@@ -38,8 +38,8 @@ interface RoomContextValue {
   removePair: (pairId: string) => void;
   startGame: () => void;
   ackReveal: () => void;
-  submitClue: (text: string) => void;
-  eliminatePlayer: (targetPlayerId: string) => void;
+  startVoting: () => void;
+  submitVote: (targetPlayerId: string) => void;
   submitGuess: (championGuess: string) => void;
   continueRound: () => void;
   restartGame: () => void;
@@ -186,11 +186,11 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const ackReveal = useCallback(() => {
     socket.emit('reveal:ack', {});
   }, []);
-  const submitClue = useCallback((text: string) => {
-    socket.emit('clue:submit', { text });
+  const startVoting = useCallback(() => {
+    socket.emit('round:startVoting', {});
   }, []);
-  const eliminatePlayer = useCallback((targetPlayerId: string) => {
-    socket.emit('player:eliminate', { targetPlayerId });
+  const submitVote = useCallback((targetPlayerId: string) => {
+    socket.emit('vote:submit', { targetPlayerId });
   }, []);
   const submitGuess = useCallback((championGuess: string) => {
     socket.emit('mrwhite:guess', { championGuess });
@@ -230,8 +230,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     removePair,
     startGame,
     ackReveal,
-    submitClue,
-    eliminatePlayer,
+    startVoting,
+    submitVote,
     submitGuess,
     continueRound,
     restartGame,

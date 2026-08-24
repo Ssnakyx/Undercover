@@ -75,8 +75,7 @@ function toPublicState(room: Room): RoomStatePublic {
     pairs: getAllPairs(),
     round: room.round,
     turnOrder: [...room.turnOrder],
-    currentTurnPlayerId: engine.currentTurnPlayerId(room),
-    clues: room.clues.map((c) => ({ ...c })),
+    votedPlayerIds: room.votes.map((v) => v.voterId),
     phaseDeadline: room.phaseDeadline,
   };
 }
@@ -134,16 +133,13 @@ function scheduleMrWhiteGuessTimeout(io: IoServer, room: Room): void {
 
 function onRevealTimeout(io: IoServer, room: Room): void {
   if (room.phase !== 'reveal') return;
-  engine.enterClues(room);
+  engine.enterDiscussion(room);
   broadcastRoomState(io, room);
 }
 
-/** Émet le résultat d'une élimination (décidée par l'hôte, cf. `engine.eliminatePlayer`) et enchaîne. */
-function finishElimination(
-  io: IoServer,
-  room: Room,
-  { result, winner, enterMrWhiteGuess }: ReturnType<typeof engine.eliminatePlayer>
-): void {
+/** Dépouille les votes et enchaîne (mrwhite_guess ou fin de partie éventuelle). */
+function finishVoting(io: IoServer, room: Room): void {
+  const { result, winner, enterMrWhiteGuess } = engine.tallyVotesAndEliminate(room);
   clearRoomTimer(room);
   io.to(room.roomCode).emit('round:result', result);
   broadcastRoomState(io, room);
@@ -191,6 +187,8 @@ function applyMidGameDeparture(io: IoServer, room: Room, playerId: string): void
     eliminatedPlayerId: playerId,
     eliminatedRole: player.role ?? 'civil', // rôle toujours assigné hors phase lobby
     eliminatedChampion: room.settings.revealChampionOnElimination ? player.champion : null,
+    voteCounts: {},
+    tie: false,
   };
   io.to(room.roomCode).emit('round:result', revealPayload);
 
@@ -211,9 +209,14 @@ function applyMidGameDeparture(io: IoServer, room: Room, playerId: string): void
     return;
   }
 
-  if (room.phase === 'clues') {
-    engine.removeFromClueTurnOrder(room, playerId);
+  if (room.phase === 'discussion') {
+    engine.removeFromTurnOrder(room, playerId);
     broadcastRoomState(io, room);
+    return;
+  }
+
+  if (room.phase === 'voting' && engine.haveAllAlivePlayersVoted(room)) {
+    finishVoting(io, room);
     return;
   }
 
@@ -520,35 +523,40 @@ export function registerSocketHandlers(io: IoServer): void {
       }
       ok(ack);
       if (engine.haveAllAlivePlayersAckedReveal(room)) {
-        engine.enterClues(room);
+        engine.enterDiscussion(room);
         broadcastRoomState(io, room);
       }
     });
 
-    socket.on('clue:submit', (payload, ack) => {
-      const ctx = requireCtx(socket, ack);
-      if (!ctx) return;
-      const { room, player } = ctx;
-      try {
-        engine.submitClue(room, player.playerId, (payload?.text ?? '').toString());
-        ok(ack);
-        broadcastRoomState(io, room);
-      } catch (err) {
-        reportEngineError(socket, ack, err, 'CLUE_FAILED');
-      }
-    });
-
-    socket.on('player:eliminate', (payload, ack) => {
+    socket.on('round:startVoting', (_payload, ack) => {
       const ctx = requireCtx(socket, ack);
       if (!ctx) return;
       if (!requireHost(socket, ctx, ack)) return;
       const { room } = ctx;
       try {
-        const eliminateResult = engine.eliminatePlayer(room, (payload?.targetPlayerId ?? '').toString());
-        ok(ack);
-        finishElimination(io, room, eliminateResult);
+        engine.startVoting(room);
       } catch (err) {
-        reportEngineError(socket, ack, err, 'ELIMINATE_FAILED');
+        reportEngineError(socket, ack, err, 'START_VOTING_FAILED');
+        return;
+      }
+      ok(ack);
+      broadcastRoomState(io, room);
+    });
+
+    socket.on('vote:submit', (payload, ack) => {
+      const ctx = requireCtx(socket, ack);
+      if (!ctx) return;
+      const { room, player } = ctx;
+      try {
+        engine.submitVote(room, player.playerId, (payload?.targetPlayerId ?? '').toString());
+        ok(ack);
+        if (engine.haveAllAlivePlayersVoted(room)) {
+          finishVoting(io, room);
+        } else {
+          broadcastRoomState(io, room);
+        }
+      } catch (err) {
+        reportEngineError(socket, ack, err, 'VOTE_FAILED');
       }
     });
 

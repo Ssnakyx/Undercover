@@ -137,7 +137,8 @@
 }
 .role-face__secret { margin-top: var(--space-4); font-size: var(--text-xs); color: var(--color-text-low); }
 
-/* -------------------- Clues -------------------- */
+/* -------------------- Discussion (pas de saisie d'indice ni de minuteur —
+   affichage indicatif de l'ordre de passage uniquement, voir CONTRACT.md §3) -------------------- */
 .turn-banner {
   display: flex; align-items: center; gap: var(--space-4);
   padding: var(--space-5); margin-bottom: var(--space-6);
@@ -145,33 +146,34 @@
 .turn-banner__text { flex: 1 1 auto; min-width: 0; }
 .turn-banner__who { font-family: var(--font-display); font-size: var(--text-lg); color: var(--color-gold-300); letter-spacing: var(--tracking-wide); }
 .turn-banner__sub { font-size: var(--text-xs); color: var(--color-text-low); margin-top: var(--space-1); }
-.turn-order__item { display: flex; align-items: flex-start; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); }
+.turn-order__item { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); }
 .turn-order__item:last-child { border-bottom: none; }
 .turn-order__index {
-  flex: none; width: 22px; height: 22px; margin-top: 3px;
+  flex: none; width: 22px; height: 22px;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-mono); font-size: 0.65rem; color: var(--color-text-low);
   border: 1px solid var(--color-border); border-radius: 50%;
 }
-.turn-order__item--done .turn-order__index { color: var(--color-success); border-color: var(--color-success); background: var(--color-success-dim); }
-.turn-order__item--active .turn-order__index { color: var(--color-text-on-gold); border-color: var(--color-gold-500); background: var(--color-gold-500); }
 .turn-order__body { flex: 1 1 auto; min-width: 0; }
 .turn-order__name { font-weight: 600; }
-.turn-order__clue { margin-top: var(--space-1); font-size: var(--text-sm); color: var(--color-text-mid); font-style: italic; }
-.turn-order__clue::before { content: '\201C'; } .turn-order__clue::after { content: '\201D'; }
-.turn-order__waiting { margin-top: var(--space-1); font-size: var(--text-xs); color: var(--color-text-low); }
-.clue-form { display: flex; flex-direction: column; gap: var(--space-2); }
-.clue-form__row { display: flex; gap: var(--space-3); }
-.clue-form__row .input { flex: 1 1 auto; }
-.char-counter { align-self: flex-end; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text-low); }
 .waiting-note {
   display: flex; align-items: center; gap: var(--space-3);
   padding: var(--space-4); color: var(--color-text-mid); font-size: var(--text-sm);
 }
 
-/* -------------------- Élimination par l'hôte (fin de clues, pas de maquette
-   dédiée — réutilise le rythme visuel "ligne + bouton" des anciennes maquettes
-   de vote, voir client/README.md) -------------------- */
+/* -------------------- Voting -------------------- */
+.vote-banner {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-5); margin-bottom: var(--space-5);
+}
+.vote-banner__text { flex: 1 1 auto; }
+.vote-banner__title { font-family: var(--font-display); font-size: var(--text-lg); letter-spacing: var(--tracking-wide); }
+.vote-banner__sub { font-size: var(--text-xs); color: var(--color-text-low); margin-top: var(--space-1); }
+.vote-progress { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-6); padding: 0 var(--space-1); }
+.vote-progress__dots { display: flex; gap: 5px; }
+.vote-progress__dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-surface-hover); border: 1px solid var(--color-border-interactive); transition: background var(--duration-base), border-color var(--duration-base); }
+.vote-progress__dot--filled { background: var(--color-gold-500); border-color: var(--color-gold-500); }
+.vote-progress__label { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text-mid); }
 .vote-row {
   display: flex; align-items: center; gap: var(--space-4);
   padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border);
@@ -179,6 +181,10 @@
 .vote-row:last-child { border-bottom: none; }
 .vote-row__body { flex: 1 1 auto; min-width: 0; }
 .vote-row__name { font-weight: 600; }
+.vote-row__status { font-size: var(--text-xs); margin-top: 2px; display: flex; align-items: center; gap: 5px; }
+.vote-row__status svg { width: 12px; height: 12px; }
+.vote-row__status--voted { color: var(--color-success); }
+.vote-row__status--pending { color: var(--color-text-low); }
 .vote-btn {
   --cut: 6px;
   flex: none;
@@ -195,7 +201,21 @@
   transition: background var(--duration-fast), color var(--duration-fast), transform var(--duration-fast), opacity var(--duration-fast);
 }
 .vote-btn:active { transform: scale(0.96); }
+.vote-btn--selected { background: var(--color-gold-500); color: var(--color-text-on-gold); border-color: var(--color-gold-300); }
 .vote-btn:disabled { opacity: 0.35; pointer-events: none; }
+.vote-row--self .vote-row__name { color: var(--color-text-mid); }
+.confirm-banner {
+  display: none;
+  align-items: center; gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-success-dim);
+  border: 1px solid var(--color-success);
+  color: var(--color-success);
+  font-weight: 700;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.confirm-banner.is-visible { display: flex; }
+.confirm-banner svg { width: 22px; height: 22px; flex: none; }
 
 /* -------------------- RoundResult -------------------- */
 .eliminated-block {
@@ -220,6 +240,10 @@
 .role-reveal--undercover .role-reveal__emblem, .role-reveal--undercover .role-reveal__eyebrow { color: var(--color-role-undercover); }
 .role-reveal--mrwhite { border-color: var(--color-role-mrwhite); box-shadow: var(--glow-mrwhite); }
 .role-reveal--mrwhite .role-reveal__emblem, .role-reveal--mrwhite .role-reveal__eyebrow { color: var(--color-role-mrwhite); }
+.vote-list__row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); }
+.vote-list__row:last-child { border-bottom: none; }
+.vote-list__name { flex: none; width: 7.5rem; font-size: var(--text-sm); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vote-list__row--eliminated .vote-list__name { color: var(--color-role-undercover); }
 .round-note { text-align: center; font-size: var(--text-xs); color: var(--color-text-low); margin-top: var(--space-6); line-height: var(--leading-snug); }
 
 /* -------------------- MrWhiteGuess (pas de maquette dédiée — réutilise la

@@ -37,7 +37,8 @@ export interface RoomSettings {
 export type GamePhase =
   | 'lobby'
   | 'reveal'
-  | 'clues'
+  | 'discussion'
+  | 'voting'
   | 'round_result'
   | 'mrwhite_guess'
   | 'game_over';
@@ -58,9 +59,8 @@ export interface RoomStatePublic {
   settings: RoomSettings;
   pairs: ChampionPair[];
   round: number;
-  turnOrder: string[]; // playerIds, phase clues
-  currentTurnPlayerId: string | null; // null = tous les indices du round sont donnés
-  clues: { playerId: string; text: string }[]; // round courant
+  turnOrder: string[]; // playerIds, ordre d'affichage indicatif (phase discussion)
+  votedPlayerIds: string[]; // qui a voté (pas pour qui), phase voting
   phaseDeadline: number | null; // epoch ms, pour le compte à rebours client (reveal / mrwhite_guess uniquement)
 }
 
@@ -117,11 +117,7 @@ export interface PairsRemovePayload {
   pairId: string;
 }
 
-export interface ClueSubmitPayload {
-  text: string;
-}
-
-export interface PlayerEliminatePayload {
+export interface VoteSubmitPayload {
   targetPlayerId: string;
 }
 
@@ -142,9 +138,11 @@ export interface RolePrivatePayload {
 }
 
 export interface RoundResultPayload {
-  eliminatedPlayerId: string;
-  eliminatedRole: Role;
+  eliminatedPlayerId: string | null; // null si égalité = personne éliminé
+  eliminatedRole: Role | null;
   eliminatedChampion: string | null; // selon settings.revealChampionOnElimination, sinon null
+  voteCounts: Record<string, number>;
+  tie: boolean;
 }
 
 export type Winner = 'civils' | 'undercover' | 'mrwhite';
@@ -180,6 +178,11 @@ export interface Player {
   disconnectTimer: NodeJS.Timeout | null;
 }
 
+export interface VoteRecord {
+  voterId: string;
+  targetPlayerId: string;
+}
+
 export interface Room {
   roomCode: string;
   createdAt: number;
@@ -187,9 +190,8 @@ export interface Room {
   settings: RoomSettings;
   players: Map<string, Player>; // playerId -> Player, ordre non garanti (utiliser joinOrder)
   round: number;
-  turnOrder: string[]; // playerIds vivants, phase clues
-  currentTurnIndex: number;
-  clues: { playerId: string; text: string }[];
+  turnOrder: string[]; // playerIds vivants, ordre d'affichage indicatif (phase discussion)
+  votes: VoteRecord[];
   lastRoundResult: RoundResultPayload | null;
   mrWhiteGuessPlayerId: string | null; // qui a le droit de deviner
   phaseDeadline: number | null;

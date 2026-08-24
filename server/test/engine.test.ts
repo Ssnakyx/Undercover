@@ -34,9 +34,9 @@ function addPlayer(
   return player;
 }
 
-describe('removeFromClueTurnOrder — retrait d\'un joueur en cours de round "clues"', () => {
+describe('removeFromTurnOrder — retrait cosmétique de l\'ordre affiché en phase "discussion"', () => {
   let room: Room;
-  let p0: Player, p1: Player, p2: Player, p3: Player;
+  let p0: Player, p1: Player, p2: Player;
 
   beforeEach(() => {
     _resetRoomStoreForTests();
@@ -44,74 +44,22 @@ describe('removeFromClueTurnOrder — retrait d\'un joueur en cours de round "cl
     p0 = addPlayer(room, { joinOrder: 0 });
     p1 = addPlayer(room, { joinOrder: 1 });
     p2 = addPlayer(room, { joinOrder: 2 });
-    p3 = addPlayer(room, { joinOrder: 3 });
-    room.phase = 'clues';
-    room.turnOrder = [p0.playerId, p1.playerId, p2.playerId, p3.playerId];
-    room.currentTurnIndex = 2; // c'est le tour de p2
+    room.phase = 'discussion';
+    room.turnOrder = [p0.playerId, p1.playerId, p2.playerId];
   });
 
   afterEach(() => {
     _resetRoomStoreForTests();
   });
 
-  it('retrait d\'un joueur AVANT le tour courant : décrémente currentTurnIndex, ne change pas le joueur courant', () => {
-    const before = engine.currentTurnPlayerId(room); // p2
-    const result = engine.removeFromClueTurnOrder(room, p0.playerId); // idx 0 < currentTurnIndex 2
-
-    expect(result.wasCurrentTurn).toBe(false);
-    expect(result.cluesComplete).toBe(false);
-    expect(room.turnOrder).toEqual([p1.playerId, p2.playerId, p3.playerId]);
-    expect(room.currentTurnIndex).toBe(1); // décrémenté pour continuer à pointer sur p2
-    expect(engine.currentTurnPlayerId(room)).toBe(before);
-    expect(engine.currentTurnPlayerId(room)).toBe(p2.playerId);
+  it('retire le joueur de turnOrder, conserve l\'ordre relatif des autres', () => {
+    engine.removeFromTurnOrder(room, p1.playerId);
+    expect(room.turnOrder).toEqual([p0.playerId, p2.playerId]);
   });
 
-  it('retrait d\'un joueur APRÈS le tour courant : ne change pas currentTurnIndex ni le joueur courant', () => {
-    const result = engine.removeFromClueTurnOrder(room, p3.playerId); // idx 3 > currentTurnIndex 2
-
-    expect(result.wasCurrentTurn).toBe(false);
-    expect(result.cluesComplete).toBe(false);
+  it('joueur déjà absent : no-op', () => {
+    engine.removeFromTurnOrder(room, 'unknown-id');
     expect(room.turnOrder).toEqual([p0.playerId, p1.playerId, p2.playerId]);
-    expect(room.currentTurnIndex).toBe(2);
-    expect(engine.currentTurnPlayerId(room)).toBe(p2.playerId);
-  });
-
-  it('retrait du joueur DONT C\'EST LE TOUR, avec un joueur suivant : passe au suivant, reste en clues', () => {
-    const result = engine.removeFromClueTurnOrder(room, p2.playerId); // idx === currentTurnIndex
-
-    expect(result.wasCurrentTurn).toBe(true);
-    expect(result.cluesComplete).toBe(false);
-    expect(room.turnOrder).toEqual([p0.playerId, p1.playerId, p3.playerId]);
-    expect(room.currentTurnIndex).toBe(2); // pointe maintenant sur p3 (ancien index 3, décalé à 2)
-    expect(engine.currentTurnPlayerId(room)).toBe(p3.playerId);
-    expect(room.phase).toBe('clues');
-  });
-
-  it('retrait du joueur DONT C\'EST LE TOUR, dernier de l\'ordre : tous les indices sont désormais donnés', () => {
-    room.currentTurnIndex = 3; // tour de p3, le dernier
-    const result = engine.removeFromClueTurnOrder(room, p3.playerId);
-
-    expect(result.wasCurrentTurn).toBe(true);
-    expect(result.cluesComplete).toBe(true);
-    expect(room.phase).toBe('clues');
-    expect(room.turnOrder).toEqual([p0.playerId, p1.playerId, p2.playerId]);
-    expect(engine.currentTurnPlayerId(room)).toBeNull();
-  });
-
-  it('joueur déjà absent de turnOrder : no-op', () => {
-    const before = { ...room, turnOrder: [...room.turnOrder] };
-    const result = engine.removeFromClueTurnOrder(room, 'unknown-id');
-
-    expect(result.wasCurrentTurn).toBe(false);
-    expect(result.cluesComplete).toBe(false);
-    expect(room.turnOrder).toEqual(before.turnOrder);
-    expect(room.currentTurnIndex).toBe(before.currentTurnIndex);
-  });
-
-  it('hors phase clues : no-op (ex: phase round_result)', () => {
-    room.phase = 'round_result';
-    const result = engine.removeFromClueTurnOrder(room, p1.playerId);
-    expect(result).toEqual({ cluesComplete: false, wasCurrentTurn: false });
   });
 });
 
@@ -126,7 +74,33 @@ function expectEngineErrorCode(fn: () => unknown, code: string): void {
   expect((caught as engine.GameEngineError).code).toBe(code);
 }
 
-describe('eliminatePlayer — décision unique de l\'hôte (remplace le vote)', () => {
+describe('startVoting', () => {
+  let room: Room;
+
+  beforeEach(() => {
+    _resetRoomStoreForTests();
+    room = createRoom();
+    room.phase = 'discussion';
+  });
+
+  afterEach(() => {
+    _resetRoomStoreForTests();
+  });
+
+  it('passe la phase à voting, vide les votes, pas de minuteur', () => {
+    engine.startVoting(room);
+    expect(room.phase).toBe('voting');
+    expect(room.votes).toEqual([]);
+    expect(room.phaseDeadline).toBeNull();
+  });
+
+  it('refuse hors phase discussion', () => {
+    room.phase = 'round_result';
+    expectEngineErrorCode(() => engine.startVoting(room), 'INVALID_PHASE');
+  });
+});
+
+describe('submitVote / tallyVotesAndEliminate — vote de groupe (remplace l\'élimination host-only)', () => {
   let room: Room;
   // p0 = host, 3 civils (p0, p2, p3) + 1 undercover (p1) : assez de civils pour qu'une
   // élimination de civil ne déclenche pas de victoire immédiate (voir conditions §4).
@@ -139,9 +113,7 @@ describe('eliminatePlayer — décision unique de l\'hôte (remplace le vote)', 
     p1 = addPlayer(room, { joinOrder: 1, role: 'undercover' });
     p2 = addPlayer(room, { joinOrder: 2, role: 'civil' });
     p3 = addPlayer(room, { joinOrder: 3, role: 'civil' });
-    room.phase = 'clues';
-    room.turnOrder = [p0.playerId, p1.playerId, p2.playerId, p3.playerId];
-    room.currentTurnIndex = room.turnOrder.length; // tous les indices déjà donnés
+    room.phase = 'voting';
     room.championA = 'Garen';
   });
 
@@ -149,44 +121,77 @@ describe('eliminatePlayer — décision unique de l\'hôte (remplace le vote)', 
     _resetRoomStoreForTests();
   });
 
-  it('refuse hors phase clues', () => {
-    room.phase = 'round_result';
-    expectEngineErrorCode(() => engine.eliminatePlayer(room, p1.playerId), 'INVALID_PHASE');
+  it('refuse hors phase voting', () => {
+    room.phase = 'discussion';
+    expectEngineErrorCode(() => engine.submitVote(room, p0.playerId, p1.playerId), 'INVALID_PHASE');
   });
 
-  it('refuse tant que tous les joueurs n\'ont pas donné leur indice', () => {
-    room.currentTurnIndex = 1; // p1 n'a pas encore parlé
-    expectEngineErrorCode(() => engine.eliminatePlayer(room, p1.playerId), 'CLUES_NOT_FINISHED');
+  it('refuse le vote pour soi-même', () => {
+    expectEngineErrorCode(() => engine.submitVote(room, p0.playerId, p0.playerId), 'VOTE_SELF_FORBIDDEN');
   });
 
   it('refuse une cible invalide ou déjà éliminée', () => {
-    expectEngineErrorCode(() => engine.eliminatePlayer(room, 'unknown-id'), 'INVALID_TARGET');
+    expectEngineErrorCode(() => engine.submitVote(room, p0.playerId, 'unknown-id'), 'INVALID_VOTE_TARGET');
     p2.alive = false;
-    expectEngineErrorCode(() => engine.eliminatePlayer(room, p2.playerId), 'INVALID_TARGET');
+    expectEngineErrorCode(() => engine.submitVote(room, p0.playerId, p2.playerId), 'INVALID_VOTE_TARGET');
   });
 
-  it('élimine la cible, révèle son rôle, sans vainqueur si la partie continue', () => {
-    const { result, winner, enterMrWhiteGuess } = engine.eliminatePlayer(room, p3.playerId);
+  it('refuse un second vote du même joueur', () => {
+    engine.submitVote(room, p0.playerId, p1.playerId);
+    expectEngineErrorCode(() => engine.submitVote(room, p0.playerId, p2.playerId), 'ALREADY_VOTED');
+  });
+
+  it('haveAllAlivePlayersVoted reflète l\'état courant', () => {
+    expect(engine.haveAllAlivePlayersVoted(room)).toBe(false);
+    engine.submitVote(room, p0.playerId, p1.playerId);
+    engine.submitVote(room, p1.playerId, p0.playerId);
+    engine.submitVote(room, p2.playerId, p1.playerId);
+    expect(engine.haveAllAlivePlayersVoted(room)).toBe(false);
+    engine.submitVote(room, p3.playerId, p1.playerId);
+    expect(engine.haveAllAlivePlayersVoted(room)).toBe(true);
+  });
+
+  it('élimine le joueur majoritaire, révèle son rôle, sans vainqueur si la partie continue', () => {
+    engine.submitVote(room, p0.playerId, p3.playerId);
+    engine.submitVote(room, p1.playerId, p3.playerId);
+    engine.submitVote(room, p2.playerId, p3.playerId);
+    engine.submitVote(room, p3.playerId, p0.playerId);
+
+    const { result, winner, enterMrWhiteGuess } = engine.tallyVotesAndEliminate(room);
 
     expect(p3.alive).toBe(false);
     expect(result.eliminatedPlayerId).toBe(p3.playerId);
     expect(result.eliminatedRole).toBe('civil');
+    expect(result.tie).toBe(false);
     expect(room.phase).toBe('round_result');
     expect(winner).toBeNull();
     expect(enterMrWhiteGuess).toBe(false);
   });
 
-  it('l\'hôte peut cibler n\'importe quel joueur vivant, y compris lui-même', () => {
-    const { result } = engine.eliminatePlayer(room, p0.playerId); // p0 = host (joinOrder 0)
-    expect(result.eliminatedPlayerId).toBe(p0.playerId);
+  it('égalité au sommet : personne n\'est éliminé', () => {
+    engine.submitVote(room, p0.playerId, p2.playerId);
+    engine.submitVote(room, p1.playerId, p3.playerId);
+    engine.submitVote(room, p2.playerId, p3.playerId);
+    engine.submitVote(room, p3.playerId, p2.playerId);
+
+    const { result, winner } = engine.tallyVotesAndEliminate(room);
+
+    expect(result.eliminatedPlayerId).toBeNull();
+    expect(result.tie).toBe(true);
+    expect(p2.alive).toBe(true);
+    expect(p3.alive).toBe(true);
+    expect(winner).toBeNull();
   });
 
-  it('déclenche mrwhite_guess si la cible est Mr White', () => {
+  it('déclenche mrwhite_guess si l\'éliminé est Mr White', () => {
     const mrWhite = addPlayer(room, { joinOrder: 4, role: 'mrwhite' });
-    room.turnOrder.push(mrWhite.playerId);
-    room.currentTurnIndex = room.turnOrder.length;
+    engine.submitVote(room, p0.playerId, mrWhite.playerId);
+    engine.submitVote(room, p1.playerId, mrWhite.playerId);
+    engine.submitVote(room, p2.playerId, mrWhite.playerId);
+    engine.submitVote(room, p3.playerId, mrWhite.playerId);
+    engine.submitVote(room, mrWhite.playerId, p0.playerId);
 
-    const { winner, enterMrWhiteGuess } = engine.eliminatePlayer(room, mrWhite.playerId);
+    const { winner, enterMrWhiteGuess } = engine.tallyVotesAndEliminate(room);
 
     expect(enterMrWhiteGuess).toBe(true);
     expect(winner).toBeNull();
@@ -194,18 +199,28 @@ describe('eliminatePlayer — décision unique de l\'hôte (remplace le vote)', 
   });
 
   it('déclenche la victoire des civils si undercover et mrwhite sont tous éliminés', () => {
-    const { winner } = engine.eliminatePlayer(room, p1.playerId); // seul undercover
+    engine.submitVote(room, p0.playerId, p1.playerId);
+    engine.submitVote(room, p2.playerId, p1.playerId);
+    engine.submitVote(room, p3.playerId, p1.playerId);
+
+    const { winner } = engine.tallyVotesAndEliminate(room);
     expect(winner).toBe('civils');
   });
 
   it('ne révèle pas le champion si revealChampionOnElimination est désactivé (défaut)', () => {
-    const { result } = engine.eliminatePlayer(room, p1.playerId);
+    engine.submitVote(room, p0.playerId, p1.playerId);
+    engine.submitVote(room, p2.playerId, p1.playerId);
+    engine.submitVote(room, p3.playerId, p1.playerId);
+    const { result } = engine.tallyVotesAndEliminate(room);
     expect(result.eliminatedChampion).toBeNull();
   });
 
   it('révèle le champion si revealChampionOnElimination est activé', () => {
     room.settings.revealChampionOnElimination = true;
-    const { result } = engine.eliminatePlayer(room, p1.playerId);
+    engine.submitVote(room, p0.playerId, p1.playerId);
+    engine.submitVote(room, p2.playerId, p1.playerId);
+    engine.submitVote(room, p3.playerId, p1.playerId);
+    const { result } = engine.tallyVotesAndEliminate(room);
     expect(result.eliminatedChampion).toBe('Garen');
   });
 });

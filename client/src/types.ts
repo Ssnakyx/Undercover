@@ -22,7 +22,8 @@ export interface RoomSettings {
 export type GamePhase =
   | 'lobby'
   | 'reveal'
-  | 'clues'
+  | 'discussion'
+  | 'voting'
   | 'round_result'
   | 'mrwhite_guess'
   | 'game_over';
@@ -44,8 +45,7 @@ export interface RoomStatePublic {
   pairs: ChampionPair[];
   round: number;
   turnOrder: string[];
-  currentTurnPlayerId: string | null; // null = tous les indices du round sont donnés
-  clues: { playerId: string; text: string }[];
+  votedPlayerIds: string[];
   phaseDeadline: number | null;
 }
 
@@ -102,11 +102,7 @@ export interface PairsRemovePayload {
   pairId: string;
 }
 
-export interface ClueSubmitPayload {
-  text: string;
-}
-
-export interface PlayerEliminatePayload {
+export interface VoteSubmitPayload {
   targetPlayerId: string;
 }
 
@@ -127,9 +123,11 @@ export interface RolePrivatePayload {
 }
 
 export interface RoundResultPayload {
-  eliminatedPlayerId: string;
-  eliminatedRole: Role;
+  eliminatedPlayerId: string | null; // null si égalité = personne éliminé
+  eliminatedRole: Role | null;
   eliminatedChampion: string | null;
+  voteCounts: Record<string, number>;
+  tie: boolean;
 }
 
 export type Winner = 'civils' | 'undercover' | 'mrwhite';
@@ -156,8 +154,8 @@ export interface ClientToServerEvents {
   'pairs:remove': (payload: PairsRemovePayload, ack?: (res: AckResponse) => void) => void;
   'game:start': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'reveal:ack': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
-  'clue:submit': (payload: ClueSubmitPayload, ack?: (res: AckResponse) => void) => void;
-  'player:eliminate': (payload: PlayerEliminatePayload, ack?: (res: AckResponse) => void) => void;
+  'round:startVoting': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
+  'vote:submit': (payload: VoteSubmitPayload, ack?: (res: AckResponse) => void) => void;
   'mrwhite:guess': (payload: MrWhiteGuessPayload, ack?: (res: AckResponse) => void) => void;
   'round:continue': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'game:restart': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;

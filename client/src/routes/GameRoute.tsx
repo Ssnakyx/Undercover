@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useRoom } from '../socket/RoomProvider';
 import { Lobby } from '../screens/Lobby';
 import { Reveal } from '../screens/Reveal';
-import { Clues } from '../screens/Clues';
+import { Discussion } from '../screens/Discussion';
+import { Voting } from '../screens/Voting';
 import { RoundResult } from '../screens/RoundResult';
 import { MrWhiteGuess } from '../screens/MrWhiteGuess';
 import { GameOver } from '../screens/GameOver';
@@ -51,8 +52,10 @@ export function GameRoute() {
       return <Lobby />;
     case 'reveal':
       return <Reveal />;
-    case 'clues':
-      return <Clues />;
+    case 'discussion':
+      return <Discussion />;
+    case 'voting':
+      return <Voting />;
     case 'round_result':
       return <RoundResult />;
     case 'mrwhite_guess':

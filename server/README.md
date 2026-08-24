@@ -76,9 +76,10 @@ Utilise Vitest. Couvre :
   et la comparaison insensible casse/accents pour la devinette de Mr White.
 - `test/reconnection.test.ts` — rejoin valide/invalide, migration de host, expiration du
   délai de grâce de 3 minutes (lobby vs en partie), timers de déconnexion (fake timers).
-- `test/engine.test.ts` — retrait d'un joueur de l'ordre de passage en cours de round,
-  `eliminatePlayer` (permissions de phase, cible invalide, révélation, victoire, entrée en
-  `mrwhite_guess`), `resolveMrWhiteTimeout`.
+- `test/engine.test.ts` — retrait d'un joueur de l'ordre de passage affiché, `startVoting`,
+  `submitVote`/`tallyVotesAndEliminate` (permissions de phase, auto-vote interdit, cible
+  invalide, double vote, égalité, révélation, victoire, entrée en `mrwhite_guess`),
+  `resolveMrWhiteTimeout`.
 
 `npm run test:watch` pour le mode watch.
 
@@ -97,11 +98,14 @@ documentée ici plutôt qu'improvisée silencieusement :
 3. **Extension de la condition de victoire de Mr White** (section 4, point 4) : déjà
    documentée dans le contrat lui-même comme extension volontaire pour éviter une partie
    infinie ; implémentée telle quelle dans `src/game/winConditions.ts`.
-4. **Élimination par décision de l'hôte** (remplace le vote de la version initiale du
-   contrat) : une fois tous les indices du round donnés (`currentTurnPlayerId === null`),
-   l'hôte désigne directement le joueur éliminé via `player:eliminate { targetPlayerId }` —
-   pas de vote compté, secret ou chronométré. L'hôte peut cibler n'importe quel joueur vivant,
-   lui-même compris. Décision produit explicite, documentée dans `docs/CONTRACT.md` §3.
+4. **Pas de minuteur en phase `discussion`/`voting`, transition vote déclenchée par l'hôte** :
+   `discussion` n'a aucune interaction applicative (juste `turnOrder` affiché à titre
+   indicatif — les joueurs parlent à voix haute, hors app, sans saisie d'indice) ; c'est
+   l'hôte, via `round:startVoting`, qui juge la discussion close et ouvre le vote. Le vote
+   lui-même (`vote:submit`) reste secret et simultané comme dans la version initiale du
+   contrat, mais sans `voteTimeSeconds` : le dépouillement se déclenche dès que tous les
+   joueurs vivants ont voté, jamais par expiration d'un délai. Décision produit explicite,
+   documentée dans `docs/CONTRACT.md` §3.
 5. **Migration de host immédiate** : le contrat dit "host quitte/déconnecte → rôle transféré
    au joueur connecté suivant", sans préciser si c'est immédiat ou après le délai de grâce de
    3 minutes. Implémenté comme immédiat (dès la déconnexion du socket, pas d'attente des 3
@@ -136,13 +140,13 @@ documentée ici plutôt qu'improvisée silencieusement :
   (voir `src/types.ts`), donc structurellement impossibles à leaker par erreur de sérialisation.
 - `role:private` n'est émis qu'au socket du joueur concerné (`io.to(player.socketId)`), jamais
   en broadcast room.
-- `round:result` ne révèle le rôle/champion que du joueur qui vient d'être éliminé (décision de
-  l'hôte, déconnexion expirée, ou départ explicite) — jamais celui des autres.
+- `round:result` ne révèle le rôle/champion que du joueur qui vient d'être éliminé (vote,
+  déconnexion expirée, ou départ explicite) — jamais celui des autres.
 - `game:ended` révèle tout, volontairement, uniquement en fin de partie.
-- Toutes les permissions (host only, joueur du tour only, devineur Mr White only) sont
+- Toutes les permissions (host only, joueur vivant only, devineur Mr White only) sont
   vérifiées côté serveur dans `src/socket/handlers.ts` et `src/game/engine.ts` — jamais
-  déléguées au client. La phase `clues` n'a pas de minuteur (cf. décision 4 ci-dessus) ; seuls
-  `reveal` et `mrwhite_guess` gardent un timer serveur (`setTimeout` dans
+  déléguées au client. Ni `discussion` ni `voting` n'ont de minuteur (cf. décision 4
+  ci-dessus) ; seuls `reveal` et `mrwhite_guess` gardent un timer serveur (`setTimeout` dans
   `src/socket/handlers.ts`) — `phaseDeadline` n'est qu'une information d'affichage pour le
   client, jamais une source de vérité.
 
