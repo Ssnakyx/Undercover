@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>lolCover — Fin de partie</title>
+<link rel="stylesheet" href="design-system.css">
+<style>
+  .winner-banner {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: var(--space-8) var(--space-6);
+    margin-bottom: var(--space-7);
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse 320px 260px at 50% 0%, rgba(79, 143, 203, 0.22), transparent 70%),
+      var(--color-surface);
+    border-color: var(--color-role-civil);
+    box-shadow: var(--glow-civil);
+  }
+  .winner-banner__burst { position: absolute; top: -40px; width: 260px; height: 260px; color: var(--color-role-civil); opacity: 0.35; }
+  .winner-banner__eyebrow { position: relative; color: var(--color-role-civil); font-weight: 800; }
+  .winner-banner__title {
+    position: relative;
+    font-size: var(--text-3xl);
+    letter-spacing: var(--tracking-wide);
+    margin-top: var(--space-3);
+    color: var(--color-text-high);
+  }
+  .winner-banner__sub { position: relative; margin-top: var(--space-3); color: var(--color-text-mid); font-size: var(--text-sm); max-width: 30ch; }
+  .winner-banner__emblem { position: relative; width: 88px; height: 88px; color: var(--color-role-civil); margin-top: var(--space-6); }
+
+  .reveal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--space-3);
+  }
+  .reveal-chip {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: var(--space-4) var(--space-3);
+    gap: var(--space-2);
+  }
+  .reveal-chip__name { font-weight: 700; font-size: var(--text-sm); }
+  .reveal-chip__champion { font-family: var(--font-display); font-size: var(--text-base); letter-spacing: var(--tracking-wide); margin-top: 2px; }
+  .reveal-chip--mrwhite .reveal-chip__champion { color: var(--color-role-mrwhite); font-style: italic; font-family: var(--font-body); font-size: var(--text-xs); }
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <header class="app-bar">
+    <svg class="icon" viewBox="0 0 40 40" fill="none" aria-hidden="true" width="20" height="20" style="color:var(--color-gold-500)">
+      <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" stroke="currentColor" stroke-width="3"/>
+    </svg>
+    <span class="app-bar__title">Fin de partie</span>
+    <span class="spacer"></span>
+    <span class="badge badge--muted">3 manches</span>
+  </header>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="role-civil-sm" viewBox="0 0 40 40">
+        <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" fill="none" stroke="currentColor" stroke-width="2"/>
+        <polygon points="20,10 26,20 20,30 14,20" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <main class="main">
+    <div class="container">
+
+      <!--
+        Autres issues (référence Frontend — même structure, tokens de couleur
+        différents) :
+        - Undercover gagnent : --color-role-undercover*, eyebrow "VICTOIRE",
+          titre "Les Undercover l'emportent", sous-texte "Ils ont survécu en
+          nombre égal ou supérieur aux civils."
+        - Mr White gagne (par devinette OU par survie) : --color-role-mrwhite*,
+          titre "Mr White s'évade", sous-texte "Il a deviné DARIUS" (devinette)
+          ou "Il a survécu jusqu'au bout, seul face aux civils" (survie).
+      -->
+      <div class="winner-banner frame-cut frame-cut--lg">
+        <svg class="winner-banner__burst" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+          <g stroke="currentColor" stroke-width="1">
+            <line x1="100" y1="100" x2="100" y2="10"/><line x1="100" y1="100" x2="152" y2="20"/>
+            <line x1="100" y1="100" x2="180" y2="60"/><line x1="100" y1="100" x2="190" y2="120"/>
+            <line x1="100" y1="100" x2="48" y2="20"/><line x1="100" y1="100" x2="20" y2="60"/>
+            <line x1="100" y1="100" x2="10" y2="120"/>
+          </g>
+        </svg>
+        <span class="eyebrow winner-banner__eyebrow">Victoire</span>
+        <h1 class="winner-banner__title font-display">Les Civils l'emportent</h1>
+        <p class="winner-banner__sub">Tous les Undercover et Mr White ont été démasqués avant la fin de la partie.</p>
+        <svg class="winner-banner__emblem" viewBox="0 0 40 40" fill="none" aria-hidden="true"><use href="#role-civil-sm"/></svg>
+      </div>
+
+      <section aria-labelledby="reveal-title">
+        <div class="section-title">
+          <h2 id="reveal-title" class="font-display">Révélation complète</h2>
+          <span class="text-low font-mono" style="font-size: var(--text-xs)">9 joueurs</span>
+        </div>
+
+        <div class="reveal-grid">
+
+          <div class="reveal-chip frame-cut">
+            <span class="avatar" style="--avatar-c1:#6e93c2; --avatar-c2:#284a6e">B</span>
+            <div class="reveal-chip__name">Baptiste</div>
+            <span class="badge badge--civil">Civil</span>
+            <div class="reveal-chip__champion">Garen</div>
+          </div>
+
+          <div class="reveal-chip frame-cut">
+            <span class="avatar" style="--avatar-c1:#d8a94e; --avatar-c2:#7a5620">C</span>
+            <div class="reveal-chip__name">Camille</div>
+            <span class="badge badge--civil">Civil</span>
+            <div class="reveal-chip__champion">Garen</div>
+          </div>
+
+          <div class="reveal-chip frame-cut">
+            <span class="avatar" style="--avatar-c1:#6fbe90; --avatar-c2:#1f4430">T</span>
+            <div class="reveal-chip__name">Théo_Jungle</div>
+            <span class="badge badge--undercover">Undercover</span>
+            <div class="reveal-chip__champion">Darius</div>
+          </div>
+
+          <div class="reveal-chip frame-cut">
+            <span class="avatar" style="--avatar-c1:#c68a6e; --avatar-c2:#5a3626">I</span>
+            <div class="reveal-chip__name">Inès</div>
+            <span class="badge badge--civil">Civil</span>
+            <div class="reveal-chip__champion">Garen</div>
+          </div>
+
+          <div class="reveal-chip frame-cut reveal-chip--mrwhite">
+            <span class="avatar" style="--avatar-c1:#8ea6c9; --avatar-c2:#34506e">L</span>
+            <div class="reveal-chip__name">Lucas.gg</div>
+            <span class="badge badge--mrwhite">Mr White</span>
+            <div class="reveal-chip__champion">Bluffait — aucun champion</div>
+          </div>
+
+          <div class="reveal-chip frame-cut">
+            <span class="avatar" style="--avatar-c1:#9a8bc4; --avatar-c2:#423a66">M</span>
+            <div class="reveal-chip__name">Manon</div>
+            <span class="badge badge--civil">Civil</span>
+            <div class="reveal-chip__champion">Garen</div>
+          </div>
+
+          <div class="reveal-chip frame-cut">
+            <span class="avatar" style="--avatar-c1:#b3986e; --avatar-c2:#5a4726">Y</span>
+            <div class="reveal-chip__name">Yassine</div>
+            <span class="badge badge--undercover">Undercover</span>
+            <div class="reveal-chip__champion">Darius</div>
+          </div>
+
+          <div class="reveal-chip frame-cut">
+            <span class="avatar" style="--avatar-c1:#7fa0b0; --avatar-c2:#2c4450">C</span>
+            <div class="reveal-chip__name">Chloé</div>
+            <span class="badge badge--civil">Civil</span>
+            <div class="reveal-chip__champion">Garen</div>
+          </div>
+
+          <div class="reveal-chip frame-cut">
+            <span class="avatar" style="--avatar-c1:#6e93c2; --avatar-c2:#7a5620">N</span>
+            <div class="reveal-chip__name">Nono_LCS</div>
+            <span class="badge badge--civil">Civil</span>
+            <div class="reveal-chip__champion">Garen</div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="action-bar">
+    <button class="btn btn-primary" type="button">Rejouer</button>
+    <span class="confirm-hint">Nouvelle partie, mêmes joueurs et réglages — seul l'hôte peut relancer</span>
+  </footer>
+
+</div>
+
+</body>
+</html>

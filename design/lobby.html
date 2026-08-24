@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>lolCover — Lobby</title>
+<link rel="stylesheet" href="design-system.css">
+<style>
+  .code-share {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+    padding: var(--space-5); margin-bottom: var(--space-6);
+  }
+  .code-share__label { font-size: var(--text-xs); letter-spacing: var(--tracking-wider); text-transform: uppercase; color: var(--color-text-mid); margin-bottom: var(--space-2); }
+
+  .distribution { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+
+  .setting-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4) 0; border-bottom: 1px solid var(--color-border); }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-row--stat { align-items: flex-start; flex-direction: column; gap: var(--space-2); }
+
+  .pair-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) 0; border-bottom: 1px solid var(--color-border); }
+  .pair-row:last-child { border-bottom: none; }
+  .pair-row--disabled { opacity: 0.5; }
+  .pair-row__champs { flex: 1 1 auto; min-width: 0; }
+  .pair-row__vs { font-family: var(--font-display); font-size: var(--text-base); letter-spacing: var(--tracking-wide); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pair-row__vs .sep { color: var(--color-gold-500); font-size: var(--text-xs); margin: 0 var(--space-2); vertical-align: middle; }
+  .pair-row__meta { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-1); }
+  .pair-row__theme { font-size: var(--text-xs); color: var(--color-text-low); }
+  .pair-row__lanes { display: flex; gap: var(--space-1); color: var(--color-steel-300); }
+  .pair-row__lanes svg { width: 15px; height: 15px; }
+  .pair-row--custom .pair-row__vs::after { content: 'perso'; font-family: var(--font-body); font-size: 0.6rem; text-transform: uppercase; letter-spacing: var(--tracking-wider); color: var(--color-gold-700); border: 1px solid var(--color-gold-700); border-radius: var(--radius-sm); padding: 1px 5px; margin-left: var(--space-2); vertical-align: middle; }
+
+  .add-pair { margin-top: var(--space-2); }
+  .add-pair summary {
+    list-style: none; cursor: pointer;
+    display: flex; align-items: center; gap: var(--space-2);
+    color: var(--color-gold-300); font-weight: 700; font-size: var(--text-sm);
+    padding: var(--space-3) 0;
+  }
+  .add-pair summary::-webkit-details-marker { display: none; }
+  .add-pair summary svg { width: 18px; height: 18px; transition: transform var(--duration-base); }
+  .add-pair[open] summary svg { transform: rotate(45deg); }
+  .add-pair-form { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); padding-top: var(--space-3); }
+  .add-pair-form .field:nth-child(3) { grid-column: 1 / -1; }
+  .add-pair-form .btn { grid-column: 1 / -1; }
+
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <header class="app-bar">
+    <svg class="icon" viewBox="0 0 40 40" fill="none" aria-hidden="true" style="color:var(--color-gold-500)">
+      <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" stroke="currentColor" stroke-width="3"/>
+    </svg>
+    <span class="app-bar__title">Lobby</span>
+    <span class="spacer"></span>
+    <span class="badge badge--host">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 18 L6 8 L10 13 L12 6 L14 13 L18 8 L20 18 Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      Hôte : Baptiste
+    </span>
+  </header>
+
+  <!-- Bibliothèque d'icônes lanes, réutilisées via <use> dans cet écran -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="lane-top" viewBox="0 0 24 24">
+        <path d="M6 10 L6 7 L8 7 L8 9 L10 9 L10 7 L12 7 L12 9 L14 9 L14 7 L16 7 L16 10 L16 18 L6 18 Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="lane-jungle" viewBox="0 0 24 24">
+        <line x1="6" y1="6" x2="10" y2="18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="10" y1="5" x2="14" y2="19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="14" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="lane-mid" viewBox="0 0 24 24">
+        <polygon points="12,4 20,12 12,20 4,12" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <polygon points="12,8.5 15.5,12 12,15.5 8.5,12" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      </symbol>
+      <symbol id="lane-adc" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <line x1="12" y1="1" x2="12" y2="5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="1" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="19" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="lane-support" viewBox="0 0 24 24">
+        <polygon points="12,3 19,12 12,21 5,12" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="12" cy="12" r="2.2" fill="currentColor"/>
+        <line x1="12" y1="0.5" x2="12" y2="3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="12" y1="21" x2="12" y2="23.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <main class="main">
+    <div class="container">
+
+      <!-- Code de room : bien visible, facile à partager -->
+      <div class="code-share frame-cut">
+        <div>
+          <div class="code-share__label">Code de la room</div>
+          <div class="room-code" aria-label="Code de room : 7 K T 4 X">
+            <span class="room-code__char">7</span><span class="room-code__char">K</span><span class="room-code__char">T</span><span class="room-code__char">4</span><span class="room-code__char">X</span>
+          </div>
+        </div>
+        <button class="icon-btn" type="button" aria-label="Copier le code de la room">
+          <svg class="icon" viewBox="0 0 24 24" fill="none"><rect x="8" y="8" width="12" height="12" rx="1" stroke="currentColor" stroke-width="1.8"/><path d="M5 16V5 h11" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>
+        </button>
+      </div>
+
+      <!-- Joueurs -->
+      <section aria-labelledby="players-title">
+        <div class="section-title">
+          <h2 id="players-title" class="font-display">Joueurs</h2>
+          <span class="count">9 / 12</span>
+        </div>
+        <div class="panel" style="padding: 0 var(--space-5)">
+          <div class="player-row">
+            <span class="avatar avatar--host" style="--avatar-c1:#6e93c2; --avatar-c2:#284a6e">B</span>
+            <div><div class="player-row__name">Baptiste</div><div class="player-row__meta">Hôte</div></div>
+          </div>
+          <div class="player-row">
+            <span class="avatar" style="--avatar-c1:#d8a94e; --avatar-c2:#7a5620">C</span>
+            <div><div class="player-row__name">Camille</div><div class="player-row__meta">Connectée</div></div>
+          </div>
+          <div class="player-row">
+            <span class="avatar" style="--avatar-c1:#6fbe90; --avatar-c2:#1f4430">T</span>
+            <div><div class="player-row__name">Théo_Jungle</div><div class="player-row__meta">Connecté</div></div>
+          </div>
+          <div class="player-row player-row--offline">
+            <span class="avatar" style="--avatar-c1:#c68a6e; --avatar-c2:#5a3626">I</span>
+            <div><div class="player-row__name">Inès</div><div class="player-row__meta">Déconnectée — retour possible 3 min</div></div>
+          </div>
+          <div class="player-row">
+            <span class="avatar" style="--avatar-c1:#8ea6c9; --avatar-c2:#34506e">L</span>
+            <div><div class="player-row__name">Lucas.gg</div><div class="player-row__meta">Connecté</div></div>
+          </div>
+          <div class="player-row">
+            <span class="avatar" style="--avatar-c1:#9a8bc4; --avatar-c2:#423a66">M</span>
+            <div><div class="player-row__name">Manon</div><div class="player-row__meta">Connectée</div></div>
+          </div>
+          <div class="player-row">
+            <span class="avatar" style="--avatar-c1:#b3986e; --avatar-c2:#5a4726">Y</span>
+            <div><div class="player-row__name">Yassine</div><div class="player-row__meta">Connecté</div></div>
+          </div>
+          <div class="player-row">
+            <span class="avatar" style="--avatar-c1:#7fa0b0; --avatar-c2:#2c4450">C</span>
+            <div><div class="player-row__name">Chloé</div><div class="player-row__meta">Connectée</div></div>
+          </div>
+          <div class="player-row">
+            <span class="avatar" style="--avatar-c1:#6e93c2; --avatar-c2:#7a5620">N</span>
+            <div><div class="player-row__name">Nono_LCS</div><div class="player-row__meta">Connecté</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Réglages hôte -->
+      <section aria-labelledby="settings-title" class="mt-6">
+        <div class="section-title">
+          <h2 id="settings-title" class="font-display">Réglages de la partie</h2>
+        </div>
+        <div class="panel">
+
+          <div class="setting-row setting-row--stat">
+            <span class="field__label" style="margin:0">Répartition (auto — 9 joueurs)</span>
+            <div class="distribution">
+              <span class="badge badge--civil">6 Civils</span>
+              <span class="badge badge--undercover">2 Undercover</span>
+              <span class="badge badge--mrwhite">1 Mr White</span>
+            </div>
+          </div>
+
+          <!--
+            Invariante contrat §2 : le toggle Mr White doit être DÉSACTIVÉ/grisé
+            si N < 5 (impossible de garantir civils ≥ undercover+mrWhite+1).
+            Exemple ci-dessous : N=9, donc actif. Variante N<5 (grisée) :
+
+            <label class="switch">
+              <input type="checkbox" disabled>
+              <span class="switch__track"></span>
+              <span class="switch__label">
+                <span class="switch__label-title">Mr White</span>
+                <span class="switch__label-hint">Indisponible à moins de 5 joueurs</span>
+              </span>
+            </label>
+          -->
+          <div class="setting-row">
+            <label class="switch" for="toggle-mrwhite">
+              <input type="checkbox" id="toggle-mrwhite" checked>
+              <span class="switch__track"></span>
+              <span class="switch__label">
+                <span class="switch__label-title">Mr White</span>
+                <span class="switch__label-hint">Un joueur ne connaît aucun champion — il doit bluffer</span>
+              </span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <label class="switch" for="toggle-reveal">
+              <input type="checkbox" id="toggle-reveal">
+              <span class="switch__track"></span>
+              <span class="switch__label">
+                <span class="switch__label-title">Révéler le champion à l'élimination</span>
+                <span class="switch__label-hint">Sinon, seul le rôle du joueur éliminé est annoncé</span>
+              </span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <span class="switch__label">
+              <span class="switch__label-title">Temps de parole (indice)</span>
+              <span class="switch__label-hint">Par joueur, à chaque tour</span>
+            </span>
+            <div class="stepper">
+              <button class="stepper__btn" type="button" aria-label="Diminuer">−</button>
+              <span class="stepper__value">45 s</span>
+              <button class="stepper__btn" type="button" aria-label="Augmenter">+</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <span class="switch__label">
+              <span class="switch__label-title">Temps de vote</span>
+              <span class="switch__label-hint">Vote simultané et secret</span>
+            </span>
+            <div class="stepper">
+              <button class="stepper__btn" type="button" aria-label="Diminuer">−</button>
+              <span class="stepper__value">30 s</span>
+              <button class="stepper__btn" type="button" aria-label="Augmenter">+</button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Paires de champions -->
+      <section aria-labelledby="pairs-title" class="mt-6">
+        <div class="section-title">
+          <h2 id="pairs-title" class="font-display">Paires de champions</h2>
+          <span class="count">8 activées / 10</span>
+        </div>
+        <div class="panel">
+
+          <div class="pair-row">
+            <div class="pair-row__champs">
+              <div class="pair-row__vs">GAREN <span class="sep">✦</span> DARIUS</div>
+              <div class="pair-row__meta">
+                <span class="pair-row__theme">Tanks bruts</span>
+                <span class="pair-row__lanes"><svg class="icon"><use href="#lane-top"/></svg></span>
+              </div>
+            </div>
+            <label class="switch"><input type="checkbox" aria-label="Activer la paire GAREN / DARIUS" checked><span class="switch__track"></span></label>
+          </div>
+
+          <div class="pair-row">
+            <div class="pair-row__champs">
+              <div class="pair-row__vs">ASHE <span class="sep">✦</span> SIVIR</div>
+              <div class="pair-row__meta">
+                <span class="pair-row__theme">Marksmen classiques</span>
+                <span class="pair-row__lanes"><svg class="icon"><use href="#lane-adc"/></svg></span>
+              </div>
+            </div>
+            <label class="switch"><input type="checkbox" aria-label="Activer la paire ASHE / SIVIR" checked><span class="switch__track"></span></label>
+          </div>
+
+          <div class="pair-row">
+            <div class="pair-row__champs">
+              <div class="pair-row__vs">KATARINA <span class="sep">✦</span> TALON</div>
+              <div class="pair-row__meta">
+                <span class="pair-row__theme">Assassins mêlée</span>
+                <span class="pair-row__lanes"><svg class="icon"><use href="#lane-mid"/></svg></span>
+              </div>
+            </div>
+            <label class="switch"><input type="checkbox" aria-label="Activer la paire KATARINA / TALON" checked><span class="switch__track"></span></label>
+          </div>
+
+          <div class="pair-row">
+            <div class="pair-row__champs">
+              <div class="pair-row__vs">LUX <span class="sep">✦</span> MORGANA</div>
+              <div class="pair-row__meta">
+                <span class="pair-row__theme">Mages à chaînes</span>
+                <span class="pair-row__lanes">
+                  <svg class="icon"><use href="#lane-mid"/></svg>
+                  <svg class="icon"><use href="#lane-support"/></svg>
+                </span>
+              </div>
+            </div>
+            <label class="switch"><input type="checkbox" aria-label="Activer la paire LUX / MORGANA" checked><span class="switch__track"></span></label>
+          </div>
+
+          <div class="pair-row pair-row--disabled">
+            <div class="pair-row__champs">
+              <div class="pair-row__vs">MISS FORTUNE <span class="sep">✦</span> CAITLYN</div>
+              <div class="pair-row__meta">
+                <span class="pair-row__theme">Fusil à distance</span>
+                <span class="pair-row__lanes"><svg class="icon"><use href="#lane-adc"/></svg></span>
+              </div>
+            </div>
+            <label class="switch"><input type="checkbox" aria-label="Activer la paire MISS FORTUNE / CAITLYN"><span class="switch__track"></span></label>
+          </div>
+
+          <div class="pair-row">
+            <div class="pair-row__champs">
+              <div class="pair-row__vs">BRAUM <span class="sep">✦</span> THRESH</div>
+              <div class="pair-row__meta">
+                <span class="pair-row__theme">Supports engage</span>
+                <span class="pair-row__lanes"><svg class="icon"><use href="#lane-support"/></svg></span>
+              </div>
+            </div>
+            <label class="switch"><input type="checkbox" aria-label="Activer la paire BRAUM / THRESH" checked><span class="switch__track"></span></label>
+          </div>
+
+          <div class="pair-row">
+            <div class="pair-row__champs">
+              <div class="pair-row__vs">NIDALEE <span class="sep">✦</span> RENGAR</div>
+              <div class="pair-row__meta">
+                <span class="pair-row__theme">Chasseurs de jungle</span>
+                <span class="pair-row__lanes"><svg class="icon"><use href="#lane-jungle"/></svg></span>
+              </div>
+            </div>
+            <label class="switch"><input type="checkbox" aria-label="Activer la paire NIDALEE / RENGAR" checked><span class="switch__track"></span></label>
+          </div>
+
+          <div class="pair-row pair-row--disabled">
+            <div class="pair-row__champs">
+              <div class="pair-row__vs">TEEMO <span class="sep">✦</span> HEIMERDINGER</div>
+              <div class="pair-row__meta">
+                <span class="pair-row__theme">Trappeurs</span>
+                <span class="pair-row__lanes"><svg class="icon"><use href="#lane-top"/></svg></span>
+              </div>
+            </div>
+            <label class="switch"><input type="checkbox" aria-label="Activer la paire TEEMO / HEIMERDINGER"><span class="switch__track"></span></label>
+          </div>
+
+          <div class="pair-row">
+            <div class="pair-row__champs">
+              <div class="pair-row__vs">YASUO <span class="sep">✦</span> YONE</div>
+              <div class="pair-row__meta">
+                <span class="pair-row__theme">Frères de la lame</span>
+                <span class="pair-row__lanes">
+                  <svg class="icon"><use href="#lane-mid"/></svg>
+                  <svg class="icon"><use href="#lane-top"/></svg>
+                </span>
+              </div>
+            </div>
+            <label class="switch"><input type="checkbox" aria-label="Activer la paire YASUO / YONE" checked><span class="switch__track"></span></label>
+          </div>
+
+          <div class="pair-row pair-row--custom">
+            <div class="pair-row__champs">
+              <div class="pair-row__vs">XIN ZHAO <span class="sep">✦</span> RENEKTON</div>
+              <div class="pair-row__meta">
+                <span class="pair-row__theme">Brutes à lance et lame</span>
+                <span class="pair-row__lanes">
+                  <svg class="icon"><use href="#lane-jungle"/></svg>
+                  <svg class="icon"><use href="#lane-top"/></svg>
+                </span>
+              </div>
+            </div>
+            <label class="switch"><input type="checkbox" aria-label="Activer la paire XIN ZHAO / RENEKTON" checked><span class="switch__track"></span></label>
+          </div>
+
+          <details class="add-pair">
+            <summary>
+              <svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              Ajouter une paire personnalisée
+            </summary>
+            <div class="add-pair-form">
+              <div class="field">
+                <label class="field__label" for="add-champa">Champion A (majorité)</label>
+                <input class="input" id="add-champa" type="text" placeholder="ex. Diana">
+              </div>
+              <div class="field">
+                <label class="field__label" for="add-champb">Champion B (undercover)</label>
+                <input class="input" id="add-champb" type="text" placeholder="ex. Leona">
+              </div>
+              <div class="field">
+                <label class="field__label" for="add-theme">Thème</label>
+                <input class="input" id="add-theme" type="text" placeholder="ex. Duo lune/soleil">
+              </div>
+              <button class="btn btn-secondary" type="button">Ajouter la paire</button>
+            </div>
+          </details>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="action-bar">
+    <button class="btn btn-primary" type="button">Lancer la partie</button>
+    <span class="confirm-hint">9 joueurs prêts — répartition 6 Civils / 2 Undercover / 1 Mr White</span>
+  </footer>
+
+  <!--
+    Vue non-hôte (référence pour le Frontend) : les réglages et la liste de
+    paires restent visibles mais en lecture seule (inputs disabled), et la
+    action-bar affiche à la place :
+    <button class="btn btn-secondary" disabled>En attente de l'hôte…</button>
+  -->
+
+</div>
+
+</body>
+</html>

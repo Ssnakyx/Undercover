@@ -1,0 +1,777 @@
+/* ==========================================================================
+   lolCover — Design System
+   Maquettes statiques /design — source de vérité visuelle pour l'agent Frontend.
+   Direction : "Hextech de garage" — ferronnerie arcanique, or & acier sur bleu
+   nuit profond, coins biseautés (pas de rond mou, pas de glassmorphism),
+   tuiles hexagonales pour avatars/icônes. Aucun asset Riot : formes et
+   silhouettes 100% dessinées ici.
+   Polices : Cinzel (display, gravé) + Manrope (lecture) + JetBrains Mono
+   (codes, chiffres, timers).
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* --------------------------------------------------------------------------
+   1. TOKENS
+   -------------------------------------------------------------------------- */
+:root {
+  /* -- Couleurs de fond (bleu-encre profond, pas de noir pur) -- */
+  --color-bg: #070b12;
+  --color-bg-elevated: #0d131c;
+  --color-surface: #161d28;
+  --color-surface-hover: #1e2733;
+  --color-surface-inset: #0b1119;
+
+  /* -- Bordures -- */
+  --color-border: #232d3a;                 /* hairline décoratif */
+  --color-border-interactive: #6e93c2;      /* 6.2:1 sur bg — bordures de champs/boutons */
+  --color-border-gold: #9c7530;             /* 4.7:1 sur bg — hairline doré décoratif */
+
+  /* -- Texte -- */
+  --color-text-high: #ede6d6;               /* 15.8:1 sur bg — parchemin chaud, jamais blanc pur */
+  --color-text-mid: #b8af9e;                /* 9.1:1 sur bg */
+  --color-text-low: #7d7666;                /* méta / désactivé, non porteur de sens */
+  --color-text-on-gold: #0a0e14;            /* 8.9:1 sur gold-500 */
+
+  /* -- Or Hextech (accent primaire / CTA) -- */
+  --color-gold-100: #f6e4b8;
+  --color-gold-300: #f0ce85;
+  --color-gold-500: #d8a94e;
+  --color-gold-700: #9c7530;
+  --color-gold-900: #4a3719;
+
+  /* -- Acier (accent secondaire / infos neutres) -- */
+  --color-steel-300: #6e93c2;               /* texte/bordures OK (6.2:1) */
+  --color-steel-500: #3e6fa0;               /* grandes surfaces/icônes uniquement (3.7:1) */
+  --color-steel-700: #284a6e;
+
+  /* -- Couleurs de rôle (identité forte, 3 teintes bien distinctes) -- */
+  --color-role-civil: #4f8fcb;              /* 5.75:1 sur bg */
+  --color-role-civil-dim: #1f3552;
+  --color-role-undercover: #dd6b5c;         /* 5.94:1 sur bg */
+  --color-role-undercover-dim: #4a2018;
+  --color-role-mrwhite: #9a8bc4;            /* 6.44:1 sur bg */
+  --color-role-mrwhite-dim: #2f2a48;
+
+  /* -- États -- */
+  --color-success: #4f9e72;                 /* 6.07:1 sur bg */
+  --color-success-dim: #1c3527;
+  --color-danger: #dd6b5c;
+  --color-warning: #d8a94e;
+
+  /* -- Typographie -- */
+  --font-display: 'Cinzel', 'Iowan Old Style', serif;
+  --font-body: 'Manrope', -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.8125rem;   /* 13px */
+  --text-base: 0.9375rem; /* 15px */
+  --text-md: 1.0625rem;   /* 17px */
+  --text-lg: 1.25rem;     /* 20px */
+  --text-xl: 1.5rem;      /* 24px */
+  --text-2xl: 1.875rem;   /* 30px */
+  --text-3xl: 2.25rem;    /* 36px */
+  --text-4xl: clamp(2.4rem, 8vw + 1rem, 3.4rem);
+
+  --leading-tight: 1.15;
+  --leading-snug: 1.35;
+  --leading-normal: 1.55;
+
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.14em;
+  --tracking-widest: 0.22em;
+
+  /* -- Espacement (grille 4/8) -- */
+  --space-1: 0.25rem;  /* 4 */
+  --space-2: 0.5rem;   /* 8 */
+  --space-3: 0.75rem;  /* 12 */
+  --space-4: 1rem;     /* 16 */
+  --space-5: 1.25rem;  /* 20 */
+  --space-6: 1.5rem;   /* 24 */
+  --space-7: 2rem;     /* 32 */
+  --space-8: 2.5rem;   /* 40 */
+  --space-9: 3rem;     /* 48 */
+  --space-10: 4rem;    /* 64 */
+
+  /* -- Rayons (usage restreint — le vocabulaire principal est le coin coupé) -- */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* -- Coins coupés (signature visuelle) -- */
+  --cut-sm: 8px;
+  --cut-md: 14px;
+  --cut-lg: 22px;
+
+  /* -- Élévation (lueurs, pas d'ombres noires plates sur fond sombre) -- */
+  --shadow-elevated: 0 12px 34px -14px rgba(0, 0, 0, 0.65);
+  --glow-gold: 0 0 0 1px rgba(216, 169, 78, 0.4), 0 6px 28px -10px rgba(216, 169, 78, 0.38);
+  --glow-steel: 0 0 0 1px rgba(110, 147, 194, 0.35), 0 6px 24px -10px rgba(62, 111, 160, 0.35);
+  --glow-civil: 0 0 0 1px rgba(79, 143, 203, 0.45), 0 0 20px -4px rgba(79, 143, 203, 0.45);
+  --glow-undercover: 0 0 0 1px rgba(221, 107, 92, 0.45), 0 0 20px -4px rgba(221, 107, 92, 0.45);
+  --glow-mrwhite: 0 0 0 1px rgba(154, 139, 196, 0.45), 0 0 20px -4px rgba(154, 139, 196, 0.45);
+
+  /* -- Mouvement -- */
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --duration-slow: 420ms;
+  --duration-flip: 720ms;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-flip: cubic-bezier(0.6, 0.05, 0.15, 1);
+
+  --z-header: 10;
+  --z-actionbar: 20;
+  --z-toast: 40;
+}
+
+/* --------------------------------------------------------------------------
+   2. RESET & BASE
+   -------------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+html { -webkit-text-size-adjust: 100%; color-scheme: dark; }
+
+body {
+  background: var(--color-bg);
+  background-image:
+    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(62, 111, 160, 0.10), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(216, 169, 78, 0.06), transparent 55%);
+  background-attachment: fixed;
+  color: var(--color-text-high);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+img, svg { display: block; max-width: 100%; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+ul, ol { list-style: none; padding: 0; }
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-wide);
+}
+
+/* Focus visible — jamais supprimé, toujours remplacé */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--color-gold-300);
+  outline-offset: 3px;
+  border-radius: var(--radius-xs);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3. TYPOGRAPHIE UTILITAIRE
+   -------------------------------------------------------------------------- */
+.font-display { font-family: var(--font-display); }
+.font-mono { font-family: var(--font-mono); }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  color: var(--color-gold-500);
+  font-weight: 600;
+}
+
+.text-mid { color: var(--color-text-mid); }
+.text-low { color: var(--color-text-low); }
+.text-center { text-align: center; }
+
+/* --------------------------------------------------------------------------
+   4. LAYOUT
+   -------------------------------------------------------------------------- */
+.screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
+  padding-inline: var(--space-5);
+}
+
+@media (min-width: 720px) {
+  .container { max-width: 34rem; }
+}
+
+.stack { display: flex; flex-direction: column; }
+.stack > * + * { margin-top: var(--stack-gap, var(--space-4)); }
+
+.cluster { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+
+.spacer { flex: 1 1 auto; }
+
+/* Barre supérieure persistante */
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: linear-gradient(180deg, rgba(7, 11, 18, 0.97) 60%, rgba(7, 11, 18, 0.85));
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.app-bar__title {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  letter-spacing: var(--tracking-wide);
+}
+
+/* Barre d'action fixe basse (zone pouce, mobile-first) */
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-actionbar);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, rgba(7, 11, 18, 0.98) 65%, rgba(7, 11, 18, 0.85));
+  border-top: 1px solid var(--color-border);
+}
+
+.main {
+  flex: 1 1 auto;
+  padding: var(--space-6) 0 var(--space-9);
+}
+
+/* --------------------------------------------------------------------------
+   5. FORME SIGNATURE — cadre à coin coupé
+   -------------------------------------------------------------------------- */
+.frame-cut {
+  --cut: var(--cut-md);
+  position: relative;
+  clip-path: polygon(
+    var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)
+  );
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
+    linear-gradient(135deg, var(--color-gold-700), var(--color-gold-300) 45%, var(--color-gold-700)) border-box;
+}
+
+.frame-cut--flat {
+  background:
+    linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
+    linear-gradient(135deg, var(--color-border-interactive), var(--color-steel-700)) border-box;
+}
+
+.frame-cut--sm { --cut: var(--cut-sm); }
+.frame-cut--lg { --cut: var(--cut-lg); }
+
+/* --------------------------------------------------------------------------
+   6. CARTES
+   -------------------------------------------------------------------------- */
+.card {
+  padding: var(--space-6);
+  box-shadow: var(--shadow-elevated);
+}
+
+.card--tight { padding: var(--space-4) var(--space-5); }
+
+.panel {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+}
+
+/* --------------------------------------------------------------------------
+   7. BOUTONS
+   -------------------------------------------------------------------------- */
+.btn {
+  --cut: var(--cut-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: var(--text-base);
+  letter-spacing: var(--tracking-wide);
+  border: 1px solid transparent;
+  clip-path: polygon(
+    var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)
+  );
+  transition: transform var(--duration-fast) var(--ease-standard),
+              filter var(--duration-fast) var(--ease-standard),
+              background var(--duration-base) var(--ease-standard);
+  width: 100%;
+}
+
+.btn:active { transform: translateY(1px) scale(0.99); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-gold-300), var(--color-gold-500) 60%, var(--color-gold-700));
+  color: var(--color-text-on-gold);
+  box-shadow: var(--glow-gold);
+}
+.btn-primary:hover { filter: brightness(1.06); }
+
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text-high);
+  border-color: var(--color-border-interactive);
+}
+.btn-secondary:hover { background: var(--color-surface-hover); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-mid);
+  border-color: var(--color-border);
+}
+.btn-ghost:hover { color: var(--color-text-high); border-color: var(--color-border-interactive); }
+
+.btn-danger {
+  background: var(--color-role-undercover-dim);
+  color: var(--color-role-undercover);
+  border-color: var(--color-role-undercover);
+}
+
+.btn[disabled], .btn[aria-disabled="true"] {
+  opacity: 0.42;
+  filter: grayscale(0.5);
+  cursor: not-allowed;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.btn-sm { min-height: 40px; padding: var(--space-2) var(--space-4); font-size: var(--text-sm); width: auto; }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-interactive);
+  color: var(--color-text-mid);
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  transition: color var(--duration-fast), border-color var(--duration-fast), background var(--duration-fast);
+}
+.icon-btn:hover { color: var(--color-gold-300); border-color: var(--color-gold-500); }
+
+/* --------------------------------------------------------------------------
+   8. CHAMPS DE FORMULAIRE
+   -------------------------------------------------------------------------- */
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.field__label {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--color-text-mid);
+  font-weight: 700;
+}
+
+.field__hint { font-size: var(--text-xs); color: var(--color-text-low); }
+.field__hint--error { color: var(--color-danger); }
+
+.input, .textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-border-interactive);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-high);
+  font-size: var(--text-md);
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+.input::placeholder, .textarea::placeholder { color: var(--color-text-low); }
+
+.input:focus-visible, .textarea:focus-visible {
+  outline: none;
+  border-color: var(--color-gold-500);
+  box-shadow: 0 0 0 3px rgba(216, 169, 78, 0.22);
+}
+
+.input--code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.textarea { min-height: 88px; resize: vertical; }
+
+/* Interrupteur (toggle) custom — accessible, sans apparence native */
+.switch { display: inline-flex; align-items: center; gap: var(--space-3); cursor: pointer; min-height: 44px; }
+.switch input { position: absolute; opacity: 0; width: 44px; height: 26px; margin: 0; cursor: pointer; }
+
+.switch__track {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  flex: none;
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-border-interactive);
+  border-radius: 999px;
+  transition: background var(--duration-base), border-color var(--duration-base);
+}
+.switch__track::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 20px; height: 20px;
+  background: var(--color-text-mid);
+  border-radius: 50%;
+  transition: transform var(--duration-base) var(--ease-standard), background var(--duration-base);
+}
+.switch input:checked + .switch__track { background: var(--color-gold-900); border-color: var(--color-gold-500); }
+.switch input:checked + .switch__track::after { transform: translateX(18px); background: var(--color-gold-300); }
+.switch input:focus-visible + .switch__track { outline: 2px solid var(--color-gold-300); outline-offset: 3px; }
+.switch input:disabled + .switch__track { opacity: 0.4; cursor: not-allowed; }
+.switch__label { display: flex; flex-direction: column; }
+.switch__label-title { font-weight: 600; font-size: var(--text-sm); color: var(--color-text-high); }
+.switch__label-hint { font-size: var(--text-xs); color: var(--color-text-low); }
+
+/* Stepper numérique (timers) */
+.stepper { display: inline-flex; align-items: center; gap: var(--space-3); }
+.stepper__btn {
+  width: 44px; height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-border-interactive);
+  color: var(--color-text-high);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+.stepper__value {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  min-width: 3.6ch;
+  text-align: center;
+}
+
+/* Segmented control (onglets créer/rejoindre) */
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-1);
+  gap: var(--space-1);
+}
+.segmented__btn {
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-mid);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  border: none;
+  transition: background var(--duration-base), color var(--duration-base);
+}
+.segmented__btn[aria-selected="true"] {
+  background: var(--color-surface-hover);
+  color: var(--color-gold-300);
+  box-shadow: inset 0 0 0 1px var(--color-gold-700);
+}
+
+/* --------------------------------------------------------------------------
+   9. TUILE HEXAGONALE (avatars, icônes) — second motif de signature
+   -------------------------------------------------------------------------- */
+.hex {
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+}
+
+.avatar {
+  --avatar-size: 44px;
+  position: relative;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: calc(var(--avatar-size) * 0.36);
+  color: var(--color-text-on-gold);
+  background: linear-gradient(155deg, var(--avatar-c1, #6e93c2), var(--avatar-c2, #284a6e));
+}
+
+.avatar--lg { --avatar-size: 72px; }
+.avatar--host { box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-gold-500); }
+
+.status-dot {
+  position: absolute;
+  bottom: -1px; right: -3px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--color-bg-elevated);
+}
+.status-dot--online { background: var(--color-success); }
+.status-dot--offline { background: var(--color-text-low); }
+
+/* --------------------------------------------------------------------------
+   10. BADGES DE RÔLE
+   -------------------------------------------------------------------------- */
+.badge {
+  --cut: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: var(--tracking-wide);
+  white-space: nowrap;
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-mid);
+}
+
+.badge svg { width: 14px; height: 14px; }
+
+.badge--civil { border-color: var(--color-role-civil); color: var(--color-role-civil); }
+.badge--undercover { border-color: var(--color-role-undercover); color: var(--color-role-undercover); }
+.badge--mrwhite { border-color: var(--color-role-mrwhite); color: var(--color-role-mrwhite); }
+.badge--host { border-color: var(--color-gold-500); color: var(--color-gold-300); }
+.badge--muted { color: var(--color-text-low); border-color: var(--color-border); }
+
+/* --------------------------------------------------------------------------
+   11. LISTE DE JOUEURS
+   -------------------------------------------------------------------------- */
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.player-row:last-child { border-bottom: none; }
+
+.player-row__name { font-weight: 600; font-size: var(--text-base); }
+.player-row__meta { font-size: var(--text-xs); color: var(--color-text-low); }
+.player-row--offline .player-row__name { color: var(--color-text-low); }
+.player-row--offline .avatar { filter: grayscale(0.7); opacity: 0.55; }
+
+/* état "en train de parler / a la main" */
+.player-row--active {
+  background: linear-gradient(90deg, rgba(216, 169, 78, 0.12), transparent 70%);
+  border-left: 3px solid var(--color-gold-500);
+  padding-left: calc(var(--space-4) - 3px);
+}
+.player-row--active .player-row__name { color: var(--color-gold-300); }
+
+.player-row--done { opacity: 0.7; }
+.player-row--eliminated .avatar { filter: grayscale(1); opacity: 0.5; }
+.player-row--eliminated .player-row__name { text-decoration: line-through; color: var(--color-text-low); }
+
+/* --------------------------------------------------------------------------
+   12. MINUTEUR (anneau hexagonal facetté)
+   -------------------------------------------------------------------------- */
+.timer {
+  --size: 96px;
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+  flex: none;
+}
+.timer__svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.timer__track { fill: none; stroke: var(--color-surface-hover); stroke-width: 4; }
+.timer__progress {
+  fill: none;
+  stroke: var(--color-gold-500);
+  stroke-width: 4;
+  stroke-linecap: butt;
+  stroke-dasharray: 169.6;
+  stroke-dashoffset: var(--offset, 0);
+  transition: stroke-dashoffset var(--duration-slow) linear, stroke var(--duration-base);
+}
+.timer__facet { stroke: var(--color-bg); stroke-width: 2; }
+.timer--urgent .timer__progress { stroke: var(--color-role-undercover); }
+.timer__value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: 700;
+}
+.timer__unit { font-size: 0.5rem; color: var(--color-text-low); letter-spacing: var(--tracking-wider); text-transform: uppercase; }
+.timer--sm { --size: 56px; }
+.timer--sm .timer__value { font-size: var(--text-base); }
+
+/* --------------------------------------------------------------------------
+   13. CODE DE ROOM
+   -------------------------------------------------------------------------- */
+.room-code {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+}
+.room-code__char {
+  --cut: 6px;
+  width: 2.4rem;
+  height: 2.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--color-gold-300);
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-gold-700);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+
+/* Saisie de code de room (5 cases, façon code OTP) */
+.code-input-group { display: flex; gap: var(--space-2); justify-content: center; }
+.code-input-group__cell {
+  --cut: 6px;
+  width: 2.75rem;
+  height: 3rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-text-high);
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-border-interactive);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+.code-input-group__cell:focus-visible {
+  outline: none;
+  border-color: var(--color-gold-500);
+  box-shadow: 0 0 0 3px rgba(216, 169, 78, 0.22);
+}
+
+/* --------------------------------------------------------------------------
+   14. CARTE DE RÉVÉLATION (flip 3D)
+   -------------------------------------------------------------------------- */
+.flip-scene { perspective: 1400px; }
+.flip-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  transform-style: preserve-3d;
+  transition: transform var(--duration-flip) var(--ease-flip);
+}
+.flip-card.is-flipped { transform: rotateY(180deg); }
+.flip-card__face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-7) var(--space-6);
+  overflow: hidden;
+}
+.flip-card__face--back { transform: rotateY(180deg); }
+
+/* --------------------------------------------------------------------------
+   15. BARRE DE VOTES (résultats)
+   -------------------------------------------------------------------------- */
+.vote-bar-row { display: flex; align-items: center; gap: var(--space-3); }
+.vote-bar-row__track {
+  flex: 1 1 auto;
+  height: 10px;
+  background: var(--color-surface-inset);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.vote-bar-row__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-steel-700), var(--color-steel-500));
+  border-radius: 999px;
+  transition: width var(--duration-slow) var(--ease-standard);
+}
+.vote-bar-row--eliminated .vote-bar-row__fill { background: linear-gradient(90deg, var(--color-role-undercover-dim), var(--color-role-undercover)); }
+.vote-bar-row__count { font-family: var(--font-mono); font-size: var(--text-sm); min-width: 2ch; text-align: right; }
+
+/* --------------------------------------------------------------------------
+   16. UTILITAIRES
+   -------------------------------------------------------------------------- */
+.icon { width: 18px; height: 18px; flex: none; }
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.section-title h2 { font-size: var(--text-md); letter-spacing: var(--tracking-wide); }
+.section-title .count { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text-low); }
+
+.confirm-hint {
+  display: block;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-low);
+}
+
+.divider { height: 1px; background: var(--color-border); border: none; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+.mt-1 { margin-top: var(--space-1) !important; }
+.mt-2 { margin-top: var(--space-2) !important; }
+.mt-4 { margin-top: var(--space-4) !important; }
+.mt-6 { margin-top: var(--space-6) !important; }
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(216, 169, 78, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(216, 169, 78, 0); }
+}
+.pulse { animation: pulse-glow 2.2s ease-in-out infinite; }
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up { animation: fade-in-up var(--duration-slow) var(--ease-standard) both; }

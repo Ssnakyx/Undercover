@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>lolCover — Accueil</title>
+<link rel="stylesheet" href="design-system.css">
+<style>
+  /* Styles propres à l'écran Accueil : disposition du hero + logique d'onglets
+     (implémentée en CSS pur via inputs radio cachés — le Frontend devra la
+     recoder en pattern ARIA tabs accessible avec de vrais gestionnaires JS). */
+  .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: var(--space-9) 0 var(--space-7);
+  }
+  .hero__crest { width: 72px; height: 72px; color: var(--color-gold-500); margin-bottom: var(--space-5); }
+  .hero__title {
+    font-size: var(--text-4xl);
+    letter-spacing: var(--tracking-wide);
+    background: linear-gradient(135deg, var(--color-gold-100), var(--color-gold-500) 55%, var(--color-gold-700));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero__tagline {
+    margin-top: var(--space-4);
+    max-width: 32ch;
+    color: var(--color-text-mid);
+    font-size: var(--text-md);
+    line-height: var(--leading-snug);
+  }
+
+  .mode-input { position: absolute; opacity: 0; pointer-events: none; }
+  .panels { margin-top: var(--space-6); }
+  .panel-mode { display: none; }
+  #tab-create:checked ~ .segmented label[for="tab-create"],
+  #tab-join:checked ~ .segmented label[for="tab-join"] { }
+  #tab-create:checked ~ .panels .panel-create { display: block; }
+  #tab-join:checked ~ .panels .panel-join { display: block; }
+
+  .divider-or { display: flex; align-items: center; gap: var(--space-3); color: var(--color-text-low); font-size: var(--text-xs); letter-spacing: var(--tracking-wider); text-transform: uppercase; margin: var(--space-6) 0; }
+  .divider-or::before, .divider-or::after { content: ''; height: 1px; flex: 1; background: var(--color-border); }
+
+  .footnote { text-align: center; color: var(--color-text-low); font-size: var(--text-xs); margin-top: var(--space-8); line-height: var(--leading-snug); }
+</style>
+</head>
+<body>
+
+<div class="screen">
+  <main class="main">
+    <div class="container">
+
+      <div class="hero">
+        <!-- Crest hexagonal : marque maison, aucun asset Riot -->
+        <svg class="hero__crest" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+          <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" stroke="currentColor" stroke-width="2"/>
+          <polygon points="20,9 31,20 20,31 9,20" stroke="currentColor" stroke-width="1.4" opacity="0.75"/>
+          <circle cx="20" cy="20" r="2.2" fill="currentColor"/>
+        </svg>
+        <h1 class="hero__title font-display">lolCover</h1>
+        <p class="hero__tagline">Un traître se cache dans l'équipe. Décrivez votre champion sans le nommer,
+          et démasquez les intrus avant la fin de la partie.</p>
+      </div>
+
+      <input class="mode-input" type="radio" name="mode" id="tab-create" checked>
+      <input class="mode-input" type="radio" name="mode" id="tab-join">
+
+      <div class="segmented" role="tablist" aria-label="Mode de connexion">
+        <label class="segmented__btn" for="tab-create" role="tab" aria-selected="true" tabindex="0">Créer une partie</label>
+        <label class="segmented__btn" for="tab-join" role="tab" aria-selected="false" tabindex="0">Rejoindre</label>
+      </div>
+
+      <div class="panels">
+
+        <!-- ==================== CRÉER ==================== -->
+        <form class="panel-mode panel-create stack" style="--stack-gap: var(--space-5)" onsubmit="return false">
+          <div class="field">
+            <label class="field__label" for="create-name">Ton pseudo d'invocateur</label>
+            <input class="input" id="create-name" name="create-name" type="text" maxlength="18"
+                   placeholder="ex. NoctaJungle" autocomplete="off" value="Baptiste">
+            <span class="field__hint">Visible par tous les joueurs de la room. 18 caractères max.</span>
+          </div>
+          <button class="btn btn-primary" type="submit">Créer la partie</button>
+        </form>
+
+        <!-- ==================== REJOINDRE ==================== -->
+        <form class="panel-mode panel-join stack" style="--stack-gap: var(--space-5)" onsubmit="return false">
+          <div class="field">
+            <label class="field__label" for="code-0">Code de la room</label>
+            <div class="code-input-group" role="group" aria-label="Code à 5 caractères">
+              <input class="code-input-group__cell" id="code-0" maxlength="1" inputmode="text" aria-label="Caractère 1" value="7">
+              <input class="code-input-group__cell" maxlength="1" inputmode="text" aria-label="Caractère 2" value="K">
+              <input class="code-input-group__cell" maxlength="1" inputmode="text" aria-label="Caractère 3" value="T">
+              <input class="code-input-group__cell" maxlength="1" inputmode="text" aria-label="Caractère 4" value="4">
+              <input class="code-input-group__cell" maxlength="1" inputmode="text" aria-label="Caractère 5" value="X">
+            </div>
+            <span class="field__hint">Demande le code à l'hôte de la partie (5 caractères, sans 0/O/1/I).</span>
+          </div>
+          <div class="field">
+            <label class="field__label" for="join-name">Ton pseudo d'invocateur</label>
+            <input class="input" id="join-name" name="join-name" type="text" maxlength="18"
+                   placeholder="ex. RiftHerald_" autocomplete="off">
+          </div>
+          <button class="btn btn-primary" type="submit">Rejoindre la partie</button>
+        </form>
+
+      </div>
+
+      <p class="footnote">Aucun compte requis — un pseudo suffit. Jouable à 3–12, sur mobile comme sur ordinateur.</p>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

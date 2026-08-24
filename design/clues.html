@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>lolCover — Indices</title>
+<link rel="stylesheet" href="design-system.css">
+<style>
+  .turn-banner {
+    display: flex; align-items: center; gap: var(--space-4);
+    padding: var(--space-5); margin-bottom: var(--space-6);
+  }
+  .turn-banner__text { flex: 1 1 auto; min-width: 0; }
+  .turn-banner__who { font-family: var(--font-display); font-size: var(--text-lg); color: var(--color-gold-300); letter-spacing: var(--tracking-wide); }
+  .turn-banner__sub { font-size: var(--text-xs); color: var(--color-text-low); margin-top: var(--space-1); }
+
+  .turn-order__item { display: flex; align-items: flex-start; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); }
+  .turn-order__item:last-child { border-bottom: none; }
+  .turn-order__index {
+    flex: none; width: 22px; height: 22px; margin-top: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 0.65rem; color: var(--color-text-low);
+    border: 1px solid var(--color-border); border-radius: 50%;
+  }
+  .turn-order__item--done .turn-order__index { color: var(--color-success); border-color: var(--color-success); background: var(--color-success-dim); }
+  .turn-order__item--active .turn-order__index { color: var(--color-text-on-gold); border-color: var(--color-gold-500); background: var(--color-gold-500); }
+  .turn-order__body { flex: 1 1 auto; min-width: 0; }
+  .turn-order__name { font-weight: 600; }
+  .turn-order__clue { margin-top: var(--space-1); font-size: var(--text-sm); color: var(--color-text-mid); font-style: italic; }
+  .turn-order__clue::before { content: '“'; } .turn-order__clue::after { content: '”'; }
+  .turn-order__waiting { margin-top: var(--space-1); font-size: var(--text-xs); color: var(--color-text-low); }
+
+  .clue-form { display: flex; flex-direction: column; gap: var(--space-2); }
+  .clue-form__row { display: flex; gap: var(--space-3); }
+  .clue-form__row .input { flex: 1 1 auto; }
+  .char-counter { align-self: flex-end; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text-low); }
+
+  .waiting-note {
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-4); color: var(--color-text-mid); font-size: var(--text-sm);
+  }
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <header class="app-bar">
+    <svg class="icon" viewBox="0 0 40 40" fill="none" aria-hidden="true" width="20" height="20" style="color:var(--color-gold-500)">
+      <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" stroke="currentColor" stroke-width="3"/>
+    </svg>
+    <span class="app-bar__title">Indices</span>
+    <span class="spacer"></span>
+    <span class="badge badge--muted">Round 1</span>
+  </header>
+
+  <main class="main">
+    <div class="container">
+
+      <!-- Timer + tour en cours -->
+      <div class="turn-banner frame-cut">
+        <div class="timer" style="--offset: 87" aria-label="22 secondes restantes sur 45">
+          <svg class="timer__svg" viewBox="0 0 60 60">
+            <circle class="timer__track" cx="30" cy="30" r="27"/>
+            <circle class="timer__progress" cx="30" cy="30" r="27"/>
+          </svg>
+          <span class="timer__value">22<span class="timer__unit">sec</span></span>
+        </div>
+        <div class="turn-banner__text">
+          <div class="eyebrow">Au tour de</div>
+          <div class="turn-banner__who">Camille</div>
+          <div class="turn-banner__sub">Un indice court, sans jamais citer le nom du champion</div>
+        </div>
+      </div>
+
+      <!-- Ordre de passage -->
+      <section aria-labelledby="turn-title">
+        <div class="section-title">
+          <h2 id="turn-title" class="font-display">Ordre de passage</h2>
+          <span class="count">3 / 9</span>
+        </div>
+
+        <div class="panel" style="padding: 0 var(--space-4)">
+
+          <div class="turn-order__item turn-order__item--done">
+            <span class="turn-order__index">✓</span>
+            <div class="turn-order__body">
+              <div class="turn-order__name">Baptiste</div>
+              <div class="turn-order__clue">Il porte une armure très lourde et une grande épée.</div>
+            </div>
+          </div>
+
+          <div class="turn-order__item turn-order__item--done">
+            <span class="turn-order__index">✓</span>
+            <div class="turn-order__body">
+              <div class="turn-order__name">Théo_Jungle</div>
+              <div class="turn-order__clue">On le voit taper du poing sur le sol avant un combat.</div>
+            </div>
+          </div>
+
+          <div class="turn-order__item turn-order__item--active pulse">
+            <span class="turn-order__index">●</span>
+            <div class="turn-order__body">
+              <div class="turn-order__name">Camille</div>
+              <div class="turn-order__waiting">Est en train de réfléchir…</div>
+            </div>
+          </div>
+
+          <div class="turn-order__item">
+            <span class="turn-order__index">4</span>
+            <div class="turn-order__body">
+              <div class="turn-order__name text-mid">Lucas.gg</div>
+              <div class="turn-order__waiting">En attente</div>
+            </div>
+          </div>
+
+          <div class="turn-order__item">
+            <span class="turn-order__index">5</span>
+            <div class="turn-order__body">
+              <div class="turn-order__name text-mid">Manon</div>
+              <div class="turn-order__waiting">En attente</div>
+            </div>
+          </div>
+
+          <div class="turn-order__item">
+            <span class="turn-order__index">6</span>
+            <div class="turn-order__body">
+              <div class="turn-order__name text-mid">Yassine</div>
+              <div class="turn-order__waiting">En attente</div>
+            </div>
+          </div>
+
+          <div class="turn-order__item">
+            <span class="turn-order__index">7</span>
+            <div class="turn-order__body">
+              <div class="turn-order__name text-mid">Chloé</div>
+              <div class="turn-order__waiting">En attente</div>
+            </div>
+          </div>
+
+          <div class="turn-order__item">
+            <span class="turn-order__index">8</span>
+            <div class="turn-order__body">
+              <div class="turn-order__name text-mid">Nono_LCS</div>
+              <div class="turn-order__waiting">En attente</div>
+            </div>
+          </div>
+
+          <div class="turn-order__item">
+            <span class="turn-order__index">9</span>
+            <div class="turn-order__body">
+              <div class="turn-order__name text-mid">Inès</div>
+              <div class="turn-order__waiting">En attente</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!--
+    Vue d'un joueur qui N'A PAS la main (référence Frontend) : la action-bar
+    n'affiche pas de champ de saisie, seulement une note passive :
+    <div class="waiting-note panel">En attente de l'indice de Camille…</div>
+    Le champ ci-dessous n'est visible QUE pour le joueur dont c'est le tour.
+  -->
+  <footer class="action-bar">
+    <form class="clue-form" onsubmit="return false">
+      <div class="clue-form__row">
+        <input class="input" type="text" maxlength="60" placeholder="Ton indice (ex. « Grand, lourd, indestructible »)" value="" id="clueInput">
+        <button class="btn btn-primary" type="submit" style="width:auto; padding-inline: var(--space-5)">Envoyer</button>
+      </div>
+      <span class="char-counter" id="charCounter">0 / 60</span>
+    </form>
+  </footer>
+
+</div>
+
+<script>
+  // Micro-interaction de démonstration : compteur de caractères en direct.
+  var input = document.getElementById('clueInput');
+  var counter = document.getElementById('charCounter');
+  input.addEventListener('input', function () {
+    counter.textContent = input.value.length + ' / 60';
+  });
+</script>
+
+</body>
+</html>

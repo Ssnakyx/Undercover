@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>lolCover — Résultat de la manche</title>
+<link rel="stylesheet" href="design-system.css">
+<style>
+  .eliminated-block {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: var(--space-7) var(--space-6);
+    margin-bottom: var(--space-6);
+  }
+  .eliminated-block .eyebrow { margin-bottom: var(--space-4); }
+  .eliminated-block .avatar { --avatar-size: 88px; margin-bottom: var(--space-4); filter: grayscale(0.35); }
+  .eliminated-block__name { font-family: var(--font-display); font-size: var(--text-2xl); letter-spacing: var(--tracking-wide); }
+  .eliminated-block__votes { margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-text-mid); }
+
+  .role-reveal {
+    display: flex; align-items: center; gap: var(--space-5);
+    padding: var(--space-5); margin-top: var(--space-6); width: 100%;
+  }
+  .role-reveal__emblem { width: 64px; height: 64px; flex: none; }
+  .role-reveal__eyebrow { font-size: var(--text-xs); letter-spacing: var(--tracking-widest); font-weight: 800; }
+  .role-reveal__champion { font-family: var(--font-display); font-size: var(--text-xl); letter-spacing: var(--tracking-wide); margin-top: var(--space-1); }
+  .role-reveal--undercover { border-color: var(--color-role-undercover); box-shadow: var(--glow-undercover); }
+  .role-reveal--undercover .role-reveal__emblem { color: var(--color-role-undercover); }
+  .role-reveal--undercover .role-reveal__eyebrow { color: var(--color-role-undercover); }
+
+  .vote-list__row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); }
+  .vote-list__row:last-child { border-bottom: none; }
+  .vote-list__name { flex: none; width: 7.5rem; font-size: var(--text-sm); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vote-list__row--eliminated .vote-list__name { color: var(--color-role-undercover); }
+
+  .round-note { text-align: center; font-size: var(--text-xs); color: var(--color-text-low); margin-top: var(--space-6); line-height: var(--leading-snug); }
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <header class="app-bar">
+    <svg class="icon" viewBox="0 0 40 40" fill="none" aria-hidden="true" width="20" height="20" style="color:var(--color-gold-500)">
+      <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" stroke="currentColor" stroke-width="3"/>
+    </svg>
+    <span class="app-bar__title">Résultat</span>
+    <span class="spacer"></span>
+    <span class="badge badge--muted">Round 1</span>
+  </header>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="role-undercover" viewBox="0 0 40 40">
+        <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" fill="none" stroke="currentColor" stroke-width="2"/>
+        <polygon points="10,17 17,15 17,19 10,21" fill="currentColor" opacity="0.9"/>
+        <polygon points="30,17 23,15 23,19 30,21" fill="currentColor" opacity="0.9"/>
+        <line x1="11" y1="29" x2="29" y2="11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <main class="main">
+    <div class="container">
+
+      <div class="eliminated-block frame-cut frame-cut--lg">
+        <span class="eyebrow">Éliminé ce round</span>
+        <span class="avatar" style="--avatar-c1:#b3986e; --avatar-c2:#5a4726">Y</span>
+        <div class="eliminated-block__name">Yassine</div>
+        <div class="eliminated-block__votes">5 votes sur 9 — majorité claire</div>
+
+        <!-- Révélation publique du rôle (même grammaire visuelle que reveal.html,
+             mais affichée directement, sans interaction de flip : tout le monde
+             la voit en même temps). -->
+        <div class="role-reveal role-reveal--undercover frame-cut">
+          <svg class="role-reveal__emblem" viewBox="0 0 40 40" fill="none" aria-hidden="true"><use href="#role-undercover"/></svg>
+          <div>
+            <div class="role-reveal__eyebrow">Était Undercover</div>
+            <div class="role-reveal__champion">DARIUS</div>
+          </div>
+        </div>
+        <!--
+          Variante settings.revealChampionOnElimination = false (référence
+          Frontend) : ne pas afficher .role-reveal__champion, le remplacer par
+          <div class="role-reveal__champion text-low" style="font-size:var(--text-sm)">Champion non révélé</div>
+
+          Variante égalité (tie = true, contract §3) : pas de .eliminated-block
+          avec avatar/rôle — à la place un bandeau neutre :
+          <div class="eliminated-block frame-cut frame-cut--lg">
+            <span class="eyebrow">Égalité</span>
+            <div class="eliminated-block__name">Personne n'est éliminé ce round</div>
+          </div>
+          (le décompte des votes reste affiché en dessous, sans .role-reveal)
+        -->
+      </div>
+
+      <section aria-labelledby="breakdown-title">
+        <div class="section-title">
+          <h2 id="breakdown-title" class="font-display">Décompte des votes</h2>
+        </div>
+        <div class="panel" style="padding: var(--space-2) var(--space-4)">
+
+          <div class="vote-list__row vote-list__row--eliminated">
+            <span class="vote-list__name">Yassine</span>
+            <div class="vote-bar-row vote-bar-row--eliminated" style="flex:1">
+              <div class="vote-bar-row__track"><div class="vote-bar-row__fill" style="width:100%"></div></div>
+              <span class="vote-bar-row__count">5</span>
+            </div>
+          </div>
+
+          <div class="vote-list__row">
+            <span class="vote-list__name">Manon</span>
+            <div class="vote-bar-row" style="flex:1">
+              <div class="vote-bar-row__track"><div class="vote-bar-row__fill" style="width:40%"></div></div>
+              <span class="vote-bar-row__count">2</span>
+            </div>
+          </div>
+
+          <div class="vote-list__row">
+            <span class="vote-list__name">Chloé</span>
+            <div class="vote-bar-row" style="flex:1">
+              <div class="vote-bar-row__track"><div class="vote-bar-row__fill" style="width:20%"></div></div>
+              <span class="vote-bar-row__count">1</span>
+            </div>
+          </div>
+
+          <div class="vote-list__row">
+            <span class="vote-list__name">Nono_LCS</span>
+            <div class="vote-bar-row" style="flex:1">
+              <div class="vote-bar-row__track"><div class="vote-bar-row__fill" style="width:20%"></div></div>
+              <span class="vote-bar-row__count">1</span>
+            </div>
+          </div>
+
+          <div class="vote-list__row">
+            <span class="vote-list__name">Baptiste</span>
+            <div class="vote-bar-row" style="flex:1">
+              <div class="vote-bar-row__track"><div class="vote-bar-row__fill" style="width:0%"></div></div>
+              <span class="vote-bar-row__count">0</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <p class="round-note">6 Civils, 1 Undercover et 1 Mr White restent en lice.<br>La partie continue.</p>
+
+    </div>
+  </main>
+
+  <footer class="action-bar">
+    <button class="btn btn-primary" type="button">Manche suivante</button>
+    <span class="confirm-hint">Seul l'hôte peut lancer la manche suivante</span>
+  </footer>
+
+</div>
+
+</body>
+</html>

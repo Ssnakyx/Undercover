@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>lolCover — Révélation du rôle</title>
+<link rel="stylesheet" href="design-system.css">
+<style>
+  /*
+    ============================================================
+    VARIANTES DE CETTE CARTE (à implémenter côté Frontend) :
+    ============================================================
+    Cet écran illustre la variante CIVIL en détail (markup complet
+    ci-dessous). Les deux autres variantes réutilisent EXACTEMENT
+    la même structure (.flip-card__face--back), seuls changent :
+    le token de couleur de rôle, l'eyebrow, l'emblème et le texte.
+
+    -- UNDERCOVER --
+    - Couleurs : remplacer tout --color-role-civil* par --color-role-undercover*
+      (classe modificatrice .role-face--undercover sur .flip-card__face--back).
+    - Eyebrow : "UNDERCOVER" au lieu de "CIVIL".
+    - Emblème : utiliser le symbole #role-undercover (masque/diagonale) au lieu
+      de #role-civil.
+    - Indication subtile de secret : un très léger motif de hachures
+      diagonales en fond (opacity ~0.05, ::before avec repeating-linear-gradient)
+      + une micro-mention en bas "Rôle secret — ne le révèle pas." en
+      --color-text-low, PLUS discrète que l'instruction civil (qui elle est en
+      --color-text-mid). Le champion affiché est champB de la paire (le
+      champion "proche" de celui des civils), toujours en majuscules Cinzel.
+    - Le bouton de confirmation reste identique ("J'ai vu mon rôle").
+
+    -- MR WHITE --
+    - Couleurs : --color-role-mrwhite* partout, classe .role-face--mrwhite.
+    - Eyebrow : "MR WHITE".
+    - Pas de nom de champion : à la place, l'emblème #role-mrwhite (le rune
+      "?" géométrique) occupe la place du nom de champion, en très grand.
+    - Titre : "Tu es Mr White" / sous-titre : "Bluffe !" en gros, gras.
+    - Instruction : "Tu ne connais aucun champion. Écoute les indices des
+      autres et fais semblant d'en connaître un pour ne pas te faire
+      démasquer."
+    - Pas de mention "secret" (le rôle entier EST le twist, pas besoin de
+      sous-texte discret supplémentaire).
+    ============================================================
+  */
+
+  .reveal-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6) var(--space-5);
+  }
+
+  .reveal-intro { text-align: center; margin-bottom: var(--space-7); }
+  .reveal-intro .eyebrow { display: block; margin-bottom: var(--space-2); }
+  .reveal-intro h1 { font-size: var(--text-lg); color: var(--color-text-mid); font-weight: 500; }
+
+  .flip-scene { width: 100%; max-width: 22rem; }
+
+  .flip-card__face {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-gold);
+  }
+  .flip-card__face--front {
+    cursor: pointer;
+    gap: var(--space-5);
+  }
+  .flip-card__face--front:active { transform: scale(0.98); }
+  .front-crest { width: 84px; height: 84px; color: var(--color-gold-500); }
+  .front-crest .pulse-ring { animation: pulse-glow 2.4s ease-in-out infinite; }
+  .front-tap-hint {
+    display: flex; align-items: center; gap: var(--space-2);
+    color: var(--color-gold-300); font-size: var(--text-sm); font-weight: 700;
+    letter-spacing: var(--tracking-wide);
+  }
+  .front-tap-hint svg { width: 18px; height: 18px; }
+
+  /* -- Face arrière : variante CIVIL -- */
+  .role-face--civil {
+    background:
+      radial-gradient(ellipse 260px 220px at 50% 20%, rgba(79, 143, 203, 0.18), transparent 65%),
+      var(--color-surface);
+    border-color: var(--color-role-civil);
+    box-shadow: var(--glow-civil);
+  }
+  .role-face__eyebrow { color: var(--color-role-civil); font-size: var(--text-sm); letter-spacing: var(--tracking-widest); font-weight: 800; }
+  .role-face__emblem { width: 128px; height: 128px; color: var(--color-role-civil); margin: var(--space-5) 0; }
+  .role-face__champion {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    letter-spacing: var(--tracking-wide);
+    color: var(--color-text-high);
+  }
+  .role-face__instruction {
+    margin-top: var(--space-5);
+    color: var(--color-text-mid);
+    font-size: var(--text-sm);
+    line-height: var(--leading-snug);
+    max-width: 26ch;
+  }
+
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <header class="app-bar">
+    <svg class="icon" viewBox="0 0 40 40" fill="none" aria-hidden="true" width="20" height="20" style="color:var(--color-gold-500)">
+      <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" stroke="currentColor" stroke-width="3"/>
+    </svg>
+    <span class="app-bar__title">Révélation</span>
+    <span class="spacer"></span>
+    <span class="badge badge--muted">Round 1</span>
+  </header>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="role-civil" viewBox="0 0 40 40">
+        <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" fill="none" stroke="currentColor" stroke-width="2"/>
+        <polygon points="20,10 26,20 20,30 14,20" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <line x1="20" y1="10" x2="20" y2="30" stroke="currentColor" stroke-width="1.1" opacity="0.7"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <main class="reveal-main">
+
+    <div class="reveal-intro">
+      <span class="eyebrow">Privé — toi seul</span>
+      <h1>Personne d'autre ne doit voir cet écran</h1>
+    </div>
+
+    <div class="flip-scene">
+      <div class="flip-card" id="roleCard">
+
+        <!-- Face avant : cachée jusqu'au tap -->
+        <div class="flip-card__face flip-card__face--front frame-cut frame-cut--lg" role="button" tabindex="0" aria-pressed="false" aria-label="Toucher pour révéler ton rôle">
+          <svg class="front-crest" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            <polygon class="pulse-ring" points="10,0 30,0 40,20 30,40 10,40 0,20" stroke="currentColor" stroke-width="1.6"/>
+            <polygon points="20,9 31,20 20,31 9,20" stroke="currentColor" stroke-width="1.2" opacity="0.7"/>
+            <circle cx="20" cy="20" r="2" fill="currentColor"/>
+          </svg>
+          <div class="front-tap-hint">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7 v6 l4 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Touche la carte pour révéler
+          </div>
+        </div>
+
+        <!-- Face arrière : variante CIVIL (voir commentaire en tête de fichier pour undercover/mrwhite) -->
+        <div class="flip-card__face flip-card__face--back frame-cut frame-cut--lg role-face--civil">
+          <span class="role-face__eyebrow">Tu es un Civil</span>
+          <svg class="role-face__emblem" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+            <use href="#role-civil"/>
+          </svg>
+          <div class="role-face__champion">GAREN</div>
+          <p class="role-face__instruction">Décris Garen sans jamais dire son nom. Repère les indices qui sonnent faux — un ou plusieurs joueurs ne connaissent pas exactement le même champion que toi.</p>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="action-bar">
+    <button class="btn btn-primary" type="button" id="confirmBtn" disabled aria-disabled="true">J'ai vu mon rôle</button>
+    <span class="confirm-hint">La partie continue quand tous les joueurs ont confirmé.</span>
+  </footer>
+
+</div>
+
+<script>
+  // Micro-interaction de démonstration uniquement : retournement de la carte
+  // au tap/clic, puis activation du bouton de confirmation. Aucune logique
+  // de jeu réelle — le Frontend branchera ceci sur reveal:ack / role:private.
+  var card = document.getElementById('roleCard');
+  var front = card.querySelector('.flip-card__face--front');
+  var confirmBtn = document.getElementById('confirmBtn');
+
+  function revealRole() {
+    if (card.classList.contains('is-flipped')) return;
+    card.classList.add('is-flipped');
+    front.setAttribute('aria-pressed', 'true');
+    confirmBtn.disabled = false;
+    confirmBtn.removeAttribute('aria-disabled');
+  }
+
+  front.addEventListener('click', revealRole);
+  front.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); revealRole(); }
+  });
+</script>
+
+</body>
+</html>

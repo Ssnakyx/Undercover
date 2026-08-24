@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>lolCover — Vote</title>
+<link rel="stylesheet" href="design-system.css">
+<style>
+  .vote-banner {
+    display: flex; align-items: center; gap: var(--space-4);
+    padding: var(--space-5); margin-bottom: var(--space-5);
+  }
+  .vote-banner__text { flex: 1 1 auto; }
+  .vote-banner__title { font-family: var(--font-display); font-size: var(--text-lg); letter-spacing: var(--tracking-wide); }
+  .vote-banner__sub { font-size: var(--text-xs); color: var(--color-text-low); margin-top: var(--space-1); }
+
+  .vote-progress { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-6); padding: 0 var(--space-1); }
+  .vote-progress__dots { display: flex; gap: 5px; }
+  .vote-progress__dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-surface-hover); border: 1px solid var(--color-border-interactive); transition: background var(--duration-base), border-color var(--duration-base); }
+  .vote-progress__dot--filled { background: var(--color-gold-500); border-color: var(--color-gold-500); }
+  .vote-progress__label { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text-mid); }
+
+  .vote-row {
+    display: flex; align-items: center; gap: var(--space-4);
+    padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border);
+  }
+  .vote-row:last-child { border-bottom: none; }
+  .vote-row__body { flex: 1 1 auto; min-width: 0; }
+  .vote-row__name { font-weight: 600; }
+  .vote-row__status { font-size: var(--text-xs); margin-top: 2px; display: flex; align-items: center; gap: 5px; }
+  .vote-row__status svg { width: 12px; height: 12px; }
+  .vote-row__status--voted { color: var(--color-success); }
+  .vote-row__status--pending { color: var(--color-text-low); }
+
+  .vote-btn {
+    --cut: 6px;
+    flex: none;
+    min-height: 44px;
+    min-width: 84px;
+    padding: 0 var(--space-4);
+    font-weight: 700;
+    font-size: var(--text-sm);
+    letter-spacing: var(--tracking-wide);
+    background: var(--color-surface);
+    color: var(--color-gold-300);
+    border: 1px solid var(--color-gold-700);
+    clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+    transition: background var(--duration-fast), color var(--duration-fast), transform var(--duration-fast), opacity var(--duration-fast);
+  }
+  .vote-btn:active { transform: scale(0.96); }
+  .vote-btn--selected { background: var(--color-gold-500); color: var(--color-text-on-gold); border-color: var(--color-gold-300); }
+  .vote-btn:disabled { opacity: 0.35; pointer-events: none; }
+
+  .vote-row--self .vote-row__name { color: var(--color-text-mid); }
+
+  .confirm-banner {
+    display: none;
+    align-items: center; gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    background: var(--color-success-dim);
+    border: 1px solid var(--color-success);
+    color: var(--color-success);
+    font-weight: 700;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  }
+  .confirm-banner.is-visible { display: flex; }
+  .confirm-banner svg { width: 22px; height: 22px; flex: none; }
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <header class="app-bar">
+    <svg class="icon" viewBox="0 0 40 40" fill="none" aria-hidden="true" width="20" height="20" style="color:var(--color-gold-500)">
+      <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" stroke="currentColor" stroke-width="3"/>
+    </svg>
+    <span class="app-bar__title">Vote</span>
+    <span class="spacer"></span>
+    <span class="badge badge--muted">Round 1</span>
+  </header>
+
+  <main class="main">
+    <div class="container">
+
+      <div class="vote-banner frame-cut">
+        <div class="timer timer--urgent" style="--offset: 122" aria-label="14 secondes restantes sur 30">
+          <svg class="timer__svg" viewBox="0 0 60 60">
+            <circle class="timer__track" cx="30" cy="30" r="27"/>
+            <circle class="timer__progress" cx="30" cy="30" r="27"/>
+          </svg>
+          <span class="timer__value">14<span class="timer__unit">sec</span></span>
+        </div>
+        <div class="vote-banner__text">
+          <div class="eyebrow">Vote en cours</div>
+          <div class="vote-banner__title">Qui est suspect ?</div>
+          <div class="vote-banner__sub">Vote secret — la cible ne sera connue qu'au dépouillement</div>
+        </div>
+      </div>
+
+      <div id="confirmBanner" class="confirm-banner">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.8"/><path d="M7.5 12.5 L10.5 15.5 L16.5 8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Tu as voté. En attente des autres joueurs…</span>
+      </div>
+
+      <div class="vote-progress">
+        <div class="vote-progress__dots" aria-hidden="true">
+          <span class="vote-progress__dot vote-progress__dot--filled"></span>
+          <span class="vote-progress__dot vote-progress__dot--filled"></span>
+          <span class="vote-progress__dot vote-progress__dot--filled"></span>
+          <span class="vote-progress__dot vote-progress__dot--filled"></span>
+          <span class="vote-progress__dot" id="selfDot"></span>
+          <span class="vote-progress__dot"></span>
+          <span class="vote-progress__dot"></span>
+          <span class="vote-progress__dot"></span>
+        </div>
+        <span class="vote-progress__label" id="voteCountLabel">4 / 9 ont voté</span>
+      </div>
+
+      <section aria-labelledby="vote-title">
+        <div class="panel" style="padding: 0 var(--space-4)" id="voteList">
+
+          <div class="vote-row vote-row--self">
+            <span class="avatar" style="--avatar-c1:#d8a94e; --avatar-c2:#7a5620">C</span>
+            <div class="vote-row__body">
+              <div class="vote-row__name">Camille</div>
+              <div class="vote-row__status vote-row__status--pending" id="selfStatus">C'est toi — tu n'as pas encore voté</div>
+            </div>
+          </div>
+
+          <div class="vote-row">
+            <span class="avatar" style="--avatar-c1:#6e93c2; --avatar-c2:#284a6e">B</span>
+            <div class="vote-row__body">
+              <div class="vote-row__name">Baptiste</div>
+              <div class="vote-row__status vote-row__status--voted">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5 L9.5 17 L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                A voté
+              </div>
+            </div>
+            <button class="vote-btn" type="button" data-name="Baptiste">Voter</button>
+          </div>
+
+          <div class="vote-row">
+            <span class="avatar" style="--avatar-c1:#6fbe90; --avatar-c2:#1f4430">T</span>
+            <div class="vote-row__body">
+              <div class="vote-row__name">Théo_Jungle</div>
+              <div class="vote-row__status vote-row__status--voted">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5 L9.5 17 L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                A voté
+              </div>
+            </div>
+            <button class="vote-btn" type="button" data-name="Théo_Jungle">Voter</button>
+          </div>
+
+          <div class="vote-row">
+            <span class="avatar" style="--avatar-c1:#c68a6e; --avatar-c2:#5a3626">I</span>
+            <div class="vote-row__body">
+              <div class="vote-row__name">Inès</div>
+              <div class="vote-row__status vote-row__status--pending">En attente de son vote</div>
+            </div>
+            <button class="vote-btn" type="button" data-name="Inès">Voter</button>
+          </div>
+
+          <div class="vote-row">
+            <span class="avatar" style="--avatar-c1:#8ea6c9; --avatar-c2:#34506e">L</span>
+            <div class="vote-row__body">
+              <div class="vote-row__name">Lucas.gg</div>
+              <div class="vote-row__status vote-row__status--voted">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5 L9.5 17 L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                A voté
+              </div>
+            </div>
+            <button class="vote-btn" type="button" data-name="Lucas.gg">Voter</button>
+          </div>
+
+          <div class="vote-row">
+            <span class="avatar" style="--avatar-c1:#9a8bc4; --avatar-c2:#423a66">M</span>
+            <div class="vote-row__body">
+              <div class="vote-row__name">Manon</div>
+              <div class="vote-row__status vote-row__status--pending">En attente de son vote</div>
+            </div>
+            <button class="vote-btn" type="button" data-name="Manon">Voter</button>
+          </div>
+
+          <div class="vote-row">
+            <span class="avatar" style="--avatar-c1:#b3986e; --avatar-c2:#5a4726">Y</span>
+            <div class="vote-row__body">
+              <div class="vote-row__name">Yassine</div>
+              <div class="vote-row__status vote-row__status--voted">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5 L9.5 17 L19 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                A voté
+              </div>
+            </div>
+            <button class="vote-btn" type="button" data-name="Yassine">Voter</button>
+          </div>
+
+          <div class="vote-row">
+            <span class="avatar" style="--avatar-c1:#7fa0b0; --avatar-c2:#2c4450">C</span>
+            <div class="vote-row__body">
+              <div class="vote-row__name">Chloé</div>
+              <div class="vote-row__status vote-row__status--pending">En attente de son vote</div>
+            </div>
+            <button class="vote-btn" type="button" data-name="Chloé">Voter</button>
+          </div>
+
+          <div class="vote-row">
+            <span class="avatar" style="--avatar-c1:#6e93c2; --avatar-c2:#7a5620">N</span>
+            <div class="vote-row__body">
+              <div class="vote-row__name">Nono_LCS</div>
+              <div class="vote-row__status vote-row__status--pending">En attente de son vote</div>
+            </div>
+            <button class="vote-btn" type="button" data-name="Nono_LCS">Voter</button>
+          </div>
+
+        </div>
+      </section>
+
+      <p class="text-low text-center" style="font-size: var(--text-xs); margin-top: var(--space-5)">
+        Tu peux voter une seule fois. Ton choix reste secret jusqu'au dépouillement.
+      </p>
+
+    </div>
+  </main>
+
+</div>
+
+<script>
+  // Micro-interaction de démonstration : sélectionner un joueur verrouille le
+  // vote et affiche le feedback "Tu as voté". Aucun envoi réseau réel.
+  var buttons = document.querySelectorAll('.vote-btn');
+  var banner = document.getElementById('confirmBanner');
+  var selfDot = document.getElementById('selfDot');
+  var selfStatus = document.getElementById('selfStatus');
+  var countLabel = document.getElementById('voteCountLabel');
+
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      buttons.forEach(function (b) {
+        b.classList.remove('vote-btn--selected');
+        if (b !== btn) b.disabled = true;
+      });
+      btn.classList.add('vote-btn--selected');
+      btn.textContent = 'Voté';
+      banner.classList.add('is-visible');
+      selfDot.classList.add('vote-progress__dot--filled');
+      selfStatus.classList.remove('vote-row__status--pending');
+      selfStatus.classList.add('vote-row__status--voted');
+      selfStatus.textContent = 'C\'est toi — vote enregistré';
+      countLabel.textContent = '5 / 9 ont voté';
+    });
+  });
+</script>
+
+</body>
+</html>
