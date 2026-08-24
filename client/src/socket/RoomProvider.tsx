@@ -34,9 +34,6 @@ interface RoomContextValue {
   joinRoom: (roomCode: string, playerName: string) => Promise<RoomJoinAck>;
   rejoinFromStorage: (roomCode: string) => Promise<boolean>;
   updateSettings: (settings: Partial<RoomSettings>) => void;
-  addPair: (champA: string, champB: string, theme: string) => void;
-  togglePair: (pairId: string, enabled: boolean) => void;
-  removePair: (pairId: string) => void;
   startGame: () => void;
   ackReveal: () => void;
   startVoting: () => void;
@@ -172,15 +169,6 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const updateSettings = useCallback((settings: Partial<RoomSettings>) => {
     socket.emit('settings:update', { settings });
   }, []);
-  const addPair = useCallback((champA: string, champB: string, theme: string) => {
-    socket.emit('pairs:add', { champA, champB, theme });
-  }, []);
-  const togglePair = useCallback((pairId: string, enabled: boolean) => {
-    socket.emit('pairs:toggle', { pairId, enabled });
-  }, []);
-  const removePair = useCallback((pairId: string) => {
-    socket.emit('pairs:remove', { pairId });
-  }, []);
   const startGame = useCallback(() => {
     socket.emit('game:start', {});
   }, []);
@@ -226,9 +214,6 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     joinRoom,
     rejoinFromStorage,
     updateSettings,
-    addPair,
-    togglePair,
-    removePair,
     startGame,
     ackReveal,
     startVoting,

@@ -2,14 +2,17 @@ import { useState } from 'react';
 import { useRoom } from '../socket/RoomProvider';
 import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
+import { HostQuitButton } from '../components/HostQuitButton';
 import { universeCopy } from '../lib/universe';
 
 export function Reveal() {
-  const { roomState, myRole, ackReveal } = useRoom();
+  const { roomState, playerId, myRole, ackReveal } = useRoom();
   const [flipped, setFlipped] = useState(false);
   const [acked, setAcked] = useState(false);
 
   if (!roomState) return null;
+
+  const isHost = roomState.players.find((p) => p.playerId === playerId)?.isHost ?? false;
 
   function flip() {
     setFlipped(true);
@@ -26,7 +29,15 @@ export function Reveal() {
 
   return (
     <div className="screen">
-      <AppBar title="Révélation" right={<span className="badge badge--muted">Round {roomState.round}</span>} />
+      <AppBar
+        title="Révélation"
+        right={
+          <>
+            {isHost && <HostQuitButton />}
+            <span className="badge badge--muted">Round {roomState.round}</span>
+          </>
+        }
+      />
 
       <main className="reveal-main">
         <div className="reveal-intro">

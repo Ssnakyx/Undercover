@@ -65,20 +65,11 @@ export function countAliveRoles(room: Room): AliveRoleCounts {
   return { civilsAlive, undercoverAlive, mrWhiteAlive };
 }
 
-function selectPair(room: Room, pairsPool: ChampionPair[]): ChampionPair {
-  const { selectedPairId } = room.settings;
-  if (selectedPairId) {
-    const forced = pairsPool.find((p) => p.id === selectedPairId);
-    if (!forced) {
-      throw new GameEngineError('PAIR_NOT_FOUND', `Paire sélectionnée introuvable: ${selectedPairId}`);
-    }
-    return forced;
+function selectPair(pairsPool: ChampionPair[]): ChampionPair {
+  if (pairsPool.length === 0) {
+    throw new GameEngineError('NO_PAIRS_AVAILABLE', 'Aucune paire de champions disponible pour cet univers');
   }
-  const enabled = pairsPool.filter((p) => p.enabled);
-  if (enabled.length === 0) {
-    throw new GameEngineError('NO_PAIRS_AVAILABLE', 'Aucune paire de champions activée');
-  }
-  return enabled[Math.floor(Math.random() * enabled.length)];
+  return pairsPool[Math.floor(Math.random() * pairsPool.length)];
 }
 
 // ---------------------------------------------------------------------------
@@ -107,7 +98,7 @@ export function assignRolesAndEnterReveal(room: Room, options: StartGameOptions)
     throw new GameEngineError('TOO_MANY_PLAYERS', 'La room dépasse la limite de 12 joueurs');
   }
 
-  const pair = selectPair(room, options.pairsPool);
+  const pair = selectPair(options.pairsPool);
   const mrWhiteRequested = playerIds.length >= 5 && room.settings.mrWhiteEnabled;
 
   const roles = assignRoles({
@@ -394,4 +385,16 @@ export function evaluateCurrentWinner(room: Room): Winner | null {
  */
 export function removeFromTurnOrder(room: Room, playerId: string): void {
   room.turnOrder = room.turnOrder.filter((id) => id !== playerId);
+}
+
+/**
+ * L'hôte quitte explicitement (bouton "Quitter") une partie en cours (phase ≠ lobby,
+ * game_over, aborted) : contrairement à une déconnexion accidentelle (qui transfère le host
+ * pour laisser la partie continuer), un départ volontaire de l'hôte termine la partie pour
+ * tout le monde — voir docs/CONTRACT.md §5.
+ */
+export function abortGame(room: Room): void {
+  room.phase = 'aborted';
+  room.phaseDeadline = null;
+  room.mrWhiteGuessPlayerId = null;
 }

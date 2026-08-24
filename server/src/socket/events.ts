@@ -5,9 +5,6 @@ import type {
   AckResponse,
   GameEndedPayload,
   MrWhiteGuessPayload,
-  PairsAddPayload,
-  PairsRemovePayload,
-  PairsTogglePayload,
   ErrorPayload,
   RoomCreateAck,
   RoomCreatePayload,
@@ -27,9 +24,6 @@ export interface ClientToServerEvents {
   'room:join': (payload: RoomJoinPayload, ack: (res: RoomJoinAck) => void) => void;
   'room:rejoin': (payload: RoomRejoinPayload, ack: (res: RoomRejoinAck) => void) => void;
   'settings:update': (payload: SettingsUpdatePayload, ack?: (res: AckResponse) => void) => void;
-  'pairs:add': (payload: PairsAddPayload, ack?: (res: AckResponse) => void) => void;
-  'pairs:toggle': (payload: PairsTogglePayload, ack?: (res: AckResponse) => void) => void;
-  'pairs:remove': (payload: PairsRemovePayload, ack?: (res: AckResponse) => void) => void;
   'game:start': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'reveal:ack': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'round:startVoting': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;

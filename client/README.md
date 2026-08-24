@@ -105,6 +105,15 @@ qu'improvisée silencieusement (même esprit que `server/README.md`) :
    (fixé côté serveur à la création, voir `docs/CONTRACT.md` §6). Aucune icône officielle
    Nintendo/Riot sur les cartes — mêmes formes géométriques maison que le reste du design
    system (CONTRACT.md §0).
+9. **Bouton "Quitter" de l'hôte + écran `GameAborted`** : les paires de champions n'étant plus
+   éditables depuis le lobby (pool fixe, voir §7 du contrat), la section "Paires" a été retirée
+   de `Lobby`. En contrepartie, un départ volontaire de l'hôte pendant une partie en cours doit
+   être explicite et sans ambiguïté : `HostQuitButton` (visible dans l'`AppBar` de `Reveal` à
+   `MrWhiteGuess`, hôte uniquement) demande confirmation puis émet `player:leave`. Les autres
+   joueurs reçoivent `roomState.phase === 'aborted'` (9ᵉ phase, sans maquette dédiée) et
+   atterrissent sur l'écran `GameAborted`, construit dans le même esprit que `MrWhiteGuess`
+   (réutilise `.eliminated-block`) — seule issue : retour à l'accueil, aucune reprise possible
+   depuis cette room.
 
 ## Structure
 
@@ -117,8 +126,8 @@ src/
   routes/
     GameRoute.tsx        /room/:roomCode — reconnexion + switch d'écran sur roomState.phase
   screens/               MainMenu, Home, Lobby, Reveal, Discussion, Voting, RoundResult,
-                         MrWhiteGuess, GameOver
-  components/            Avatar, AppBar, ActionBar, LaneIcon, RoleBadge, IconDefs
+                         MrWhiteGuess, GameOver, GameAborted
+  components/            Avatar, AppBar, ActionBar, HostQuitButton, RoleBadge, IconDefs
   lib/                   session (localStorage), roles (aperçu répartition), avatar (couleurs),
                          universe (textes par univers 'lol' / 'smash')
   styles/

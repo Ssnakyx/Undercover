@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRoom } from '../socket/RoomProvider';
 import { AppBar } from '../components/AppBar';
 import { Avatar } from '../components/Avatar';
+import { HostQuitButton } from '../components/HostQuitButton';
 
 export function Voting() {
   const { roomState, playerId, submitVote } = useRoom();
@@ -11,6 +12,7 @@ export function Voting() {
 
   const alivePlayers = roomState.players.filter((p) => p.alive);
   const me = roomState.players.find((p) => p.playerId === playerId);
+  const isHost = me?.isHost ?? false;
   const hasVoted = playerId !== null && roomState.votedPlayerIds.includes(playerId);
   const locked = hasVoted || localTarget !== null;
 
@@ -22,7 +24,15 @@ export function Voting() {
 
   return (
     <div className="screen">
-      <AppBar title="Vote" right={<span className="badge badge--muted">Round {roomState.round}</span>} />
+      <AppBar
+        title="Vote"
+        right={
+          <>
+            {isHost && <HostQuitButton />}
+            <span className="badge badge--muted">Round {roomState.round}</span>
+          </>
+        }
+      />
 
       <main className="main">
         <div className="container">

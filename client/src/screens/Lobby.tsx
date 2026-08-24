@@ -1,43 +1,24 @@
-import { useState, type FormEvent } from 'react';
 import { useRoom } from '../socket/RoomProvider';
 import { Avatar } from '../components/Avatar';
 import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
-import { LaneIcon } from '../components/LaneIcon';
 import { computeRoleCounts, isMrWhiteAvailable } from '../lib/roles';
-import { universeCopy } from '../lib/universe';
 
 export function Lobby() {
-  const { roomState, playerId, updateSettings, togglePair, addPair, startGame } = useRoom();
-  const [addOpen, setAddOpen] = useState(false);
-  const [champA, setChampA] = useState('');
-  const [champB, setChampB] = useState('');
-  const [theme, setTheme] = useState('');
+  const { roomState, playerId, updateSettings, startGame } = useRoom();
 
   if (!roomState) return null;
 
-  const unit = universeCopy(roomState.universe).unitLabelCapitalized;
   const me = roomState.players.find((p) => p.playerId === playerId);
   const isHost = me?.isHost ?? false;
   const host = roomState.players.find((p) => p.isHost);
   const n = roomState.players.length;
   const counts = computeRoleCounts(n, roomState.settings.mrWhiteEnabled);
   const mrWhiteAvailable = isMrWhiteAvailable(n);
-  const enabledPairsCount = roomState.pairs.filter((p) => p.enabled).length;
   const canStart = isHost && n >= 3;
 
   function copyCode() {
     navigator.clipboard?.writeText(roomState!.roomCode).catch(() => {});
-  }
-
-  function handleAddPair(e: FormEvent) {
-    e.preventDefault();
-    if (!champA.trim() || !champB.trim() || !theme.trim()) return;
-    addPair(champA.trim(), champB.trim(), theme.trim());
-    setChampA('');
-    setChampB('');
-    setTheme('');
-    setAddOpen(false);
   }
 
   return (
@@ -150,108 +131,6 @@ export function Lobby() {
                   </span>
                 </label>
               </div>
-
-            </div>
-          </section>
-
-          <section aria-labelledby="pairs-title" className="mt-6">
-            <div className="section-title">
-              <h2 id="pairs-title" className="font-display">
-                Paires de {universeCopy(roomState.universe).unitLabel}s
-              </h2>
-              <span className="count">
-                {enabledPairsCount} activées / {roomState.pairs.length}
-              </span>
-            </div>
-            <div className="panel">
-              {roomState.pairs.map((pair) => (
-                <div
-                  key={pair.id}
-                  className={`pair-row${pair.enabled ? '' : ' pair-row--disabled'}${pair.isCustom ? ' pair-row--custom' : ''}`}
-                >
-                  <div className="pair-row__champs">
-                    <div className="pair-row__vs">
-                      {pair.champA.toUpperCase()} <span className="sep">✦</span> {pair.champB.toUpperCase()}
-                    </div>
-                    <div className="pair-row__meta">
-                      <span className="pair-row__theme">{pair.theme}</span>
-                      {pair.lanes && pair.lanes.length > 0 && (
-                        <span className="pair-row__lanes">
-                          {pair.lanes.map((lane) => (
-                            <LaneIcon lane={lane} key={lane} />
-                          ))}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      aria-label={`Activer la paire ${pair.champA} / ${pair.champB}`}
-                      checked={pair.enabled}
-                      disabled={!isHost}
-                      onChange={(e) => togglePair(pair.id, e.target.checked)}
-                    />
-                    <span className="switch__track" />
-                  </label>
-                </div>
-              ))}
-
-              {isHost && (
-                <details className="add-pair" open={addOpen} onToggle={(e) => setAddOpen((e.target as HTMLDetailsElement).open)}>
-                  <summary>
-                    <svg viewBox="0 0 24 24" fill="none">
-                      <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                      <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                    Ajouter une paire personnalisée
-                  </summary>
-                  <form className="add-pair-form" onSubmit={handleAddPair}>
-                    <div className="field">
-                      <label className="field__label" htmlFor="add-champa">
-                        {unit} A (majorité)
-                      </label>
-                      <input
-                        className="input"
-                        id="add-champa"
-                        type="text"
-                        placeholder={roomState.universe === 'lol' ? 'ex. Diana' : 'ex. Fox'}
-                        value={champA}
-                        onChange={(e) => setChampA(e.target.value)}
-                      />
-                    </div>
-                    <div className="field">
-                      <label className="field__label" htmlFor="add-champb">
-                        {unit} B (undercover)
-                      </label>
-                      <input
-                        className="input"
-                        id="add-champb"
-                        type="text"
-                        placeholder={roomState.universe === 'lol' ? 'ex. Leona' : 'ex. Falco'}
-                        value={champB}
-                        onChange={(e) => setChampB(e.target.value)}
-                      />
-                    </div>
-                    <div className="field">
-                      <label className="field__label" htmlFor="add-theme">
-                        Thème
-                      </label>
-                      <input
-                        className="input"
-                        id="add-theme"
-                        type="text"
-                        placeholder="ex. Duo lune/soleil"
-                        value={theme}
-                        onChange={(e) => setTheme(e.target.value)}
-                      />
-                    </div>
-                    <button className="btn btn-secondary" type="submit">
-                      Ajouter la paire
-                    </button>
-                  </form>
-                </details>
-              )}
             </div>
           </section>
         </div>

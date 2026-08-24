@@ -26,7 +26,6 @@ import {
   deleteRoom,
   generatePlayerId,
   generateSessionToken,
-  getAllRooms,
   getRoom,
   scheduleEmptyRoomExpiration,
 } from '../rooms/roomStore.js';
@@ -38,13 +37,7 @@ import {
 } from '../rooms/reconnection.js';
 import * as engine from '../game/engine.js';
 import { GameEngineError } from '../game/engine.js';
-import {
-  addPair,
-  getAllPairs,
-  getPairById,
-  removePair,
-  togglePair,
-} from '../content/pairsStore.js';
+import { getAllPairs } from '../content/pairsStore.js';
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -73,7 +66,6 @@ function toPublicState(room: Room): RoomStatePublic {
     phase: room.phase,
     players: engine.playersInJoinOrder(room).map(toPublicPlayer),
     settings: { ...room.settings },
-    pairs: getAllPairs(room.universe),
     round: room.round,
     turnOrder: [...room.turnOrder],
     votedPlayerIds: room.votes.map((v) => v.voterId),
@@ -83,13 +75,6 @@ function toPublicState(room: Room): RoomStatePublic {
 
 function broadcastRoomState(io: IoServer, room: Room): void {
   io.to(room.roomCode).emit('room:state', toPublicState(room));
-}
-
-/** Diffuse la liste de paires à jour à TOUTES les rooms actives (état global partagé, §7). */
-function broadcastPairsToAllRooms(io: IoServer): void {
-  for (const room of getAllRooms()) {
-    broadcastRoomState(io, room);
-  }
 }
 
 function sendRolePrivate(io: IoServer, player: Player): void {
@@ -442,57 +427,10 @@ export function registerSocketHandlers(io: IoServer): void {
         fail(socket, ack, 'INVALID_SETTINGS', 'revealChampionOnElimination doit être un booléen');
         return;
       }
-      if (next.selectedPairId !== null && !getPairById(room.universe, next.selectedPairId)) {
-        fail(socket, ack, 'PAIR_NOT_FOUND', 'selectedPairId invalide');
-        return;
-      }
 
       room.settings = next;
       ok(ack);
       broadcastRoomState(io, room);
-    });
-
-    socket.on('pairs:add', (payload, ack) => {
-      const ctx = requireCtx(socket, ack);
-      if (!ctx) return;
-      if (!requireHost(socket, ctx, ack)) return;
-      const champA = (payload?.champA ?? '').toString().trim();
-      const champB = (payload?.champB ?? '').toString().trim();
-      const theme = (payload?.theme ?? '').toString().trim();
-      if (!champA || !champB || !theme) {
-        fail(socket, ack, 'INVALID_PAIR', 'champA, champB et theme sont requis');
-        return;
-      }
-      addPair(ctx.room.universe, { champA, champB, theme });
-      ok(ack);
-      broadcastPairsToAllRooms(io);
-    });
-
-    socket.on('pairs:toggle', (payload, ack) => {
-      const ctx = requireCtx(socket, ack);
-      if (!ctx) return;
-      if (!requireHost(socket, ctx, ack)) return;
-      const updated = togglePair(ctx.room.universe, payload?.pairId, Boolean(payload?.enabled));
-      if (!updated) {
-        fail(socket, ack, 'PAIR_NOT_FOUND', 'Paire introuvable');
-        return;
-      }
-      ok(ack);
-      broadcastPairsToAllRooms(io);
-    });
-
-    socket.on('pairs:remove', (payload, ack) => {
-      const ctx = requireCtx(socket, ack);
-      if (!ctx) return;
-      if (!requireHost(socket, ctx, ack)) return;
-      const result = removePair(ctx.room.universe, payload?.pairId);
-      if (!result.ok) {
-        const code = result.reason === 'NOT_CUSTOM' ? 'CANNOT_REMOVE_BASE_PAIR' : 'PAIR_NOT_FOUND';
-        fail(socket, ack, code, 'Impossible de retirer cette paire');
-        return;
-      }
-      ok(ack);
-      broadcastPairsToAllRooms(io);
     });
 
     socket.on('game:start', (_payload, ack) => {
@@ -652,12 +590,30 @@ export function registerSocketHandlers(io: IoServer): void {
   });
 }
 
+/**
+ * Termine immédiatement une partie en cours suite au départ volontaire de l'hôte (bouton
+ * "Quitter" — voir client/src/components/HostQuitButton.tsx). Contrairement à une
+ * déconnexion, il n'y a pas de transfert de host : la partie est terminée pour tout le monde
+ * (docs/CONTRACT.md §5). `isHost` reste à true sur le joueur parti pour que les clients restants
+ * puissent afficher qui a quitté.
+ */
+function handleHostAbort(io: IoServer, room: Room, hostPlayerId: string): void {
+  const host = room.players.get(hostPlayerId);
+  if (host) {
+    host.connected = false;
+    host.socketId = null;
+  }
+  clearRoomTimer(room);
+  engine.abortGame(room);
+  broadcastRoomState(io, room);
+}
+
 /** Gestion commune départ explicite (player:leave) — lobby: retrait; en jeu: élimination. */
 function handlePlayerDeparture(
   io: IoServer,
   room: Room,
   playerId: string,
-  _opts: { explicit: boolean }
+  opts: { explicit: boolean }
 ): void {
   const player = room.players.get(playerId);
   if (!player) return;
@@ -669,6 +625,21 @@ function handlePlayerDeparture(
       deleteRoom(room.roomCode);
       return;
     }
+    broadcastRoomState(io, room);
+    return;
+  }
+
+  // Départ volontaire de l'hôte pendant une partie en cours -> la partie se termine, elle ne
+  // continue pas avec un host de secours (cf. déconnexion accidentelle, gérée séparément).
+  if (opts.explicit && player.isHost && room.phase !== 'game_over' && room.phase !== 'aborted') {
+    handleHostAbort(io, room, playerId);
+    return;
+  }
+
+  if (room.phase === 'game_over' || room.phase === 'aborted') {
+    migrateHostIfNeeded(room, playerId);
+    player.connected = false;
+    player.socketId = null;
     broadcastRoomState(io, room);
     return;
   }

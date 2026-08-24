@@ -87,9 +87,9 @@ interface PlayerRole {
   si N < 5 ; le toggle doit être désactivé/grisé côté UI dans ce cas).
 - Champion A (majoritaire) attribué aux civils, champion B (proche) attribué aux undercover,
   aucun champion à Mr White.
-- Tirage : une paire de champions activée est choisie aléatoirement (ou paire fixée par le
-  host via `settings.selectedPairId`) ; les rôles sont ensuite distribués aléatoirement parmi
-  les joueurs selon la table ci-dessus.
+- Tirage : une paire de champions est choisie aléatoirement dans le pool entier de l'univers de
+  la room (voir §7) ; les rôles sont ensuite distribués aléatoirement parmi les joueurs selon la
+  table ci-dessus.
 
 ---
 
@@ -97,6 +97,7 @@ interface PlayerRole {
 
 ```
 lobby → reveal → discussion → voting → round_result → (discussion | mrwhite_guess | game_over)
+(reveal | discussion | voting | round_result | mrwhite_guess) → aborted   [départ volontaire de l'hôte, voir §5]
 ```
 
 - **lobby** : joueurs rejoignent, host règle les paramètres et la liste de paires, host lance.
@@ -128,6 +129,10 @@ lobby → reveal → discussion → voting → round_result → (discussion | mr
 - **game_over** : révélation complète (tous les rôles + champions de tous les joueurs) via
   `game:ended`, affichage du vainqueur. Host peut relancer (`game:restart`) une nouvelle
   partie dans la même room (nouveaux rôles/champions, mêmes joueurs/paramètres).
+- **aborted** : phase terminale atteinte uniquement quand l'hôte quitte explicitement une
+  partie en cours (§5) — pas de vainqueur, pas de révélation des rôles. Les clients affichent
+  un écran "partie terminée" avec retour à l'accueil ; aucune reprise possible depuis cette
+  room (contrairement à `game_over` → `game:restart`).
 
 ---
 
@@ -172,8 +177,14 @@ Cette formule est mathématiquement complète (aucun état atteignable ne tombe 
   grâce (après quoi il est retiré de la partie, voir ci-dessous, ce qui débloque le vote).
   Passé 3 minutes sans reconnexion, le joueur est marqué éliminé (rôle révélé) si la partie
   est en cours, ou retiré si en lobby.
-- **Host quitte/déconnecte** : le rôle d'host est transféré automatiquement au joueur connecté
-  suivant par ordre d'arrivée dans la room.
+- **Host déconnecte** (perte de connexion accidentelle) : le rôle d'host est transféré
+  automatiquement au joueur connecté suivant par ordre d'arrivée dans la room ; la partie
+  continue normalement.
+- **Host quitte explicitement une partie en cours** (bouton "Quitter", visible pour l'hôte de
+  `reveal` à `mrwhite_guess`) : contrairement à une déconnexion, il n'y a **pas** de transfert
+  de host — la partie se termine immédiatement pour tout le monde, la room passe en phase
+  `aborted` (voir §6). Un départ volontaire de l'hôte en phase `lobby` reste un simple retrait
+  (transfert de host normal, la room continue en lobby).
 - **Room vide** : quand plus aucun joueur n'est connecté (0 socket actif), la room est détruite
   après 5 minutes.
 
@@ -198,18 +209,15 @@ interface ChampionPair {
   champB: string;
   theme: string;      // ex: "Tanks brutaux", "Duo assassins mêlée"
   lanes?: string[];   // ex: ["Top"], optionnel
-  enabled: boolean;
-  isCustom: boolean;
 }
 
 interface RoomSettings {
   mrWhiteEnabled: boolean;
   revealChampionOnElimination: boolean;
-  selectedPairId: string | null; // null = aléatoire parmi les paires enabled
 }
 
 type GamePhase = 'lobby' | 'reveal' | 'discussion' | 'voting' | 'round_result'
-               | 'mrwhite_guess' | 'game_over';
+               | 'mrwhite_guess' | 'game_over' | 'aborted';
 
 interface PublicPlayer {
   playerId: string;
@@ -226,7 +234,6 @@ interface RoomStatePublic {
   phase: GamePhase;
   players: PublicPlayer[];
   settings: RoomSettings;
-  pairs: ChampionPair[];
   round: number;
   turnOrder: string[];          // playerIds, ordre d'affichage indicatif (phase discussion)
   votedPlayerIds: string[];     // qui a voté (pas pour qui), phase voting
@@ -238,9 +245,6 @@ interface RoomStatePublic {
 'room:join'     { roomCode: string, playerName: string } -> ack { ok, playerId?, sessionToken?, error? }
 'room:rejoin'   { roomCode: string, playerId: string, sessionToken: string } -> ack { ok, error? }
 'settings:update' { settings: Partial<RoomSettings> }               // host only
-'pairs:add'     { champA: string, champB: string, theme: string }   // host only
-'pairs:toggle'  { pairId: string, enabled: boolean }                // host only
-'pairs:remove'  { pairId: string }                                  // host only, isCustom only
 'game:start'    {}                                                  // host only, phase lobby
 'reveal:ack'    {}                                                  // joueur confirme avoir vu son rôle
 'round:startVoting' {}                                              // host only, phase discussion
@@ -248,7 +252,7 @@ interface RoomStatePublic {
 'mrwhite:guess' { championGuess: string }                           // le Mr White éliminé, une fois
 'round:continue' {}                                                 // host only
 'game:restart'  {}                                                  // host only, phase game_over
-'player:leave'  {}
+'player:leave'  {}                                                  // hôte + partie en cours -> termine la partie (§5), sinon départ normal
 
 // ---- Serveur -> Client(s) ----
 'room:state'    RoomStatePublic                          // PUBLIC, à chaque changement d'état
@@ -280,19 +284,28 @@ Le serveur détient **deux pools indépendants**, un par univers (`server/src/co
 voir §6 `Universe`) — les paires League of Legends et Smash Bros Ultimate ne se mélangent
 jamais, et chaque room n'accède qu'au pool de son propre `universe`.
 
-- **Univers `'lol'`** — `server/src/content/championPairs.ts` (≥20 paires, thème + lane(s) si
+- **Univers `'lol'`** — `server/src/content/championPairs.ts` (≥40 paires, thème + lane(s) si
   pertinent), en partant de : Garen/Darius, Ashe/Sivir, Katarina/Talon, Lux/Morgana,
   Malphite/Ornn, Miss Fortune/Caitlyn, Jinx/Vayne, Yasuo/Yone, Vi/Jax, Nidalee/Rengar,
   Xin Zhao/Renekton, Ezreal/Kai'Sa, Annie/Zoe, Braum/Thresh, Soraka/Janna, Shen/Zed,
   Fiora/Riven, Karma/Sona, Teemo/Heimerdinger, Nautilus/Illaoi, Kled/Rumble, Ahri/Neeko,
   Diana/Leona, Tristana/Corki.
-- **Univers `'smash'`** — `server/src/content/smashPairs.ts` (≥20 paires, thème = lien de
+- **Univers `'smash'`** — `server/src/content/smashPairs.ts` (≥28 paires, thème = lien de
   moveset/lore — Echo Fighter officiel, clone, rivalité canon), ex. Mario/Luigi, Fox/Falco,
   Marth/Lucina, Pit/Dark Pit, Pikachu/Pichu.
 
-L'host peut, depuis le lobby (`pairs:add` / `pairs:toggle` / `pairs:remove`), éditer le pool de
-l'univers de sa room pour la durée de vie du process serveur (persisté en mémoire globale, pas
-par room, pour que les ajouts profitent à toutes les rooms suivantes du même univers).
+Chaque pool est une **liste fixe définie en code**, sans édition possible en cours de partie
+(pas d'UI host pour ajouter/désactiver une paire) : à `game:start`/`game:restart`, le serveur
+tire une paire au hasard dans le pool entier de l'univers de la room. Décision de conception :
+un pool global mutable partagé entre toutes les rooms d'un univers (ancienne mécanique
+`pairs:add`/`pairs:toggle`/`pairs:remove`) faisait qu'une action d'un host affectait aussi les
+rooms des autres hosts en cours de partie simultanément — contraire à l'exigence que chaque
+partie soit indépendante. Le pool étant maintenant immuable, ce risque n'existe plus.
+
+Chaque pool mélange volontairement des paires très proches (undercover difficile à repérer,
+ex. Echo Fighters officiels côté `'smash'`, frères/rivaux canon côté `'lol'`) et des paires plus
+éloignées (undercover plus facilement repérable) — voir les commentaires en tête de
+`championPairs.ts` / `smashPairs.ts`.
 
 ---
 

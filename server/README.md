@@ -106,37 +106,46 @@ documentée ici plutôt qu'improvisée silencieusement :
    contrat, mais sans `voteTimeSeconds` : le dépouillement se déclenche dès que tous les
    joueurs vivants ont voté, jamais par expiration d'un délai. Décision produit explicite,
    documentée dans `docs/CONTRACT.md` §3.
-5. **Migration de host immédiate** : le contrat dit "host quitte/déconnecte → rôle transféré
-   au joueur connecté suivant", sans préciser si c'est immédiat ou après le délai de grâce de
-   3 minutes. Implémenté comme immédiat (dès la déconnexion du socket, pas d'attente des 3
-   minutes) : la room a besoin d'un host actif en permanence pour progresser (ex:
-   `round:continue`, réglages).
-6. **`settings:update` / `pairs:add` / `pairs:toggle` / `pairs:remove` restreints à la phase
-   `lobby`** : le contrat section 7 dit "depuis le lobby" pour l'édition des paires ; étendu
-   par cohérence aux réglages de la room (changer les timers ou le toggle Mr White en cours de
-   partie serait déroutant et n'est pas couvert par le contrat).
+5. **Migration de host immédiate en cas de déconnexion accidentelle** : le contrat dit "host
+   déconnecte → rôle transféré au joueur connecté suivant", sans préciser si c'est immédiat ou
+   après le délai de grâce de 3 minutes. Implémenté comme immédiat (dès la déconnexion du
+   socket, pas d'attente des 3 minutes) : la room a besoin d'un host actif en permanence pour
+   progresser (ex: `round:continue`, réglages). **Exception** : un départ *volontaire* de
+   l'hôte (`player:leave`) pendant une partie en cours (phase ≠ `lobby`/`game_over`/`aborted`)
+   ne migre pas le host — il termine la partie pour tout le monde (phase `aborted`, voir §5 du
+   contrat) via le bouton "Quitter" côté client.
+6. **`settings:update` restreint à la phase `lobby`** : cohérent avec le fait que changer les
+   timers ou le toggle Mr White en cours de partie serait déroutant. (Les paires de champions
+   ne sont plus éditables du tout, en lobby ou ailleurs — voir décision 10.)
 7. **Départ hors élimination normale (déconnexion expirée après 3 minutes, ou `player:leave`
-   en cours de partie)** : le contrat exige explicitement "rôle révélé" pour le cas de la
-   déconnexion expirée. Comme `RoomStatePublic`/`PublicPlayer` n'exposent jamais
+   d'un non-host en cours de partie)** : le contrat exige explicitement "rôle révélé" pour le
+   cas de la déconnexion expirée. Comme `RoomStatePublic`/`PublicPlayer` n'exposent jamais
    `role`/`champion` d'autrui par construction, cette révélation ciblée réutilise l'événement
    `round:result` existant (avec `eliminatedPlayerId` = le seul joueur concerné) plutôt que
    d'inventer un nouvel événement hors contrat. Le même traitement est appliqué par symétrie à
-   `player:leave` en cours de partie (non explicitement spécifié par le contrat pour ce cas
-   précis, mais cohérent avec le traitement de la déconnexion expirée).
+   `player:leave` d'un non-host en cours de partie (non explicitement spécifié par le contrat
+   pour ce cas précis, mais cohérent avec le traitement de la déconnexion expirée). Le départ
+   volontaire du *host* en cours de partie suit un chemin distinct (décision 5) : pas de
+   révélation ciblée, la partie se termine directement en phase `aborted`.
 8. **`game:restart`** : fait repasser directement en phase `reveal` (nouveaux rôles/champions
    tirés) plutôt que de repasser par `lobby`, conformément à l'esprit "nouvelle partie dans la
    même room, mêmes joueurs/paramètres" — le host garde les settings existants et n'a pas à
    relancer `game:start` séparément.
 9. **Ack optionnels sur tous les événements client→serveur** : le contrat ne montre le format
    `-> ack {...}` explicitement que pour `room:create`/`room:join`/`room:rejoin`. Tous les
-   autres événements (settings, pairs, game:start, vote:submit, etc.) acceptent aussi un
+   autres événements (settings, game:start, vote:submit, etc.) acceptent aussi un
    callback d'ack `{ ok, error? }` en plus de l'événement `error` déjà prévu par le contrat —
    pur ajout de confort côté client, n'entre pas en conflit avec le contrat.
-10. **Univers de contenu (`Universe`)** : deux pools de paires totalement indépendants
-    (`content/pairsStore.ts`, un `Map` interne par univers), choisis une fois pour toutes à la
-    création de la room (`room:create.universe`) et jamais modifiables ensuite — rejoindre une
-    room hérite de son univers, pas de conversion à la volée. `pairs:add`/`toggle`/`remove`
-    n'affectent que le pool de l'univers de la room de l'hôte qui les déclenche.
+10. **Univers de contenu (`Universe`)** : deux pools de paires totalement indépendants et
+    **fixes** (`content/championPairs.ts` / `content/smashPairs.ts`, exposés via
+    `content/pairsStore.ts`), choisis une fois pour toutes à la création de la room
+    (`room:create.universe`) et jamais modifiables ensuite — rejoindre une room hérite de son
+    univers, pas de conversion à la volée. Les pools ne sont plus éditables en cours de partie
+    (pas d'UI host, pas d'événements `pairs:*`) : à `game:start`/`game:restart`, le serveur
+    tire une paire au hasard dans le pool entier de l'univers. Ce choix élimine par
+    construction tout risque qu'une action d'un host affecte les rooms d'autres hosts en cours
+    de partie simultanément (l'ancien pool mutable était partagé globalement par univers, pas
+    par room).
 
 ## Sécurité (rappel des invariants vérifiés)
 
@@ -163,7 +172,7 @@ src/
   content/
     championPairs.ts     liste de base League of Legends (univers 'lol')
     smashPairs.ts          liste de base Super Smash Bros Ultimate (univers 'smash')
-    pairsStore.ts           état mutable global des paires, un pool par univers
+    pairsStore.ts           accès aux pools de paires (fixes), un pool par univers
   game/
     roles.ts              distribution des rôles (pur, testable)
     turnOrder.ts           ordre de passage (pur, testable)

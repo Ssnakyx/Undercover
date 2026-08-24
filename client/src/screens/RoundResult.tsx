@@ -3,6 +3,7 @@ import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
 import { RoleEmblem, roleLabel } from '../components/RoleBadge';
+import { HostQuitButton } from '../components/HostQuitButton';
 
 export function RoundResult() {
   const { roomState, playerId, lastRoundResult, continueRound } = useRoom();
@@ -23,7 +24,15 @@ export function RoundResult() {
 
   return (
     <div className="screen">
-      <AppBar title="Résultat" right={<span className="badge badge--muted">Round {roomState.round}</span>} />
+      <AppBar
+        title="Résultat"
+        right={
+          <>
+            {isHost && <HostQuitButton />}
+            <span className="badge badge--muted">Round {roomState.round}</span>
+          </>
+        }
+      />
 
       <main className="main">
         <div className="container">

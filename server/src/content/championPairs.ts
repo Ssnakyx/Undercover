@@ -1,19 +1,15 @@
 // Source de vérité serveur pour les paires de champions (voir CONTRACT.md section 6 & 7).
 // champA = champion attribué aux civils (la "majorité").
 // champB = champion attribué aux undercover (la version "proche" thématiquement).
-// Toutes les entrées ci-dessous sont la liste de base fournie par défaut : enabled = true,
-// isCustom = false. Les ajouts faits par un host en cours de partie (pairs:add) viendront
-// s'ajouter à ce tableau en mémoire côté serveur avec isCustom = true.
+// Liste fixe, tirée aléatoirement à chaque partie (server/src/content/pairsStore.ts) — pas
+// d'édition en cours de partie, chaque room tire indépendamment des autres.
+//
+// La difficulté n'est pas un champ à part : elle vient de la proximité champA/champB. Le pool
+// mélange volontairement des paires très proches (quasi-jumelles thématiques, undercover
+// facile à camoufler) et des paires plus lâches (undercover plus repérable), pour que chaque
+// tirage varie en difficulté d'une partie à l'autre.
 
-export interface ChampionPair {
-  id: string;
-  champA: string;
-  champB: string;
-  theme: string; // ex: "Tanks brutaux", "Duo assassins mêlée"
-  lanes?: string[]; // ex: ["Top"], optionnel
-  enabled: boolean;
-  isCustom: boolean;
-}
+import type { ChampionPair } from '../types.js';
 
 export const championPairs: ChampionPair[] = [
   {
@@ -22,8 +18,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Darius',
     theme: "Lames rivales Demacia/Noxus",
     lanes: ['Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'ashe-sivir',
@@ -31,8 +25,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Sivir',
     theme: 'Tireuses hypercarry classiques',
     lanes: ['ADC'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'katarina-talon',
@@ -40,8 +32,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Talon',
     theme: "Duo d'assassins mêlée noxiens",
     lanes: ['Mid'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'lux-morgana',
@@ -49,8 +39,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Morgana',
     theme: 'Sœurs lumière et ténèbres',
     lanes: ['Mid', 'Support'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'malphite-ornn',
@@ -58,8 +46,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Ornn',
     theme: 'Colosses de pierre increvables',
     lanes: ['Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'caitlyn-missfortune',
@@ -67,8 +53,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Miss Fortune',
     theme: "Tireuses armées à l'autorité",
     lanes: ['ADC'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'jinx-vayne',
@@ -76,8 +60,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Vayne',
     theme: 'Justicières explosives à distance',
     lanes: ['ADC'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'yasuo-yone',
@@ -85,8 +67,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Yone',
     theme: 'Frères liés par la lame et le vent',
     lanes: ['Mid', 'Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'vi-jax',
@@ -94,8 +74,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Jax',
     theme: 'Brutes au poing redoutable',
     lanes: ['Jungle', 'Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'nidalee-rengar',
@@ -103,8 +81,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Rengar',
     theme: 'Chasseuse et prédateur rivaux',
     lanes: ['Jungle'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'xinzhao-renekton',
@@ -112,8 +88,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Renekton',
     theme: 'Guerriers féroces lance et lames',
     lanes: ['Jungle', 'Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'ezreal-kaisa',
@@ -121,8 +95,6 @@ export const championPairs: ChampionPair[] = [
     champB: "Kai'Sa",
     theme: 'Explorateurs mobiles, couple canon',
     lanes: ['ADC'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'annie-zoe',
@@ -130,8 +102,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Zoe',
     theme: "Mages à l'allure enfantine",
     lanes: ['Mid'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'braum-thresh',
@@ -139,8 +109,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Thresh',
     theme: 'Supports emblématiques à chaîne/bouclier',
     lanes: ['Support'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'soraka-janna',
@@ -148,8 +116,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Janna',
     theme: 'Enchanteresses soigneuses protectrices',
     lanes: ['Support'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'shen-zed',
@@ -157,8 +123,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Zed',
     theme: "Ninjas rivaux d'Ionia, ordre contre ombre",
     lanes: ['Top', 'Mid'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'fiora-riven',
@@ -166,8 +130,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Riven',
     theme: "Duellistes exilées à l'épée",
     lanes: ['Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'karma-sona',
@@ -175,8 +137,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Sona',
     theme: "Mages spirituelles d'Ionia",
     lanes: ['Support'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'teemo-heimerdinger',
@@ -184,8 +144,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Heimerdinger',
     theme: 'Yordles bricoleurs à pièges',
     lanes: ['Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'nautilus-illaoi',
@@ -193,8 +151,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Illaoi',
     theme: 'Colosses des profondeurs de Bilgewater',
     lanes: ['Support', 'Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'kled-rumble',
@@ -202,8 +158,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Rumble',
     theme: 'Petits gabarits en engins déchaînés',
     lanes: ['Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'ahri-neeko',
@@ -211,8 +165,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Neeko',
     theme: 'Métamorphes charmeuses envoûtantes',
     lanes: ['Mid'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'diana-leona',
@@ -220,8 +172,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Leona',
     theme: 'Rivales de la lune et du soleil',
     lanes: ['Jungle', 'Support'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'tristana-corki',
@@ -229,8 +179,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Corki',
     theme: 'Artilleurs miniatures explosifs',
     lanes: ['ADC', 'Mid'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'sett-sion',
@@ -238,8 +186,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Sion',
     theme: 'Tanks bruisers indestructibles',
     lanes: ['Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'akali-kayn',
@@ -247,8 +193,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Kayn',
     theme: "Assassins mêlée tapis dans l'ombre",
     lanes: ['Mid', 'Jungle'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'jhin-varus',
@@ -256,8 +200,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Varus',
     theme: 'Tireurs maudits aux mises en scène macabres',
     lanes: ['ADC'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'yuumi-seraphine',
@@ -265,8 +207,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Seraphine',
     theme: 'Supports pop stars musiciennes',
     lanes: ['Support'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'pyke-senna',
@@ -274,8 +214,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Senna',
     theme: 'Bourreaux vengeurs liés à Thresh',
     lanes: ['Support', 'ADC'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'camille-irelia',
@@ -283,8 +221,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Irelia',
     theme: 'Lames disciplinées très mobiles',
     lanes: ['Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'warwick-volibear',
@@ -292,8 +228,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Volibear',
     theme: 'Bêtes féroces de la jungle, loup contre ours',
     lanes: ['Jungle'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'blitzcrank-alistar',
@@ -301,8 +235,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Alistar',
     theme: 'Supports increvables à engage explosif',
     lanes: ['Support'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'lulu-nami',
@@ -310,8 +242,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Nami',
     theme: 'Enchanteresses fantaisistes protectrices',
     lanes: ['Support'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'twistedfate-graves',
@@ -319,8 +249,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Graves',
     theme: 'Rivaux de Bilgewater, cartes contre flingue',
     lanes: ['Mid', 'ADC'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'draven-lucian',
@@ -328,8 +256,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Lucian',
     theme: 'Carries tape-à-l’œil, showmen de la bot lane',
     lanes: ['ADC'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'ekko-leblanc',
@@ -337,8 +263,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'LeBlanc',
     theme: 'Manipulateurs du temps et de l’illusion',
     lanes: ['Mid'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'elise-evelynn',
@@ -346,8 +270,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Evelynn',
     theme: 'Séductrices dissimulant une véritable forme monstrueuse',
     lanes: ['Jungle'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'sylas-aatrox',
@@ -355,8 +277,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Aatrox',
     theme: 'Prisonniers devenus armes vivantes',
     lanes: ['Mid', 'Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'rakan-xayah',
@@ -364,8 +284,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Xayah',
     theme: 'Couple de danseurs emplumés vastaya',
     lanes: ['Support', 'ADC'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'aphelios-samira',
@@ -373,8 +291,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Samira',
     theme: 'Tireurs flamboyants aux armes multiples',
     lanes: ['ADC'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'masteryi-tryndamere',
@@ -382,8 +298,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Tryndamere',
     theme: 'Épéistes solo-carry increvables en fin de partie',
     lanes: ['Jungle', 'Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'leesin-khazix',
@@ -391,8 +305,6 @@ export const championPairs: ChampionPair[] = [
     champB: "Kha'Zix",
     theme: 'Prédateurs mobiles insaisissables de la jungle',
     lanes: ['Jungle'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'veigar-ziggs',
@@ -400,8 +312,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Ziggs',
     theme: 'Petits mages à la puissance dévastatrice',
     lanes: ['Mid'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'poppy-gnar',
@@ -409,8 +319,6 @@ export const championPairs: ChampionPair[] = [
     champB: 'Gnar',
     theme: 'Petits gabarits, marteau et boomerang redoutables',
     lanes: ['Top'],
-    enabled: true,
-    isCustom: false,
   },
   {
     id: 'kassadin-malzahar',
@@ -418,7 +326,56 @@ export const championPairs: ChampionPair[] = [
     champB: 'Malzahar',
     theme: 'Mages liés au Néant',
     lanes: ['Mid'],
-    enabled: true,
-    isCustom: false,
+  },
+  // --- Paires très proches (undercover difficile à repérer) ---
+  {
+    id: 'nasus-renekton',
+    champA: 'Nasus',
+    champB: 'Renekton',
+    theme: 'Frères Ascendus égyptiens, même culte déchu',
+    lanes: ['Top'],
+  },
+  {
+    id: 'karthus-mordekaiser',
+    champA: 'Karthus',
+    champB: 'Mordekaiser',
+    theme: 'Seigneurs blindés de la mort et du Néant',
+    lanes: ['Mid', 'Jungle'],
+  },
+  {
+    id: 'xerath-velkoz',
+    champA: 'Xerath',
+    champB: "Vel'Koz",
+    theme: 'Artilleurs à distance, énergie pure dévastatrice',
+    lanes: ['Mid', 'Support'],
+  },
+  {
+    id: 'anivia-lissandra',
+    champA: 'Anivia',
+    champB: 'Lissandra',
+    theme: 'Maîtresses de la glace du Freljord',
+    lanes: ['Mid'],
+  },
+  // --- Paires plus éloignées (undercover plus facile à repérer) ---
+  {
+    id: 'amumu-zac',
+    champA: 'Amumu',
+    champB: 'Zac',
+    theme: 'Tanks jungle increvables, momie triste contre gelée',
+    lanes: ['Jungle'],
+  },
+  {
+    id: 'singed-drmundo',
+    champA: 'Singed',
+    champB: 'Dr. Mundo',
+    theme: "Chimistes fous de Zaun, styles de combat opposés",
+    lanes: ['Top'],
+  },
+  {
+    id: 'taric-galio',
+    champA: 'Taric',
+    champB: 'Galio',
+    theme: 'Gardiens protecteurs, gemme contre gargouille',
+    lanes: ['Support', 'Mid'],
   },
 ];

@@ -8,6 +8,7 @@ import { Voting } from '../screens/Voting';
 import { RoundResult } from '../screens/RoundResult';
 import { MrWhiteGuess } from '../screens/MrWhiteGuess';
 import { GameOver } from '../screens/GameOver';
+import { GameAborted } from '../screens/GameAborted';
 
 function LoadingScreen() {
   return (
@@ -62,6 +63,8 @@ export function GameRoute() {
       return <MrWhiteGuess />;
     case 'game_over':
       return <GameOver />;
+    case 'aborted':
+      return <GameAborted />;
     default:
       return <LoadingScreen />;
   }

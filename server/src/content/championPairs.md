@@ -4,7 +4,10 @@ Une ligne par paire, une phrase justifiant le rapprochement (rôle de jeu, esth�
 Sert à l'agent QA pour vérifier la cohérence sans connaître LoL par cœur. La liste couvre les
 24 paires imposées par CONTRACT.md §7 + 6 paires ajoutées par l'agent Contenu pour dépasser
 confortablement le seuil de 20, plus 15 paires supplémentaires ajoutées ensuite pour varier
-davantage les parties (total : 45 paires, toutes `enabled: true`, `isCustom: false`).
+davantage les parties, plus 7 paires ajoutées enfin pour élargir l'écart de difficulté entre
+paires très proches (undercover difficile à repérer) et paires plus éloignées (undercover plus
+repérable) — total : 52 paires. Liste fixe en code, pas de champ `enabled`/`isCustom` (voir §7
+du contrat).
 
 1. **garen-darius** — Deux épéistes bruisers de Top lane increvables, incarnant la rivalité Demacia/Noxus.
 2. **ashe-sivir** — Deux marksmen "hypercarry" classiques d'ADC, l'une à l'arc, l'autre au boomerang.
@@ -51,6 +54,13 @@ davantage les parties (total : 45 paires, toutes `enabled: true`, `isCustom: fal
 43. **veigar-ziggs** — Deux petits mages Mid à l'apparence inoffensive mais au burst dévastateur.
 44. **poppy-gnar** — Deux petits gabarits Top redoutables au combat rapproché, marteau contre boomerang.
 45. **kassadin-malzahar** — Deux mages Mid liés au Néant, l'un le fuyant, l'autre le vénérant.
+46. **nasus-renekton** — Frères Ascendus égyptiens du même culte déchu de Shurima, Top lane. *(paire très proche, difficulté haute)*
+47. **karthus-mordekaiser** — Deux seigneurs blindés/spectraux de la mort, obsédés par le contrôle des âmes. *(paire très proche, difficulté haute)*
+48. **xerath-velkoz** — Deux artilleurs mages à très longue portée, énergie pure dévastatrice. *(paire très proche, difficulté haute)*
+49. **anivia-lissandra** — Deux maîtresses de la glace du Freljord, contrôle de zone par le gel. *(paire très proche, difficulté haute)*
+50. **amumu-zac** — Deux tanks Jungle increvables à l'apparence radicalement différente (momie triste chétive contre gelée massive). *(paire éloignée, difficulté basse)*
+51. **singed-drmundo** — Deux chimistes fous de Zaun, styles de combat opposés (kite/fuite contre brawl frontal). *(paire éloignée, difficulté basse)*
+52. **taric-galio** — Deux gardiens protecteurs à l'esthétique opposée, gemme scintillante contre gargouille de pierre. *(paire éloignée, difficulté basse)*
 
 ## Validation croisée — tags de rôle officiels Riot (Data Dragon)
 
@@ -61,6 +71,8 @@ aucune icône ni texte de lore Riot n'est utilisé dans le jeu, conformément à
 27 des 30 paires initiales partagent au moins un tag de rôle officiel (3 exceptions justifiées
 par un lien de lore explicite plutôt que mécanique) ; parmi les 15 paires ajoutées ensuite,
 12 partagent un tag et 3 sont également des liens de lore explicites (colonne "Rôle commun").
+Parmi les 7 dernières paires (46-52, ajoutées pour la difficulté), 5 partagent un tag officiel
+et 2 sont des liens de lore explicites.
 
 | Paire | Tags champA | Tags champB | Rôle commun |
 |---|---|---|---|
@@ -109,3 +121,10 @@ par un lien de lore explicite plutôt que mécanique) ; parmi les 15 paires ajou
 | veigar-ziggs | Mage | Mage | Mage |
 | poppy-gnar | Tank, Fighter | Fighter, Tank | Tank, Fighter |
 | kassadin-malzahar | Assassin, Mage | Mage, Assassin | Assassin, Mage |
+| nasus-renekton | Fighter, Tank | Fighter, Tank | Fighter, Tank |
+| karthus-mordekaiser | Mage | Fighter | _aucun (lien par lore : seigneurs de la mort/du Néant)_ |
+| xerath-velkoz | Mage | Mage | Mage |
+| anivia-lissandra | Mage, Support | Mage | Mage |
+| amumu-zac | Tank, Mage | Tank, Fighter | Tank |
+| singed-drmundo | Tank, Fighter | Fighter, Tank | Fighter, Tank |
+| taric-galio | Support, Fighter | Tank, Mage | _aucun (lien par lore : gardiens protecteurs)_ |

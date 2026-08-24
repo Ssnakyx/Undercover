@@ -2,6 +2,7 @@ import { useRoom } from '../socket/RoomProvider';
 import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
+import { HostQuitButton } from '../components/HostQuitButton';
 
 // Pas de saisie d'indice, pas de minuteur (cf. CONTRACT.md §3) : cet écran affiche uniquement
 // l'ordre de passage à titre indicatif. Les joueurs décrivent leur champion à voix haute, hors
@@ -20,7 +21,15 @@ export function Discussion() {
 
   return (
     <div className="screen">
-      <AppBar title="Discussion" right={<span className="badge badge--muted">Round {roomState.round}</span>} />
+      <AppBar
+        title="Discussion"
+        right={
+          <>
+            {isHost && <HostQuitButton />}
+            <span className="badge badge--muted">Round {roomState.round}</span>
+          </>
+        }
+      />
 
       <main className="main">
         <div className="container">

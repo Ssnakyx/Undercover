@@ -4,6 +4,7 @@ import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
 import { RoleEmblem } from '../components/RoleBadge';
+import { HostQuitButton } from '../components/HostQuitButton';
 import { universeCopy } from '../lib/universe';
 
 // Pas de maquette dédiée pour cette phase (absente de /design) — réutilise la
@@ -19,6 +20,7 @@ export function MrWhiteGuess() {
   const eliminatedId = lastRoundResult?.eliminatedPlayerId ?? null;
   const eliminated = eliminatedId ? roomState.players.find((p) => p.playerId === eliminatedId) : null;
   const isGuesser = eliminatedId !== null && eliminatedId === playerId;
+  const isHost = roomState.players.find((p) => p.playerId === playerId)?.isHost ?? false;
   const unit = universeCopy(roomState.universe).unitLabel;
 
   function handleSubmit(e: FormEvent) {
@@ -31,7 +33,15 @@ export function MrWhiteGuess() {
 
   return (
     <div className="screen">
-      <AppBar title="Devinette de Mr White" right={<span className="badge badge--muted">Round {roomState.round}</span>} />
+      <AppBar
+        title="Devinette de Mr White"
+        right={
+          <>
+            {isHost && <HostQuitButton />}
+            <span className="badge badge--muted">Round {roomState.round}</span>
+          </>
+        }
+      />
 
       <main className="main">
         <div className="container">

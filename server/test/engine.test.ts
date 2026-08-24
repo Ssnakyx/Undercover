@@ -288,3 +288,38 @@ describe('resolveMrWhiteTimeout', () => {
     expect(room.mrWhiteGuessPlayerId).toBeNull();
   });
 });
+
+describe('abortGame — départ volontaire de l\'hôte en cours de partie', () => {
+  let room: Room;
+
+  beforeEach(() => {
+    _resetRoomStoreForTests();
+    room = createRoom();
+  });
+
+  afterEach(() => {
+    _resetRoomStoreForTests();
+  });
+
+  it('passe la room en phase "aborted" et efface l\'état de phase transitoire', () => {
+    room.phase = 'voting';
+    room.phaseDeadline = Date.now() + 30_000;
+    room.mrWhiteGuessPlayerId = 'someone';
+
+    engine.abortGame(room);
+
+    expect(room.phase).toBe('aborted');
+    expect(room.phaseDeadline).toBeNull();
+    expect(room.mrWhiteGuessPlayerId).toBeNull();
+  });
+
+  it('fonctionne depuis n\'importe quelle phase de partie en cours (ex: reveal, mrwhite_guess)', () => {
+    room.phase = 'reveal';
+    engine.abortGame(room);
+    expect(room.phase).toBe('aborted');
+
+    room.phase = 'mrwhite_guess';
+    engine.abortGame(room);
+    expect(room.phase).toBe('aborted');
+  });
+});

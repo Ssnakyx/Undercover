@@ -17,7 +17,6 @@ export function defaultRoomSettings(): RoomSettings {
   return {
     mrWhiteEnabled: false,
     revealChampionOnElimination: false,
-    selectedPairId: null,
   };
 }
 

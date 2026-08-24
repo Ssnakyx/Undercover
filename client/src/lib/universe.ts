@@ -7,7 +7,6 @@ export interface UniverseCopy {
   name: string;
   tagline: string;
   unitLabel: string; // "champion" / "combattant" — utilisé dans les instructions de jeu
-  unitLabelCapitalized: string;
   nameLabel: string; // libellé du champ pseudo
   namePlaceholder: string;
 }
@@ -19,7 +18,6 @@ const COPY: Record<Universe, UniverseCopy> = {
     tagline:
       "Un traître se cache dans l'équipe. Décrivez votre champion sans le nommer, et démasquez les intrus avant la fin de la partie.",
     unitLabel: 'champion',
-    unitLabelCapitalized: 'Champion',
     nameLabel: "Ton pseudo d'invocateur",
     namePlaceholder: 'ex. NoctaJungle',
   },
@@ -29,7 +27,6 @@ const COPY: Record<Universe, UniverseCopy> = {
     tagline:
       "Un traître se cache dans l'équipe. Décrivez votre combattant sans le nommer, et démasquez les intrus avant la fin de la partie.",
     unitLabel: 'combattant',
-    unitLabelCapitalized: 'Combattant',
     nameLabel: 'Ton pseudo de smasher',
     namePlaceholder: 'ex. FalconPunch_',
   },

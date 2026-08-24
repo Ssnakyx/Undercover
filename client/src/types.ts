@@ -7,20 +7,9 @@ export type Role = 'civil' | 'undercover' | 'mrwhite';
 // indépendants. Aucun asset visuel officiel dans les deux cas (CONTRACT.md §0).
 export type Universe = 'lol' | 'smash';
 
-export interface ChampionPair {
-  id: string;
-  champA: string;
-  champB: string;
-  theme: string;
-  lanes?: string[];
-  enabled: boolean;
-  isCustom: boolean;
-}
-
 export interface RoomSettings {
   mrWhiteEnabled: boolean;
   revealChampionOnElimination: boolean;
-  selectedPairId: string | null;
 }
 
 export type GamePhase =
@@ -30,7 +19,8 @@ export type GamePhase =
   | 'voting'
   | 'round_result'
   | 'mrwhite_guess'
-  | 'game_over';
+  | 'game_over'
+  | 'aborted'; // hôte a quitté explicitement une partie en cours (voir CONTRACT.md §5)
 
 export interface PublicPlayer {
   playerId: string;
@@ -47,7 +37,6 @@ export interface RoomStatePublic {
   phase: GamePhase;
   players: PublicPlayer[];
   settings: RoomSettings;
-  pairs: ChampionPair[];
   round: number;
   turnOrder: string[];
   votedPlayerIds: string[];
@@ -91,21 +80,6 @@ export interface RoomRejoinAck {
 
 export interface SettingsUpdatePayload {
   settings: Partial<RoomSettings>;
-}
-
-export interface PairsAddPayload {
-  champA: string;
-  champB: string;
-  theme: string;
-}
-
-export interface PairsTogglePayload {
-  pairId: string;
-  enabled: boolean;
-}
-
-export interface PairsRemovePayload {
-  pairId: string;
 }
 
 export interface VoteSubmitPayload {
@@ -155,9 +129,6 @@ export interface ClientToServerEvents {
   'room:join': (payload: RoomJoinPayload, ack: (res: RoomJoinAck) => void) => void;
   'room:rejoin': (payload: RoomRejoinPayload, ack: (res: RoomRejoinAck) => void) => void;
   'settings:update': (payload: SettingsUpdatePayload, ack?: (res: AckResponse) => void) => void;
-  'pairs:add': (payload: PairsAddPayload, ack?: (res: AckResponse) => void) => void;
-  'pairs:toggle': (payload: PairsTogglePayload, ack?: (res: AckResponse) => void) => void;
-  'pairs:remove': (payload: PairsRemovePayload, ack?: (res: AckResponse) => void) => void;
   'game:start': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'reveal:ack': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'round:startVoting': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
