@@ -35,3 +35,45 @@ confortablement le seuil de 20 (total : 30 paires, toutes `enabled: true`, `isCu
 28. **yuumi-seraphine** — Deux supports à la persona de pop star, l'une IA féline en ligne, l'autre chanteuse de Zaun/Piltover.
 29. **pyke-senna** — Bourreaux vengeurs tous deux liés au lore de Thresh (le crochet, la lanterne), exécution des ennemis affaiblis.
 30. **camille-irelia** — Deux lames Top très mobiles et disciplinées, ordre/loi (Piltover) contre maîtrise martiale (Ionia).
+
+## Validation croisée — tags de rôle officiels Riot (Data Dragon)
+
+Vérification automatique de la cohérence de chaque paire à partir des tags de rôle officiels
+(Fighter/Tank/Mage/Marksman/Assassin/Support), issus du fichier de données fourni par
+l'utilisateur (champions.ts, dataset Data Dragon — utilisé uniquement pour ces tags courts,
+aucune icône ni texte de lore Riot n'est utilisé dans le jeu, conformément à CONTRACT.md §0).
+27 des 30 paires partagent au moins un tag de rôle officiel ; les 3 exceptions sont justifiées
+par un lien de lore explicite plutôt que mécanique (colonne "Rôle commun").
+
+| Paire | Tags champA | Tags champB | Rôle commun |
+|---|---|---|---|
+| garen-darius | Fighter, Tank | Fighter, Tank | Fighter, Tank |
+| ashe-sivir | Marksman, Support | Marksman | Marksman |
+| katarina-talon | Assassin, Mage | Assassin | Assassin |
+| lux-morgana | Mage, Support | Mage, Support | Mage, Support |
+| malphite-ornn | Tank, Fighter | Tank, Fighter | Tank, Fighter |
+| caitlyn-missfortune | Marksman | Marksman | Marksman |
+| jinx-vayne | Marksman | Marksman, Assassin | Marksman |
+| yasuo-yone | Fighter, Assassin | Assassin, Fighter | Fighter, Assassin |
+| vi-jax | Fighter, Assassin | Fighter, Assassin | Fighter, Assassin |
+| nidalee-rengar | Assassin, Mage | Assassin, Fighter | Assassin |
+| xinzhao-renekton | Fighter, Assassin | Fighter, Tank | Fighter |
+| ezreal-kaisa | Marksman, Mage | Marksman | Marksman |
+| annie-zoe | Mage | Mage, Support | Mage |
+| braum-thresh | Support, Tank | Support, Fighter | Support |
+| soraka-janna | Support, Mage | Support, Mage | Support, Mage |
+| shen-zed | Tank | Assassin | _aucun (lien par lore : rivaux d'Ionia)_ |
+| fiora-riven | Fighter, Assassin | Fighter, Assassin | Fighter, Assassin |
+| karma-sona | Mage, Support | Support, Mage | Mage, Support |
+| teemo-heimerdinger | Marksman, Assassin | Mage, Support | _aucun (lien par lore : Yordles bricoleurs à pièges)_ |
+| nautilus-illaoi | Tank, Fighter | Fighter, Tank | Tank, Fighter |
+| kled-rumble | Fighter, Tank | Fighter, Mage | Fighter |
+| ahri-neeko | Mage, Assassin | Mage, Support | Mage |
+| diana-leona | Fighter, Mage | Tank, Support | _aucun (lien par lore : lune contre soleil)_ |
+| tristana-corki | Marksman, Assassin | Marksman | Marksman |
+| sett-sion | Fighter, Tank | Tank, Fighter | Fighter, Tank |
+| akali-kayn | Assassin | Fighter, Assassin | Assassin |
+| jhin-varus | Marksman, Mage | Marksman, Mage | Marksman, Mage |
+| yuumi-seraphine | Support, Mage | Mage, Support | Support, Mage |
+| pyke-senna | Support, Assassin | Marksman, Support | Support |
+| camille-irelia | Fighter, Tank | Fighter, Assassin | Fighter |
