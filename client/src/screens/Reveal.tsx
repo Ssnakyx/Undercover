@@ -3,6 +3,7 @@ import { useRoom } from '../socket/RoomProvider';
 import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
 import { HostQuitButton } from '../components/HostQuitButton';
+import { HostRestartButton } from '../components/HostRestartButton';
 import { universeCopy } from '../lib/universe';
 
 export function Reveal() {
@@ -33,6 +34,7 @@ export function Reveal() {
         title="Révélation"
         right={
           <>
+            {isHost && <HostRestartButton />}
             {isHost && <HostQuitButton />}
             <span className="badge badge--muted">Round {roomState.round}</span>
           </>

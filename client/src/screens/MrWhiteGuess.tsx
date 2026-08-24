@@ -5,6 +5,7 @@ import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
 import { RoleEmblem } from '../components/RoleBadge';
 import { HostQuitButton } from '../components/HostQuitButton';
+import { HostRestartButton } from '../components/HostRestartButton';
 import { universeCopy } from '../lib/universe';
 
 // Pas de maquette dédiée pour cette phase (absente de /design) — réutilise la
@@ -37,6 +38,7 @@ export function MrWhiteGuess() {
         title="Devinette de Mr White"
         right={
           <>
+            {isHost && <HostRestartButton />}
             {isHost && <HostQuitButton />}
             <span className="badge badge--muted">Round {roomState.round}</span>
           </>

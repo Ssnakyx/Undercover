@@ -9,6 +9,7 @@ import { RoundResult } from '../screens/RoundResult';
 import { MrWhiteGuess } from '../screens/MrWhiteGuess';
 import { GameOver } from '../screens/GameOver';
 import { GameAborted } from '../screens/GameAborted';
+import { ChatBox } from '../components/ChatBox';
 
 function LoadingScreen() {
   return (
@@ -48,7 +49,16 @@ export function GameRoute() {
     return <LoadingScreen />;
   }
 
-  switch (roomState.phase) {
+  return (
+    <>
+      <PhaseScreen phase={roomState.phase} />
+      <ChatBox />
+    </>
+  );
+}
+
+function PhaseScreen({ phase }: { phase: string }) {
+  switch (phase) {
     case 'lobby':
       return <Lobby />;
     case 'reveal':

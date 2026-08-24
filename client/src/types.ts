@@ -86,6 +86,10 @@ export interface VoteSubmitPayload {
   targetPlayerId: string;
 }
 
+export interface ChatSendPayload {
+  text: string;
+}
+
 export interface MrWhiteGuessPayload {
   championGuess: string;
 }
@@ -122,6 +126,14 @@ export interface ErrorPayload {
   message: string;
 }
 
+export interface ChatMessage {
+  id: string;
+  playerId: string;
+  name: string;
+  text: string;
+  ts: number;
+}
+
 // ---- Événements socket (miroir de server/src/socket/events.ts) ----
 
 export interface ClientToServerEvents {
@@ -137,6 +149,7 @@ export interface ClientToServerEvents {
   'round:continue': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'game:restart': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'player:leave': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
+  'chat:send': (payload: ChatSendPayload, ack?: (res: AckResponse) => void) => void;
 }
 
 export interface ServerToClientEvents {
@@ -144,5 +157,7 @@ export interface ServerToClientEvents {
   'role:private': (payload: RolePrivatePayload) => void;
   'round:result': (payload: RoundResultPayload) => void;
   'game:ended': (payload: GameEndedPayload) => void;
+  'chat:message': (payload: ChatMessage) => void;
+  'chat:history': (payload: ChatMessage[]) => void;
   error: (payload: ErrorPayload) => void;
 }

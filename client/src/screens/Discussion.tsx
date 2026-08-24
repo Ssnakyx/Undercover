@@ -3,6 +3,7 @@ import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
 import { HostQuitButton } from '../components/HostQuitButton';
+import { HostRestartButton } from '../components/HostRestartButton';
 
 // Pas de saisie d'indice, pas de minuteur (cf. CONTRACT.md §3) : cet écran affiche uniquement
 // l'ordre de passage à titre indicatif. Les joueurs décrivent leur champion à voix haute, hors
@@ -25,6 +26,7 @@ export function Discussion() {
         title="Discussion"
         right={
           <>
+            {isHost && <HostRestartButton />}
             {isHost && <HostQuitButton />}
             <span className="badge badge--muted">Round {roomState.round}</span>
           </>

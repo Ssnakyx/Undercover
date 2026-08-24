@@ -130,7 +130,11 @@ documentée ici plutôt qu'improvisée silencieusement :
 8. **`game:restart`** : fait repasser directement en phase `reveal` (nouveaux rôles/champions
    tirés) plutôt que de repasser par `lobby`, conformément à l'esprit "nouvelle partie dans la
    même room, mêmes joueurs/paramètres" — le host garde les settings existants et n'a pas à
-   relancer `game:start` séparément.
+   relancer `game:start` séparément. Initialement restreint à la phase `game_over`, ouvert
+   ensuite à toute phase de partie en cours (`reveal` à `mrwhite_guess`) via un bouton dédié
+   côté client (`HostRestartButton`, voir `client/README.md`) — l'hôte peut abandonner et
+   redistribuer les rôles à tout moment, pas seulement en fin de partie. Seules `lobby`
+   (`game:start` s'en charge déjà) et `aborted` (terminale, voir décision 5) restent exclues.
 9. **Ack optionnels sur tous les événements client→serveur** : le contrat ne montre le format
    `-> ack {...}` explicitement que pour `room:create`/`room:join`/`room:rejoin`. Tous les
    autres événements (settings, game:start, vote:submit, etc.) acceptent aussi un
@@ -146,6 +150,13 @@ documentée ici plutôt qu'improvisée silencieusement :
     construction tout risque qu'une action d'un host affecte les rooms d'autres hosts en cours
     de partie simultanément (l'ancien pool mutable était partagé globalement par univers, pas
     par room).
+11. **Chat (`chat:send`/`chat:message`/`chat:history`)** : convenience pure, volontairement hors
+    de la machine à états — aucune restriction de phase (fonctionne en lobby comme en pleine
+    partie), aucun rôle/permission particulier (n'importe quel joueur de la room). Un tampon
+    borné (`CHAT_HISTORY_LIMIT = 50` messages, `Room.chatMessages`) est rejoué une seule fois via
+    `chat:history` à `room:create`/`room:join`/`room:rejoin`, pour qu'une reconnexion ne perde
+    pas tout le contexte récent — pas d'archivage long terme au-delà de ce tampon, cohérent avec
+    le reste du modèle "état en mémoire" de la room (§1).
 
 ## Sécurité (rappel des invariants vérifiés)
 

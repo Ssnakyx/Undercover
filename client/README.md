@@ -114,6 +114,38 @@ qu'improvisée silencieusement (même esprit que `server/README.md`) :
    atterrissent sur l'écran `GameAborted`, construit dans le même esprit que `MrWhiteGuess`
    (réutilise `.eliminated-block`) — seule issue : retour à l'accueil, aucune reprise possible
    depuis cette room.
+10. **`HostRestartButton`** : à côté du bouton "Quitter", un second contrôle host-only permet
+    de relancer immédiatement la partie en cours (nouveaux rôles/champions, mêmes réglages)
+    sans attendre `game_over` — cf. `game:restart` relâché côté serveur à toute phase de partie
+    en cours (`docs/CONTRACT.md` §3). Confirmation `window.confirm` avant l'action, comme pour
+    `HostQuitButton` — action destructrice (abandonne la manche en cours pour tous).
+11. **Lien d'invitation** : `Lobby` expose un bouton "Copier le lien d'invitation"
+    (`${origin}/play/{universe}?code={roomCode}`) en plus du code brut à 5 caractères. `Home`
+    lit `?code=` (via `useSearchParams`) pour préremplir les cases de code et basculer
+    directement sur l'onglet "Rejoindre" — pure commodité client, `room:join` reste inchangé
+    (voir `docs/CONTRACT.md` §5).
+12. **Pseudo mémorisé** : un seul champ `pseudo` partagé entre les formulaires "Créer" et
+    "Rejoindre" de `Home` (au lieu de deux états séparés) — logiquement c'est le même pseudo
+    quel que soit le mode. Persisté dans `localStorage['lolcover:pseudo']`
+    (`lib/session.ts` : `savePseudo`/`loadPseudo`) à chaque frappe, indépendamment de toute
+    room — évite d'avoir à le retaper à chaque partie (`docs/CONTRACT.md` §5).
+13. **`ChatBox`** : chat texte libre, monté une seule fois dans `GameRoute` (pas dans chaque
+    écran) — bouton flottant ancré sous l'`AppBar` (`position: fixed`, indépendant de la
+    hauteur variable de l'`ActionBar` en bas), visible sur toutes les phases (lobby comme en
+    pleine partie). Pas d'état React dédié au compteur de non-lus dans le composant : il vient
+    de `RoomProvider.chatUnreadCount`, incrémenté directement dans le handler de l'événement
+    socket `chat:message` et remis à zéro par `markChatRead()` à l'ouverture/fermeture du
+    panneau — évite un `setState` dérivé dans un `useEffect` (anti-pattern signalé par le
+    linter React).
+14. **Reprise de partie depuis `MainMenu`** : `GameRoute` savait déjà rejoindre une room via
+    `room:rejoin` (session en `localStorage`), mais uniquement si le navigateur atterrissait
+    directement sur `/room/{roomCode}` — fermer l'onglet puis rouvrir l'app sur `/` n'offrait
+    aucun chemin de retour. `MainMenu` liste maintenant, au montage
+    (`listStoredRoomCodes()` dans `lib/session.ts`, scan des clés `lolcover:{roomCode}` valides),
+    toutes les rooms encore reprenables et propose un bouton "Reprendre" par room — pas de
+    nouvel état serveur, juste une navigation vers `/room/{roomCode}` qui déclenche le flux de
+    reconnexion existant. `HostQuitButton`/`GameAborted` continuent d'effacer explicitement leur
+    session : ce sont des sorties définitives (partie terminée), pas des départs à reprendre.
 
 ## Structure
 
@@ -122,15 +154,17 @@ src/
   types.ts             types partagés (miroir exact du contrat)
   socket/
     client.ts           instance socket.io-client unique, typée
-    RoomProvider.tsx     contexte React : état de room, session, tous les emit typés
+    RoomProvider.tsx     contexte React : état de room, session, chat, tous les emit typés
   routes/
-    GameRoute.tsx        /room/:roomCode — reconnexion + switch d'écran sur roomState.phase
+    GameRoute.tsx        /room/:roomCode — reconnexion + switch d'écran sur roomState.phase + ChatBox
   screens/               MainMenu, Home, Lobby, Reveal, Discussion, Voting, RoundResult,
                          MrWhiteGuess, GameOver, GameAborted
-  components/            Avatar, AppBar, ActionBar, HostQuitButton, RoleBadge, IconDefs
-  lib/                   session (localStorage), roles (aperçu répartition), avatar (couleurs),
-                         universe (textes par univers 'lol' / 'smash')
+  components/            Avatar, AppBar, ActionBar, HostQuitButton, HostRestartButton, ChatBox,
+                         RoleBadge, IconDefs
+  lib/                   session (localStorage : session de room + pseudo), roles (aperçu
+                         répartition), avatar (couleurs), universe (textes par univers 'lol' / 'smash')
   styles/
-    tokens.css           design-system.css porté verbatim depuis /design
+    tokens.css           design-system.css porté verbatim depuis /design + composants transverses
+                         (chat, boutons host) ajoutés depuis
     screens.css          styles par écran portés depuis /design/*.html
 ```

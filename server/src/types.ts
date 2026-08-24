@@ -112,6 +112,10 @@ export interface VoteSubmitPayload {
   targetPlayerId: string;
 }
 
+export interface ChatSendPayload {
+  text: string;
+}
+
 export interface MrWhiteGuessPayload {
   championGuess: string;
 }
@@ -146,6 +150,16 @@ export interface GameEndedPayload {
 export interface ErrorPayload {
   code: string;
   message: string;
+}
+
+/** Message de chat texte libre entre joueurs d'une room — pure convenience, ne fait pas
+ * partie de la boucle de jeu (pas de rôle/champion, aucun impact sur la machine à états). */
+export interface ChatMessage {
+  id: string;
+  playerId: string;
+  name: string;
+  text: string;
+  ts: number; // epoch ms
 }
 
 // ---------------------------------------------------------------------------
@@ -192,4 +206,5 @@ export interface Room {
   currentPairId: string | null; // paire tirée pour la partie en cours
   championA: string | null;
   championB: string | null;
+  chatMessages: ChatMessage[]; // tampon borné (voir CHAT_HISTORY_LIMIT), pas d'archivage long terme
 }

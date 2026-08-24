@@ -98,6 +98,7 @@ interface PlayerRole {
 ```
 lobby → reveal → discussion → voting → round_result → (discussion | mrwhite_guess | game_over)
 (reveal | discussion | voting | round_result | mrwhite_guess) → aborted   [départ volontaire de l'hôte, voir §5]
+(reveal | discussion | voting | round_result | mrwhite_guess | game_over) → reveal   [game:restart, host only]
 ```
 
 - **lobby** : joueurs rejoignent, host règle les paramètres et la liste de paires, host lance.
@@ -129,6 +130,11 @@ lobby → reveal → discussion → voting → round_result → (discussion | mr
 - **game_over** : révélation complète (tous les rôles + champions de tous les joueurs) via
   `game:ended`, affichage du vainqueur. Host peut relancer (`game:restart`) une nouvelle
   partie dans la même room (nouveaux rôles/champions, mêmes joueurs/paramètres).
+- **Relance à tout moment (`game:restart`)** : au-delà de `game_over`, l'hôte peut aussi
+  relancer (bouton dédié côté client, voir §5/§6) depuis n'importe quelle phase de partie en
+  cours (`reveal` à `mrwhite_guess`) — abandonne immédiatement la manche en cours et retire de
+  nouveaux rôles/champions pour tous les joueurs. Seules `lobby` (utiliser `game:start`) et
+  `aborted` (terminale) refusent cet événement.
 - **aborted** : phase terminale atteinte uniquement quand l'hôte quitte explicitement une
   partie en cours (§5) — pas de vainqueur, pas de révélation des rôles. Les clients affichent
   un écran "partie terminée" avec retour à l'accueil ; aucune reprise possible depuis cette
@@ -159,6 +165,16 @@ Cette formule est mathématiquement complète (aucun état atteignable ne tombe 
 
 - Code de room : 5 caractères, alphabet `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (sans 0/O/1/I pour
   éviter les confusions à l'oral/à l'écrit), généré unique parmi les rooms actives.
+- **Lien d'invitation** : convenience purement client, aucun événement socket dédié — le Lobby
+  expose `${origin}/play/{universe}?code={roomCode}` (bouton "Copier le lien d'invitation").
+  `Home` (route `/play/:universe`) lit le paramètre `?code=` s'il est présent pour préremplir le
+  code et basculer directement sur l'onglet "Rejoindre" ; le flux `room:join` derrière reste
+  strictement identique (même validation, mêmes erreurs).
+- **Pseudo mémorisé** : convenience purement client — `Home` sauvegarde le pseudo saisi dans
+  `localStorage['lolcover:pseudo']` (voir `client/src/lib/session.ts`) et le pré-remplit à la
+  prochaine visite, pour "Créer" comme pour "Rejoindre". Indépendant de toute room ; aucun
+  impact sur le contrat socket (`room:create`/`room:join` reçoivent toujours un `hostName`/
+  `playerName` explicite dans le payload).
 - Room pleine : max 12 joueurs, `room:join` renvoie une erreur `ROOM_FULL`.
 - Room introuvable/code invalide : erreur `ROOM_NOT_FOUND`.
 - Room en jeu (phase ≠ lobby) : un nouveau joueur (jamais vu) ne peut pas rejoindre, erreur
@@ -170,6 +186,14 @@ Cette formule est mathématiquement complète (aucun état atteignable ne tombe 
   exacte, rebranche le socket.id sur le siège existant, marque `connected: true`, et renvoie
   l'état complet adapté (y compris `role:private` à nouveau si la partie est en cours). Token
   invalide/expiré → erreur `INVALID_SESSION`, le client retombe sur l'écran d'accueil.
+- **Reprise depuis le menu principal** : `room:rejoin` n'était auparavant déclenché que si le
+  client atterrissait directement sur `/room/{roomCode}` (lien gardé, onglet jamais fermé) — en
+  revanche fermer l'onglet puis rouvrir l'app sur `/` n'offrait aucun moyen de revenir dans la
+  partie sans retaper l'URL exacte. `MainMenu` liste désormais, au montage, tous les codes de
+  room ayant encore une session valide en `localStorage` (`lib/session.ts` :
+  `listStoredRoomCodes`) et propose un bouton "Reprendre" par room, qui navigue simplement vers
+  `/room/{roomCode}` — le flux `room:rejoin` existant s'occupe du reste (session invalide/room
+  expirée → nettoyage silencieux et retour à `/`, cf. `GameRoute`).
 - **Déconnexion** : un joueur dont le socket se déconnecte reste dans la room avec
   `connected: false` pendant 3 minutes (timer serveur). En phase `voting`, le dépouillement
   attend que tous les joueurs vivants aient voté — un joueur déconnecté qui n'a pas encore
@@ -240,6 +264,18 @@ interface RoomStatePublic {
   phaseDeadline: number | null; // epoch ms, pour le compte à rebours client (reveal / mrwhite_guess uniquement)
 }
 
+// Chat texte libre entre joueurs d'une room — pure convenience, hors boucle de jeu (aucun
+// impact sur la machine à états, jamais de role/champion). Tampon serveur borné à
+// CHAT_HISTORY_LIMIT (50) messages par room, rejoué une fois via 'chat:history' à la
+// connexion/reconnexion — pas d'archivage long terme.
+interface ChatMessage {
+  id: string;
+  playerId: string;
+  name: string;
+  text: string;
+  ts: number; // epoch ms
+}
+
 // ---- Client -> Serveur ----
 'room:create'   { hostName: string, universe: Universe } -> ack { ok: true, roomCode, playerId, sessionToken } | { ok: false, error }
 'room:join'     { roomCode: string, playerName: string } -> ack { ok, playerId?, sessionToken?, error? }
@@ -251,8 +287,9 @@ interface RoomStatePublic {
 'vote:submit'   { targetPlayerId: string }                          // joueur vivant, une fois/round
 'mrwhite:guess' { championGuess: string }                           // le Mr White éliminé, une fois
 'round:continue' {}                                                 // host only
-'game:restart'  {}                                                  // host only, phase game_over
+'game:restart'  {}                                                  // host only, toute phase sauf lobby/aborted
 'player:leave'  {}                                                  // hôte + partie en cours -> termine la partie (§5), sinon départ normal
+'chat:send'     { text: string }                                    // n'importe quel joueur, n'importe quelle phase, texte non vide (300 car. max)
 
 // ---- Serveur -> Client(s) ----
 'room:state'    RoomStatePublic                          // PUBLIC, à chaque changement d'état
@@ -269,6 +306,8 @@ interface RoomStatePublic {
   reveal: { playerId: string, name: string, role: Role, champion: string | null }[],
 }
 'error'         { code: string, message: string }          // au socket d'origine uniquement
+'chat:message'  ChatMessage                                 // PUBLIC, à chaque chat:send accepté
+'chat:history'  ChatMessage[]                               // PRIVATE, une fois à room:create/room:join/room:rejoin réussis
 ```
 
 Règle absolue vérifiable par QA : à aucun moment, pour aucun événement PUBLIC, un champ
@@ -284,15 +323,17 @@ Le serveur détient **deux pools indépendants**, un par univers (`server/src/co
 voir §6 `Universe`) — les paires League of Legends et Smash Bros Ultimate ne se mélangent
 jamais, et chaque room n'accède qu'au pool de son propre `universe`.
 
-- **Univers `'lol'`** — `server/src/content/championPairs.ts` (≥40 paires, thème + lane(s) si
+- **Univers `'lol'`** — `server/src/content/championPairs.ts` (≥80 paires, couvrant tout le
+  roster de base, thème + lane(s) si
   pertinent), en partant de : Garen/Darius, Ashe/Sivir, Katarina/Talon, Lux/Morgana,
   Malphite/Ornn, Miss Fortune/Caitlyn, Jinx/Vayne, Yasuo/Yone, Vi/Jax, Nidalee/Rengar,
   Xin Zhao/Renekton, Ezreal/Kai'Sa, Annie/Zoe, Braum/Thresh, Soraka/Janna, Shen/Zed,
   Fiora/Riven, Karma/Sona, Teemo/Heimerdinger, Nautilus/Illaoi, Kled/Rumble, Ahri/Neeko,
   Diana/Leona, Tristana/Corki.
-- **Univers `'smash'`** — `server/src/content/smashPairs.ts` (≥28 paires, thème = lien de
+- **Univers `'smash'`** — `server/src/content/smashPairs.ts` (≥65 paires, thème = lien de
   moveset/lore — Echo Fighter officiel, clone, rivalité canon), ex. Mario/Luigi, Fox/Falco,
-  Marth/Lucina, Pit/Dark Pit, Pikachu/Pichu.
+  Marth/Lucina, Pit/Dark Pit, Pikachu/Pichu. Inclut aussi des combattants DLC (Fighters Pass 1 &
+  2) et des personnages de trophées d'aide appariés à des combattants du roster.
 
 Chaque pool est une **liste fixe définie en code**, sans édition possible en cours de partie
 (pas d'UI host pour ajouter/désactiver une paire) : à `game:start`/`game:restart`, le serveur

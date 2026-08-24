@@ -21,6 +21,14 @@ export function Lobby() {
     navigator.clipboard?.writeText(roomState!.roomCode).catch(() => {});
   }
 
+  function inviteLink() {
+    return `${window.location.origin}/play/${roomState!.universe}?code=${roomState!.roomCode}`;
+  }
+
+  function copyInviteLink() {
+    navigator.clipboard?.writeText(inviteLink()).catch(() => {});
+  }
+
   return (
     <div className="screen">
       <AppBar
@@ -38,21 +46,36 @@ export function Lobby() {
       <main className="main">
         <div className="container">
           <div className="code-share frame-cut">
-            <div>
-              <div className="code-share__label">Code de la room</div>
-              <div className="room-code" aria-label={`Code de room : ${roomState.roomCode.split('').join(' ')}`}>
-                {roomState.roomCode.split('').map((c, i) => (
-                  <span className="room-code__char" key={i}>
-                    {c}
-                  </span>
-                ))}
+            <div className="code-share__row">
+              <div>
+                <div className="code-share__label">Code de la room</div>
+                <div className="room-code" aria-label={`Code de room : ${roomState.roomCode.split('').join(' ')}`}>
+                  {roomState.roomCode.split('').map((c, i) => (
+                    <span className="room-code__char" key={i}>
+                      {c}
+                    </span>
+                  ))}
+                </div>
               </div>
+              <button className="icon-btn" type="button" aria-label="Copier le code de la room" onClick={copyCode}>
+                <svg className="icon" viewBox="0 0 24 24" fill="none">
+                  <rect x="8" y="8" width="12" height="12" rx="1" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M5 16V5 h11" stroke="currentColor" strokeWidth="1.8" fill="none" />
+                </svg>
+              </button>
             </div>
-            <button className="icon-btn" type="button" aria-label="Copier le code de la room" onClick={copyCode}>
-              <svg className="icon" viewBox="0 0 24 24" fill="none">
-                <rect x="8" y="8" width="12" height="12" rx="1" stroke="currentColor" strokeWidth="1.8" />
-                <path d="M5 16V5 h11" stroke="currentColor" strokeWidth="1.8" fill="none" />
+            <button className="btn btn-secondary" type="button" onClick={copyInviteLink}>
+              <svg className="icon" viewBox="0 0 24 24" fill="none" width={16} height={16} style={{ marginRight: 'var(--space-2)' }}>
+                <path d="M9 15 L15 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path
+                  d="M11 6 l1.5-1.5 a3.2 3.2 0 0 1 4.5 4.5 L15.5 10.5 M13 18 l-1.5 1.5 a3.2 3.2 0 0 1 -4.5 -4.5 L8.5 13.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
+              Copier le lien d'invitation
             </button>
           </div>
 

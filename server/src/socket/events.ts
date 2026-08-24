@@ -3,6 +3,8 @@
 
 import type {
   AckResponse,
+  ChatMessage,
+  ChatSendPayload,
   GameEndedPayload,
   MrWhiteGuessPayload,
   ErrorPayload,
@@ -32,6 +34,7 @@ export interface ClientToServerEvents {
   'round:continue': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'game:restart': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'player:leave': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
+  'chat:send': (payload: ChatSendPayload, ack?: (res: AckResponse) => void) => void;
 }
 
 export interface ServerToClientEvents {
@@ -39,6 +42,8 @@ export interface ServerToClientEvents {
   'role:private': (payload: RolePrivatePayload) => void;
   'round:result': (payload: RoundResultPayload) => void;
   'game:ended': (payload: GameEndedPayload) => void;
+  'chat:message': (payload: ChatMessage) => void;
+  'chat:history': (payload: ChatMessage[]) => void;
   error: (payload: ErrorPayload) => void;
 }
 

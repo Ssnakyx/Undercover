@@ -10,6 +10,7 @@ const ROOM_CODE_LENGTH = 5;
 export const MAX_PLAYERS_PER_ROOM = 12;
 export const EMPTY_ROOM_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutes
 export const DISCONNECT_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+export const CHAT_HISTORY_LIMIT = 50; // tampon en mémoire, pas d'archivage long terme
 
 const rooms = new Map<string, Room>();
 
@@ -63,6 +64,7 @@ export function createRoom(universe: Universe = 'lol'): Room {
     currentPairId: null,
     championA: null,
     championB: null,
+    chatMessages: [],
   };
   rooms.set(roomCode, room);
   return room;

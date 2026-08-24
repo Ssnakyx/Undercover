@@ -1,23 +1,41 @@
 import { useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useRoom } from '../socket/RoomProvider';
 import { isUniverse, universeCopy } from '../lib/universe';
+import { loadPseudo, savePseudo } from '../lib/session';
 
 const CODE_LENGTH = 5;
+
+// Un lien d'invitation (voir Lobby "Copier le lien") pointe vers /play/:universe?code=XXXXX :
+// préremplit le code et bascule directement sur l'onglet "Rejoindre" pour l'invité.
+function codeFromSearchParams(params: URLSearchParams): string[] {
+  const raw = (params.get('code') ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const cells = Array(CODE_LENGTH).fill('');
+  for (let i = 0; i < CODE_LENGTH; i++) cells[i] = raw[i] ?? '';
+  return cells;
+}
 
 export function Home() {
   const { createRoom, joinRoom } = useRoom();
   const navigate = useNavigate();
   const { universe: universeParam } = useParams();
+  const [searchParams] = useSearchParams();
+  const invitedCode = searchParams.get('code');
 
-  const [mode, setMode] = useState<'create' | 'join'>('create');
+  const [mode, setMode] = useState<'create' | 'join'>(invitedCode ? 'join' : 'create');
 
-  const [createName, setCreateName] = useState('');
+  // Pseudo mémorisé dans localStorage (lib/session.ts) — un seul champ partagé entre "Créer" et
+  // "Rejoindre" : c'est le même pseudo quel que soit le mode, pas besoin de le retaper.
+  const [pseudo, setPseudo] = useState(() => loadPseudo());
+  function updatePseudo(value: string) {
+    setPseudo(value);
+    savePseudo(value);
+  }
+
   const [createError, setCreateError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const [joinName, setJoinName] = useState('');
-  const [codeCells, setCodeCells] = useState<string[]>(Array(CODE_LENGTH).fill(''));
+  const [codeCells, setCodeCells] = useState<string[]>(() => codeFromSearchParams(searchParams));
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const cellRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -30,10 +48,10 @@ export function Home() {
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
-    if (!createName.trim()) return;
+    if (!pseudo.trim()) return;
     setCreating(true);
     setCreateError(null);
-    const res = await createRoom(createName.trim(), universe);
+    const res = await createRoom(pseudo.trim(), universe);
     setCreating(false);
     if (res.ok && res.roomCode) {
       navigate(`/room/${res.roomCode}`);
@@ -63,10 +81,10 @@ export function Home() {
   async function handleJoin(e: FormEvent) {
     e.preventDefault();
     const code = codeCells.join('');
-    if (code.length !== CODE_LENGTH || !joinName.trim()) return;
+    if (code.length !== CODE_LENGTH || !pseudo.trim()) return;
     setJoining(true);
     setJoinError(null);
-    const res = await joinRoom(code, joinName.trim());
+    const res = await joinRoom(code, pseudo.trim());
     setJoining(false);
     if (res.ok) {
       navigate(`/room/${code}`);
@@ -123,14 +141,14 @@ export function Home() {
                     type="text"
                     maxLength={18}
                     placeholder={copy.namePlaceholder}
-                    autoComplete="off"
-                    value={createName}
-                    onChange={(e) => setCreateName(e.target.value)}
+                    autoComplete="name"
+                    value={pseudo}
+                    onChange={(e) => updatePseudo(e.target.value)}
                   />
-                  <span className="field__hint">Visible par tous les joueurs de la room. 18 caractères max.</span>
+                  <span className="field__hint">Visible par tous les joueurs de la room. 18 caractères max. Mémorisé sur cet appareil.</span>
                   {createError && <span className="field__hint field__hint--error">{createError}</span>}
                 </div>
-                <button className="btn btn-primary" type="submit" disabled={creating || !createName.trim()}>
+                <button className="btn btn-primary" type="submit" disabled={creating || !pseudo.trim()}>
                   {creating ? 'Création…' : 'Créer la partie'}
                 </button>
               </form>
@@ -159,7 +177,9 @@ export function Home() {
                     ))}
                   </div>
                   <span className="field__hint">
-                    Demande le code à l'hôte de la partie (5 caractères, sans 0/O/1/I).
+                    {invitedCode
+                      ? 'Code pré-rempli depuis ton lien d\'invitation — vérifie-le puis choisis ton pseudo.'
+                      : "Demande le code à l'hôte de la partie (5 caractères, sans 0/O/1/I)."}
                   </span>
                 </div>
                 <div className="field">
@@ -172,16 +192,16 @@ export function Home() {
                     type="text"
                     maxLength={18}
                     placeholder={copy.namePlaceholder}
-                    autoComplete="off"
-                    value={joinName}
-                    onChange={(e) => setJoinName(e.target.value)}
+                    autoComplete="name"
+                    value={pseudo}
+                    onChange={(e) => updatePseudo(e.target.value)}
                   />
                   {joinError && <span className="field__hint field__hint--error">{joinError}</span>}
                 </div>
                 <button
                   className="btn btn-primary"
                   type="submit"
-                  disabled={joining || codeCells.join('').length !== CODE_LENGTH || !joinName.trim()}
+                  disabled={joining || codeCells.join('').length !== CODE_LENGTH || !pseudo.trim()}
                 >
                   {joining ? 'Connexion…' : 'Rejoindre la partie'}
                 </button>

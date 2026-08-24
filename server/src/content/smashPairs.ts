@@ -8,6 +8,11 @@
 // La difficulté n'est pas un champ à part : elle vient de la proximité champA/champB. Ce pool
 // mélange volontairement des Echo Fighters quasi identiques (undercover très difficile à
 // repérer) et des rivaux plus éloignés visuellement/mécaniquement (undercover plus repérable).
+// Au-delà du roster jouable de base, le pool inclut aussi des combattants DLC (Fighters Pass 1
+// & 2 : Piranha Plant, Joker, Hero, Banjo & Kazooie, Terry, Byleth, Min Min, Steve, Pyra/Mythra,
+// Kazuya, Sephiroth, Sora) et des personnages de trophées d'aide (non jouables en combat, mais
+// utilisés ici comme identité à décrire, exactement comme un combattant) — signalés dans le
+// champ `theme` de chaque paire concernée.
 
 import type { ChampionPair } from '../types.js';
 
@@ -47,4 +52,44 @@ export const smashPairs: ChampionPair[] = [
   // --- Paires plus éloignées (undercover plus facile à repérer) ---
   { id: 'littlemac-captainfalcon', champA: 'Little Mac', champB: 'Captain Falcon', theme: 'Combattants au poing, styles radicalement opposés' },
   { id: 'rosalina-olimar', champA: 'Rosalina', champB: 'Olimar', theme: 'Duos avec compagnons, allure totalement différente (Luma vs Pikmin)' },
+  // --- Nouvelles paires difficiles (combattants DLC + trophées d'aide, undercover très
+  //     difficile à repérer) ---
+  { id: 'pyra-mythra', champA: 'Pyra', champB: 'Mythra', theme: 'Deux aspects d\'une seule et même Lame, littéralement la même personne (DLC)' },
+  { id: 'springman-minmin', champA: 'Spring Man', champB: 'Min Min', theme: 'Combattants ARMS aux bras extensibles du même jeu d\'origine (trophée d\'aide + DLC)' },
+  { id: 'zero-megaman', champA: 'Zero', champB: 'Mega Man', theme: 'Robots héros de la saga Mega Man, rivaux devenus alliés (trophée d\'aide)' },
+  { id: 'peteypiranha-piranhaplant', champA: 'Petey Piranha', champB: 'Piranha Plant', theme: 'Plantes carnivores emblématiques de l\'univers Mario (trophée d\'aide + DLC)' },
+  { id: 'devil-gamewatch', champA: 'Devil', champB: 'Mr. Game & Watch', theme: 'Figures plates monochromes de l\'univers Game & Watch (trophée d\'aide)' },
+  { id: 'alucard-richter', champA: 'Alucard', champB: 'Richter', theme: 'Chasseurs de vampires liés au château de Dracula (trophée d\'aide)' },
+  // --- Nouvelles paires moyennes (combattants DLC + trophées d'aide, undercover repérable
+  //     avec attention) ---
+  { id: 'joker-hero', champA: 'Joker', champB: 'Hero', theme: 'Protagonistes JRPG masqués/aventuriers menant leur groupe (DLC)' },
+  { id: 'waluigi-wario', champA: 'Waluigi', champB: 'Wario', theme: 'Duo de vilains excentriques de l\'univers Mario (trophée d\'aide)' },
+  { id: 'byleth-chrom', champA: 'Byleth', champB: 'Chrom', theme: 'Seigneurs Fire Emblem maniant l\'épée avec charisme (DLC)' },
+  { id: 'steve-villager', champA: 'Steve', champB: 'Villager', theme: 'Icônes voxel/pixel de la construction et de la vie simulée (DLC)' },
+  { id: 'sora-cloud', champA: 'Sora', champB: 'Cloud', theme: 'Héros emblématiques Square Enix à l\'arme signature imposante (DLC)' },
+  { id: 'midna-zelda', champA: 'Midna', champB: 'Zelda', theme: 'Figures féminines clés de Twilight Princess, liées par la transformation (trophée d\'aide)' },
+  { id: 'krystal-fox', champA: 'Krystal', champB: 'Fox', theme: 'Membres de l\'équipe Star Fox de Lylat (trophée d\'aide)' },
+  { id: 'skullkid-younglink', champA: 'Skull Kid', champB: 'Young Link', theme: 'Figures emblématiques de Majora\'s Mask, masque et ocarina (trophée d\'aide)' },
+  { id: 'knuckles-sonic', champA: 'Knuckles', champB: 'Sonic', theme: 'Rivaux devenus alliés de l\'univers Sonic (trophée d\'aide)' },
+  { id: 'banjokazooie-donkeykong', champA: 'Banjo & Kazooie', champB: 'Donkey Kong', theme: 'Duos platformer 3D emblématiques signés Rare (DLC)' },
+  // --- Encore plus de paires difficiles (roster de base + trophées d'aide) ---
+  { id: 'bowser-bowserjr', champA: 'Bowser', champB: 'Bowser Jr.', theme: 'Père et fils Koopa, plus grandes menaces du royaume Champignon' },
+  { id: 'yoshi-kirby', champA: 'Yoshi', champB: 'Kirby', theme: "Mascottes rondes de plateforme au pouvoir d'absorption (langue contre inhalation)" },
+  { id: 'rob-gamewatch', champA: 'R.O.B.', champB: 'Mr. Game & Watch', theme: 'Antiquités Nintendo littéralement ramenées à la vie' },
+  { id: 'drmario-mario', champA: 'Dr. Mario', champB: 'Mario', theme: 'Le même plombier, juste une blouse de médecin en plus' },
+  { id: 'toonlink-younglink', champA: 'Toon Link', champB: 'Young Link', theme: 'Deux incarnations enfantines de Link à des époques différentes' },
+  { id: 'squirtle-ivysaur', champA: 'Squirtle', champB: 'Ivysaur', theme: 'Deux membres de la même équipe Pokémon Trainer' },
+  { id: 'ridley-darksamus', champA: 'Ridley', champB: 'Dark Samus', theme: 'Antagonistes emblématiques de la saga Metroid' },
+  { id: 'shulk-pyra', champA: 'Shulk', champB: 'Pyra', theme: 'Héros liés à une lame vivante (Monado/Aegis), même saga Xenoblade Chronicles (DLC)' },
+  { id: 'katana-wario', champA: 'Kat & Ana', champB: 'Wario', theme: "Ninjas jumelles de la même série WarioWare que Wario (trophée d'aide)" },
+  { id: 'samuraigoroh-captainfalcon', champA: 'Samurai Goroh', champB: 'Captain Falcon', theme: "Pilotes rivaux du même circuit F-Zero (trophée d'aide)" },
+  // --- Encore plus de paires moyennes (roster de base + trophées d'aide) ---
+  { id: 'lyn-marth', champA: 'Lyn', champB: 'Marth', theme: "Héros Fire Emblem maniant l'épée avec grâce (trophée d'aide)" },
+  { id: 'nightmare-metaknight', champA: 'Nightmare', champB: 'Meta Knight', theme: "Grandes figures mystérieuses de l'univers Kirby (trophée d'aide)" },
+  { id: 'riki-shulk', champA: 'Riki', champB: 'Shulk', theme: "Compagnons de la même équipe dans Xenoblade Chronicles (trophée d'aide)" },
+  { id: 'klaptrap-kingkrool', champA: 'Klaptrap', champB: 'King K. Rool', theme: "Ennemis emblématiques du royaume Kong (trophée d'aide)" },
+  { id: 'iceclimbers-duckhunt', champA: 'Ice Climbers', champB: 'Duck Hunt', theme: 'Duos rétro NES ressuscités par Smash' },
+  { id: 'wiifittrainer-littlemac', champA: 'Wii Fit Trainer', champB: 'Little Mac', theme: 'Icônes sportives que tout oppose, yoga contre boxe' },
+  { id: 'greninja-incineroar', champA: 'Greninja', champB: 'Incineroar', theme: 'Formes finales de starters Pokémon' },
+  { id: 'inkling-isabelle', champA: 'Inkling', champB: 'Isabelle', theme: 'Icônes modernes Nintendo Switch au style haut en couleur' },
 ];

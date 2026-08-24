@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { socket } from './client';
 import { saveSession, loadSession, clearSession } from '../lib/session';
 import type {
+  ChatMessage,
   ErrorPayload,
   GameEndedPayload,
   RoomCreateAck,
@@ -20,6 +21,11 @@ interface Session {
   sessionToken: string;
 }
 
+// Cap client-side de sécurité — le serveur ne conserve/rejoue déjà que les CHAT_HISTORY_LIMIT
+// derniers messages (voir server/src/rooms/roomStore.ts), ceci évite juste une croissance
+// illimitée du tableau côté client pendant une très longue session sans reconnexion.
+const CHAT_CLIENT_BUFFER = 200;
+
 interface RoomContextValue {
   connected: boolean;
   roomState: RoomStatePublic | null;
@@ -29,6 +35,9 @@ interface RoomContextValue {
   lastRoundResult: RoundResultPayload | null;
   lastGameEnded: GameEndedPayload | null;
   lastError: ErrorPayload | null;
+  chatMessages: ChatMessage[];
+  chatUnreadCount: number;
+  markChatRead: () => void;
   clearError: () => void;
   createRoom: (hostName: string, universe: Universe) => Promise<RoomCreateAck>;
   joinRoom: (roomCode: string, playerName: string) => Promise<RoomJoinAck>;
@@ -42,6 +51,7 @@ interface RoomContextValue {
   continueRound: () => void;
   restartGame: () => void;
   leaveRoom: () => void;
+  sendChatMessage: (text: string) => void;
 }
 
 const RoomContext = createContext<RoomContextValue | null>(null);
@@ -54,6 +64,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const [lastRoundResult, setLastRoundResult] = useState<RoundResultPayload | null>(null);
   const [lastGameEnded, setLastGameEnded] = useState<GameEndedPayload | null>(null);
   const [lastError, setLastError] = useState<ErrorPayload | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
 
   const sessionRef = useRef<Session | null>(null);
   const setSession = useCallback((s: Session | null) => {
@@ -94,6 +106,20 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     function onError(payload: ErrorPayload) {
       setLastError(payload);
     }
+    function onChatMessage(payload: ChatMessage) {
+      setChatMessages((prev) => {
+        const next = [...prev, payload];
+        return next.length > CHAT_CLIENT_BUFFER ? next.slice(next.length - CHAT_CLIENT_BUFFER) : next;
+      });
+      // Incrémenté ici (dans le handler de l'événement qui cause le changement), pas dans un
+      // effet qui dériverait ce compteur de chatMessages — ChatBox le remet à 0 via
+      // markChatRead() à l'ouverture/fermeture du panneau (voir components/ChatBox.tsx).
+      setChatUnreadCount((n) => n + 1);
+    }
+    function onChatHistory(payload: ChatMessage[]) {
+      setChatMessages(payload);
+      setChatUnreadCount(0);
+    }
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -102,6 +128,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     socket.on('round:result', onRoundResult);
     socket.on('game:ended', onGameEnded);
     socket.on('error', onError);
+    socket.on('chat:message', onChatMessage);
+    socket.on('chat:history', onChatHistory);
 
     return () => {
       socket.off('connect', onConnect);
@@ -111,6 +139,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       socket.off('round:result', onRoundResult);
       socket.off('game:ended', onGameEnded);
       socket.off('error', onError);
+      socket.off('chat:message', onChatMessage);
+      socket.off('chat:history', onChatHistory);
     };
   }, [setSession]);
 
@@ -196,7 +226,15 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setRoomState(null);
     setMyRole(null);
+    setChatMessages([]);
+    setChatUnreadCount(0);
   }, [setSession]);
+  const sendChatMessage = useCallback((text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    socket.emit('chat:send', { text: trimmed });
+  }, []);
+  const markChatRead = useCallback(() => setChatUnreadCount(0), []);
 
   const clearError = useCallback(() => setLastError(null), []);
 
@@ -209,6 +247,9 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     lastRoundResult,
     lastGameEnded,
     lastError,
+    chatMessages,
+    chatUnreadCount,
+    markChatRead,
     clearError,
     createRoom,
     joinRoom,
@@ -222,6 +263,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     continueRound,
     restartGame,
     leaveRoom,
+    sendChatMessage,
   };
 
   return <RoomContext.Provider value={value}>{children}</RoomContext.Provider>;

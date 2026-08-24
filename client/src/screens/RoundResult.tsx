@@ -4,6 +4,7 @@ import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
 import { RoleEmblem, roleLabel } from '../components/RoleBadge';
 import { HostQuitButton } from '../components/HostQuitButton';
+import { HostRestartButton } from '../components/HostRestartButton';
 
 export function RoundResult() {
   const { roomState, playerId, lastRoundResult, continueRound } = useRoom();
@@ -28,6 +29,7 @@ export function RoundResult() {
         title="Résultat"
         right={
           <>
+            {isHost && <HostRestartButton />}
             {isHost && <HostQuitButton />}
             <span className="badge badge--muted">Round {roomState.round}</span>
           </>

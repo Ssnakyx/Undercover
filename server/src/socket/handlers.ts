@@ -9,7 +9,9 @@ import type {
   ServerToClientEvents,
   SocketData,
 } from './events.js';
+import { randomUUID } from 'node:crypto';
 import type {
+  ChatMessage,
   GameEndedPayload,
   Player,
   PublicPlayer,
@@ -19,6 +21,7 @@ import type {
   Winner,
 } from '../types.js';
 import {
+  CHAT_HISTORY_LIMIT,
   MAX_PLAYERS_PER_ROOM,
   cancelEmptyRoomExpiration,
   computeAvatarSeed,
@@ -43,6 +46,7 @@ type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEv
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
 const NAME_MAX_LENGTH = 24;
+const CHAT_MESSAGE_MAX_LENGTH = 300;
 
 // ---------------------------------------------------------------------------
 // Sérialisation publique — ne JAMAIS inclure role/champion ici (contrat section 6).
@@ -86,6 +90,12 @@ function sendRolePrivateToAllConnected(io: IoServer, room: Room): void {
   for (const player of room.players.values()) {
     sendRolePrivate(io, player);
   }
+}
+
+/** Rejoue l'historique de chat (tampon borné, voir CHAT_HISTORY_LIMIT) au seul socket qui
+ * vient de rejoindre/recréer/se reconnecter — pure convenience, jamais broadcast. */
+function sendChatHistory(io: IoServer, socketId: string, room: Room): void {
+  io.to(socketId).emit('chat:history', room.chatMessages);
 }
 
 function emitError(socket: IoSocket, code: string, message: string): void {
@@ -330,6 +340,7 @@ export function registerSocketHandlers(io: IoServer): void {
 
       ack({ ok: true, roomCode: room.roomCode, playerId, sessionToken });
       broadcastRoomState(io, room);
+      sendChatHistory(io, socket.id, room);
     });
 
     socket.on('room:join', (payload, ack) => {
@@ -378,6 +389,7 @@ export function registerSocketHandlers(io: IoServer): void {
 
       ack({ ok: true, playerId, sessionToken });
       broadcastRoomState(io, room);
+      sendChatHistory(io, socket.id, room);
     });
 
     socket.on('room:rejoin', (payload, ack) => {
@@ -399,6 +411,7 @@ export function registerSocketHandlers(io: IoServer): void {
 
       ack({ ok: true });
       broadcastRoomState(io, room as Room);
+      sendChatHistory(io, socket.id, room as Room);
       if (result.shouldResendRolePrivate) {
         sendRolePrivate(io, result.player);
       }
@@ -544,8 +557,11 @@ export function registerSocketHandlers(io: IoServer): void {
       if (!ctx) return;
       if (!requireHost(socket, ctx, ack)) return;
       const { room } = ctx;
-      if (room.phase !== 'game_over') {
-        fail(socket, ack, 'INVALID_PHASE', 'game:restart uniquement valide en phase game_over');
+      // Utilisable aussi bien depuis game_over (rejouer) que depuis n'importe quelle phase de
+      // partie en cours (l'hôte relance immédiatement, nouveaux rôles/champions) — seul lobby
+      // (game:start s'en charge) et aborted (terminal, voir §5) sont exclus.
+      if (room.phase === 'lobby' || room.phase === 'aborted') {
+        fail(socket, ack, 'INVALID_PHASE', 'game:restart invalide en phase lobby ou aborted');
         return;
       }
       try {
@@ -558,6 +574,30 @@ export function registerSocketHandlers(io: IoServer): void {
       sendRolePrivateToAllConnected(io, room);
       broadcastRoomState(io, room);
       scheduleRevealTimeout(io, room);
+    });
+
+    socket.on('chat:send', (payload, ack) => {
+      const ctx = requireCtx(socket, ack);
+      if (!ctx) return;
+      const { room, player } = ctx;
+      const text = (payload?.text ?? '').toString().trim().slice(0, CHAT_MESSAGE_MAX_LENGTH);
+      if (!text) {
+        fail(socket, ack, 'INVALID_MESSAGE', 'Message vide');
+        return;
+      }
+      const message: ChatMessage = {
+        id: randomUUID(),
+        playerId: player.playerId,
+        name: player.name,
+        text,
+        ts: Date.now(),
+      };
+      room.chatMessages.push(message);
+      if (room.chatMessages.length > CHAT_HISTORY_LIMIT) {
+        room.chatMessages.splice(0, room.chatMessages.length - CHAT_HISTORY_LIMIT);
+      }
+      ok(ack);
+      io.to(room.roomCode).emit('chat:message', message);
     });
 
     socket.on('player:leave', (_payload, ack) => {

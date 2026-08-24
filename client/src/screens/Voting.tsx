@@ -3,6 +3,7 @@ import { useRoom } from '../socket/RoomProvider';
 import { AppBar } from '../components/AppBar';
 import { Avatar } from '../components/Avatar';
 import { HostQuitButton } from '../components/HostQuitButton';
+import { HostRestartButton } from '../components/HostRestartButton';
 
 export function Voting() {
   const { roomState, playerId, submitVote } = useRoom();
@@ -28,6 +29,7 @@ export function Voting() {
         title="Vote"
         right={
           <>
+            {isHost && <HostRestartButton />}
             {isHost && <HostQuitButton />}
             <span className="badge badge--muted">Round {roomState.round}</span>
           </>
