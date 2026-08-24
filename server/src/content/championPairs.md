@@ -3,7 +3,8 @@
 Une ligne par paire, une phrase justifiant le rapprochement (rôle de jeu, esthétique ou lore).
 Sert à l'agent QA pour vérifier la cohérence sans connaître LoL par cœur. La liste couvre les
 24 paires imposées par CONTRACT.md §7 + 6 paires ajoutées par l'agent Contenu pour dépasser
-confortablement le seuil de 20 (total : 30 paires, toutes `enabled: true`, `isCustom: false`).
+confortablement le seuil de 20, plus 15 paires supplémentaires ajoutées ensuite pour varier
+davantage les parties (total : 45 paires, toutes `enabled: true`, `isCustom: false`).
 
 1. **garen-darius** — Deux épéistes bruisers de Top lane increvables, incarnant la rivalité Demacia/Noxus.
 2. **ashe-sivir** — Deux marksmen "hypercarry" classiques d'ADC, l'une à l'arc, l'autre au boomerang.
@@ -35,6 +36,21 @@ confortablement le seuil de 20 (total : 30 paires, toutes `enabled: true`, `isCu
 28. **yuumi-seraphine** — Deux supports à la persona de pop star, l'une IA féline en ligne, l'autre chanteuse de Zaun/Piltover.
 29. **pyke-senna** — Bourreaux vengeurs tous deux liés au lore de Thresh (le crochet, la lanterne), exécution des ennemis affaiblis.
 30. **camille-irelia** — Deux lames Top très mobiles et disciplinées, ordre/loi (Piltover) contre maîtrise martiale (Ionia).
+31. **warwick-volibear** — Deux bêtes féroces de Jungle increvables, le loup enragé contre l'ours tonnerre.
+32. **blitzcrank-alistar** — Deux supports Tank increvables spécialistes de l'engage explosif (crochet / charge).
+33. **lulu-nami** — Deux enchanteresses Support pures, l'une fantaisiste, l'autre océanique, protection de la bot lane.
+34. **twistedfate-graves** — Rivaux de lore explicites de Bilgewater, cartes truquées contre fusil à pompe.
+35. **draven-lucian** — Deux carries ADC flamboyants et tape-à-l'œil de la bot lane.
+36. **ekko-leblanc** — Deux manipulateurs Mid de la réalité, l'un du temps, l'autre de l'illusion/du mirage.
+37. **elise-evelynn** — Deux séductrices de Jungle dissimulant une véritable forme monstrueuse sous une apparence trompeuse.
+38. **sylas-aatrox** — Deux anciens prisonniers devenus des armes vivantes, l'un enchaîné, l'autre scellé.
+39. **rakan-xayah** — Couple canon dans le lore, danseurs emplumés vastaya jouables Support ou ADC.
+40. **aphelios-samira** — Deux tireurs ADC flamboyants à l'arsenal spectaculaire et changeant.
+41. **masteryi-tryndamere** — Deux épéistes solo-carry increvables, dominants en fin de partie, Jungle ou Top.
+42. **leesin-khazix** — Deux prédateurs mobiles et insaisissables de la Jungle, moine contre chasseur du Néant.
+43. **veigar-ziggs** — Deux petits mages Mid à l'apparence inoffensive mais au burst dévastateur.
+44. **poppy-gnar** — Deux petits gabarits Top redoutables au combat rapproché, marteau contre boomerang.
+45. **kassadin-malzahar** — Deux mages Mid liés au Néant, l'un le fuyant, l'autre le vénérant.
 
 ## Validation croisée — tags de rôle officiels Riot (Data Dragon)
 
@@ -42,8 +58,9 @@ Vérification automatique de la cohérence de chaque paire à partir des tags de
 (Fighter/Tank/Mage/Marksman/Assassin/Support), issus du fichier de données fourni par
 l'utilisateur (champions.ts, dataset Data Dragon — utilisé uniquement pour ces tags courts,
 aucune icône ni texte de lore Riot n'est utilisé dans le jeu, conformément à CONTRACT.md §0).
-27 des 30 paires partagent au moins un tag de rôle officiel ; les 3 exceptions sont justifiées
-par un lien de lore explicite plutôt que mécanique (colonne "Rôle commun").
+27 des 30 paires initiales partagent au moins un tag de rôle officiel (3 exceptions justifiées
+par un lien de lore explicite plutôt que mécanique) ; parmi les 15 paires ajoutées ensuite,
+12 partagent un tag et 3 sont également des liens de lore explicites (colonne "Rôle commun").
 
 | Paire | Tags champA | Tags champB | Rôle commun |
 |---|---|---|---|
@@ -77,3 +94,18 @@ par un lien de lore explicite plutôt que mécanique (colonne "Rôle commun").
 | yuumi-seraphine | Support, Mage | Mage, Support | Support, Mage |
 | pyke-senna | Support, Assassin | Marksman, Support | Support |
 | camille-irelia | Fighter, Tank | Fighter, Assassin | Fighter |
+| warwick-volibear | Fighter, Tank | Fighter, Tank | Fighter, Tank |
+| blitzcrank-alistar | Tank, Fighter | Tank, Support | Tank |
+| lulu-nami | Support, Mage | Support, Mage | Support, Mage |
+| twistedfate-graves | Mage | Marksman | _aucun (lien par lore : rivaux de Bilgewater)_ |
+| draven-lucian | Marksman | Marksman | Marksman |
+| ekko-leblanc | Assassin, Fighter | Assassin, Mage | Assassin |
+| elise-evelynn | Mage, Fighter | Assassin, Mage | Mage |
+| sylas-aatrox | Mage, Assassin | Fighter, Tank | _aucun (lien par lore : prisonniers devenus armes vivantes)_ |
+| rakan-xayah | Support | Marksman | _aucun (lien par lore : couple canon vastaya)_ |
+| aphelios-samira | Marksman | Marksman | Marksman |
+| masteryi-tryndamere | Assassin, Fighter | Fighter, Assassin | Assassin, Fighter |
+| leesin-khazix | Fighter, Assassin | Assassin | Assassin |
+| veigar-ziggs | Mage | Mage | Mage |
+| poppy-gnar | Tank, Fighter | Fighter, Tank | Tank, Fighter |
+| kassadin-malzahar | Assassin, Mage | Mage, Assassin | Assassin, Mage |
