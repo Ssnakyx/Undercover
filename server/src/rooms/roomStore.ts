@@ -17,8 +17,6 @@ export function defaultRoomSettings(): RoomSettings {
   return {
     mrWhiteEnabled: false,
     revealChampionOnElimination: false,
-    clueTimeSeconds: 45,
-    voteTimeSeconds: 30,
     selectedPairId: null,
   };
 }
@@ -58,7 +56,6 @@ export function createRoom(): Room {
     turnOrder: [],
     currentTurnIndex: -1,
     clues: [],
-    votes: [],
     lastRoundResult: null,
     mrWhiteGuessPlayerId: null,
     phaseDeadline: null,

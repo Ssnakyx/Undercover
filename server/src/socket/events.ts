@@ -9,6 +9,7 @@ import type {
   PairsAddPayload,
   PairsRemovePayload,
   PairsTogglePayload,
+  PlayerEliminatePayload,
   ErrorPayload,
   RoomCreateAck,
   RoomCreatePayload,
@@ -20,7 +21,6 @@ import type {
   RolePrivatePayload,
   RoundResultPayload,
   SettingsUpdatePayload,
-  VoteSubmitPayload,
 } from '../types.js';
 
 export interface ClientToServerEvents {
@@ -34,7 +34,7 @@ export interface ClientToServerEvents {
   'game:start': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'reveal:ack': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'clue:submit': (payload: ClueSubmitPayload, ack?: (res: AckResponse) => void) => void;
-  'vote:submit': (payload: VoteSubmitPayload, ack?: (res: AckResponse) => void) => void;
+  'player:eliminate': (payload: PlayerEliminatePayload, ack?: (res: AckResponse) => void) => void;
   'mrwhite:guess': (payload: MrWhiteGuessPayload, ack?: (res: AckResponse) => void) => void;
   'round:continue': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'game:restart': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;

@@ -31,8 +31,6 @@ export interface ChampionPair {
 export interface RoomSettings {
   mrWhiteEnabled: boolean;
   revealChampionOnElimination: boolean;
-  clueTimeSeconds: number; // 15-120, défaut 45
-  voteTimeSeconds: number; // 15-90, défaut 30
   selectedPairId: string | null; // null = aléatoire parmi les paires enabled
 }
 
@@ -40,7 +38,6 @@ export type GamePhase =
   | 'lobby'
   | 'reveal'
   | 'clues'
-  | 'voting'
   | 'round_result'
   | 'mrwhite_guess'
   | 'game_over';
@@ -62,10 +59,9 @@ export interface RoomStatePublic {
   pairs: ChampionPair[];
   round: number;
   turnOrder: string[]; // playerIds, phase clues
-  currentTurnPlayerId: string | null;
+  currentTurnPlayerId: string | null; // null = tous les indices du round sont donnés
   clues: { playerId: string; text: string }[]; // round courant
-  votedPlayerIds: string[]; // qui a voté (pas pour qui), phase voting
-  phaseDeadline: number | null; // epoch ms, pour le compte à rebours client
+  phaseDeadline: number | null; // epoch ms, pour le compte à rebours client (reveal / mrwhite_guess uniquement)
 }
 
 // ---- Client -> Serveur (payloads) ----
@@ -125,7 +121,7 @@ export interface ClueSubmitPayload {
   text: string;
 }
 
-export interface VoteSubmitPayload {
+export interface PlayerEliminatePayload {
   targetPlayerId: string;
 }
 
@@ -146,11 +142,9 @@ export interface RolePrivatePayload {
 }
 
 export interface RoundResultPayload {
-  eliminatedPlayerId: string | null; // null si égalité = personne éliminé
-  eliminatedRole: Role | null;
+  eliminatedPlayerId: string;
+  eliminatedRole: Role;
   eliminatedChampion: string | null; // selon settings.revealChampionOnElimination, sinon null
-  voteCounts: Record<string, number>;
-  tie: boolean;
 }
 
 export type Winner = 'civils' | 'undercover' | 'mrwhite';
@@ -186,11 +180,6 @@ export interface Player {
   disconnectTimer: NodeJS.Timeout | null;
 }
 
-export interface VoteRecord {
-  voterId: string;
-  targetPlayerId: string;
-}
-
 export interface Room {
   roomCode: string;
   createdAt: number;
@@ -201,7 +190,6 @@ export interface Room {
   turnOrder: string[]; // playerIds vivants, phase clues
   currentTurnIndex: number;
   clues: { playerId: string; text: string }[];
-  votes: VoteRecord[];
   lastRoundResult: RoundResultPayload | null;
   mrWhiteGuessPlayerId: string | null; // qui a le droit de deviner
   phaseDeadline: number | null;

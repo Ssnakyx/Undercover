@@ -35,6 +35,34 @@ Pour compiler en JavaScript (`dist/`) :
 npm run build
 ```
 
+## Déploiement (Render)
+
+Ce serveur maintient l'état des parties **en mémoire dans un seul process** (`Map<roomCode,
+Room>`) et garde des connexions Socket.io ouvertes en continu : il lui faut un hébergement à
+process Node persistant (pas de serverless/edge functions à froid). Render convient bien
+(free tier suffisant pour tester) ; Railway ou Fly.io fonctionnent de la même façon.
+
+1. Pousser le repo sur GitHub (ou GitLab/Bitbucket).
+2. Sur [render.com](https://render.com) : **New > Web Service**, connecter le repo.
+3. Réglages du service :
+   - **Root Directory** : `server`
+   - **Runtime** : Node
+   - **Build Command** : `npm install && npm run build`
+   - **Start Command** : `node dist/index.js`
+   - **Health Check Path** : `/health`
+4. Aucune variable d'env obligatoire — Render fournit `PORT` automatiquement, déjà lu par
+   `src/index.ts`. Render assigne une URL publique du type
+   `https://lolcover-server.onrender.com` : c'est cette URL qu'il faut renseigner comme
+   `VITE_SERVER_URL` côté client (voir `client/README.md`).
+
+`server/render.yaml` documente ces mêmes réglages (référence/reproductibilité) — le plus
+fiable reste de les saisir manuellement dans le dashboard Render tel que décrit ci-dessus, les
+Blueprints Render cherchant `render.yaml` à la racine du repo par défaut, pas dans un
+sous-dossier.
+
+Le CORS du serveur est ouvert (`origin: '*'`, voir `src/index.ts`) : aucune configuration de
+domaine à faire côté serveur pour autoriser le client déployé sur Vercel.
+
 ## Lancer les tests unitaires
 
 ```bash
@@ -48,6 +76,9 @@ Utilise Vitest. Couvre :
   et la comparaison insensible casse/accents pour la devinette de Mr White.
 - `test/reconnection.test.ts` — rejoin valide/invalide, migration de host, expiration du
   délai de grâce de 3 minutes (lobby vs en partie), timers de déconnexion (fake timers).
+- `test/engine.test.ts` — retrait d'un joueur de l'ordre de passage en cours de round,
+  `eliminatePlayer` (permissions de phase, cible invalide, révélation, victoire, entrée en
+  `mrwhite_guess`), `resolveMrWhiteTimeout`.
 
 `npm run test:watch` pour le mode watch.
 
@@ -66,10 +97,11 @@ documentée ici plutôt qu'improvisée silencieusement :
 3. **Extension de la condition de victoire de Mr White** (section 4, point 4) : déjà
    documentée dans le contrat lui-même comme extension volontaire pour éviter une partie
    infinie ; implémentée telle quelle dans `src/game/winConditions.ts`.
-4. **Fin de vote anticipée** : si tous les joueurs vivants ont voté avant l'expiration du
-   timer, le dépouillement se déclenche immédiatement plutôt que d'attendre
-   `voteTimeSeconds`. N'est pas interdit par le contrat ("vote secret simultané") et améliore
-   l'expérience.
+4. **Élimination par décision de l'hôte** (remplace le vote de la version initiale du
+   contrat) : une fois tous les indices du round donnés (`currentTurnPlayerId === null`),
+   l'hôte désigne directement le joueur éliminé via `player:eliminate { targetPlayerId }` —
+   pas de vote compté, secret ou chronométré. L'hôte peut cibler n'importe quel joueur vivant,
+   lui-même compris. Décision produit explicite, documentée dans `docs/CONTRACT.md` §3.
 5. **Migration de host immédiate** : le contrat dit "host quitte/déconnecte → rôle transféré
    au joueur connecté suivant", sans préciser si c'est immédiat ou après le délai de grâce de
    3 minutes. Implémenté comme immédiat (dès la déconnexion du socket, pas d'attente des 3
@@ -79,14 +111,14 @@ documentée ici plutôt qu'improvisée silencieusement :
    `lobby`** : le contrat section 7 dit "depuis le lobby" pour l'édition des paires ; étendu
    par cohérence aux réglages de la room (changer les timers ou le toggle Mr White en cours de
    partie serait déroutant et n'est pas couvert par le contrat).
-7. **Départ hors vote (déconnexion expirée après 3 minutes, ou `player:leave` en cours de
-   partie)** : le contrat exige explicitement "rôle révélé" pour le cas de la déconnexion
-   expirée. Comme `RoomStatePublic`/`PublicPlayer` n'exposent jamais `role`/`champion` d'autrui
-   par construction, cette révélation ciblée réutilise l'événement `round:result` existant
-   (avec `eliminatedPlayerId` = le seul joueur concerné, `voteCounts: {}`, `tie: false`) plutôt
-   que d'inventer un nouvel événement hors contrat. Le même traitement est appliqué par
-   symétrie à `player:leave` en cours de partie (non explicitement spécifié par le contrat pour
-   ce cas précis, mais cohérent avec le traitement de la déconnexion expirée).
+7. **Départ hors élimination normale (déconnexion expirée après 3 minutes, ou `player:leave`
+   en cours de partie)** : le contrat exige explicitement "rôle révélé" pour le cas de la
+   déconnexion expirée. Comme `RoomStatePublic`/`PublicPlayer` n'exposent jamais
+   `role`/`champion` d'autrui par construction, cette révélation ciblée réutilise l'événement
+   `round:result` existant (avec `eliminatedPlayerId` = le seul joueur concerné) plutôt que
+   d'inventer un nouvel événement hors contrat. Le même traitement est appliqué par symétrie à
+   `player:leave` en cours de partie (non explicitement spécifié par le contrat pour ce cas
+   précis, mais cohérent avec le traitement de la déconnexion expirée).
 8. **`game:restart`** : fait repasser directement en phase `reveal` (nouveaux rôles/champions
    tirés) plutôt que de repasser par `lobby`, conformément à l'esprit "nouvelle partie dans la
    même room, mêmes joueurs/paramètres" — le host garde les settings existants et n'a pas à
@@ -104,15 +136,15 @@ documentée ici plutôt qu'improvisée silencieusement :
   (voir `src/types.ts`), donc structurellement impossibles à leaker par erreur de sérialisation.
 - `role:private` n'est émis qu'au socket du joueur concerné (`io.to(player.socketId)`), jamais
   en broadcast room.
-- `round:result` ne révèle le rôle/champion que du joueur qui vient d'être éliminé (vote,
-  déconnexion expirée, ou départ explicite) — jamais celui des autres.
+- `round:result` ne révèle le rôle/champion que du joueur qui vient d'être éliminé (décision de
+  l'hôte, déconnexion expirée, ou départ explicite) — jamais celui des autres.
 - `game:ended` révèle tout, volontairement, uniquement en fin de partie.
-- Toutes les permissions (host only, joueur du tour only, joueur vivant only, devineur Mr
-  White only) sont vérifiées côté serveur dans `src/socket/handlers.ts` et `src/game/engine.ts`
-  — jamais déléguées au client.
-- Les timers de phase (`clueTimeSeconds`, `voteTimeSeconds`, reveal, mrwhite_guess) sont gérés
-  côté serveur (`setTimeout` dans `src/socket/handlers.ts`) ; `phaseDeadline` n'est qu'une
-  information d'affichage pour le client, jamais une source de vérité.
+- Toutes les permissions (host only, joueur du tour only, devineur Mr White only) sont
+  vérifiées côté serveur dans `src/socket/handlers.ts` et `src/game/engine.ts` — jamais
+  déléguées au client. La phase `clues` n'a pas de minuteur (cf. décision 4 ci-dessus) ; seuls
+  `reveal` et `mrwhite_guess` gardent un timer serveur (`setTimeout` dans
+  `src/socket/handlers.ts`) — `phaseDeadline` n'est qu'une information d'affichage pour le
+  client, jamais une source de vérité.
 
 ## Structure
 

@@ -77,7 +77,6 @@ function toPublicState(room: Room): RoomStatePublic {
     turnOrder: [...room.turnOrder],
     currentTurnPlayerId: engine.currentTurnPlayerId(room),
     clues: room.clues.map((c) => ({ ...c })),
-    votedPlayerIds: room.votes.map((v) => v.voterId),
     phaseDeadline: room.phaseDeadline,
   };
 }
@@ -125,14 +124,6 @@ function scheduleRoomTimer(room: Room, delayMs: number, cb: () => void): void {
   room.phaseTimer.unref?.();
 }
 
-function scheduleClueTimeout(io: IoServer, room: Room): void {
-  scheduleRoomTimer(room, room.settings.clueTimeSeconds * 1000, () => onClueTimeout(io, room));
-}
-
-function scheduleVoteTimeout(io: IoServer, room: Room): void {
-  scheduleRoomTimer(room, room.settings.voteTimeSeconds * 1000, () => onVoteTimeout(io, room));
-}
-
 function scheduleRevealTimeout(io: IoServer, room: Room): void {
   scheduleRoomTimer(room, engine.REVEAL_ACK_TIMEOUT_MS, () => onRevealTimeout(io, room));
 }
@@ -145,31 +136,14 @@ function onRevealTimeout(io: IoServer, room: Room): void {
   if (room.phase !== 'reveal') return;
   engine.enterClues(room);
   broadcastRoomState(io, room);
-  scheduleClueTimeout(io, room);
 }
 
-function onClueTimeout(io: IoServer, room: Room): void {
-  if (room.phase !== 'clues') return;
-  try {
-    const result = engine.autoPassCurrentTurn(room);
-    broadcastRoomState(io, room);
-    if (result.enteredVoting) {
-      scheduleVoteTimeout(io, room);
-    } else {
-      scheduleClueTimeout(io, room);
-    }
-  } catch {
-    // Rien à faire : plus de joueur courant (round déjà clos autrement), on ignore.
-  }
-}
-
-function onVoteTimeout(io: IoServer, room: Room): void {
-  if (room.phase !== 'voting') return;
-  finishVoting(io, room);
-}
-
-function finishVoting(io: IoServer, room: Room): void {
-  const { result, winner, enterMrWhiteGuess } = engine.tallyVotesAndEliminate(room);
+/** Émet le résultat d'une élimination (décidée par l'hôte, cf. `engine.eliminatePlayer`) et enchaîne. */
+function finishElimination(
+  io: IoServer,
+  room: Room,
+  { result, winner, enterMrWhiteGuess }: ReturnType<typeof engine.eliminatePlayer>
+): void {
   clearRoomTimer(room);
   io.to(room.roomCode).emit('round:result', result);
   broadcastRoomState(io, room);
@@ -215,10 +189,8 @@ function applyMidGameDeparture(io: IoServer, room: Room, playerId: string): void
 
   const revealPayload: RoundResultPayload = {
     eliminatedPlayerId: playerId,
-    eliminatedRole: player.role,
+    eliminatedRole: player.role ?? 'civil', // rôle toujours assigné hors phase lobby
     eliminatedChampion: room.settings.revealChampionOnElimination ? player.champion : null,
-    voteCounts: {},
-    tie: false,
   };
   io.to(room.roomCode).emit('round:result', revealPayload);
 
@@ -240,13 +212,8 @@ function applyMidGameDeparture(io: IoServer, room: Room, playerId: string): void
   }
 
   if (room.phase === 'clues') {
-    const { enteredVoting } = engine.removeFromClueTurnOrder(room, playerId);
+    engine.removeFromClueTurnOrder(room, playerId);
     broadcastRoomState(io, room);
-    if (enteredVoting) {
-      scheduleVoteTimeout(io, room);
-    } else if (room.phaseDeadline) {
-      scheduleRoomTimer(room, room.phaseDeadline - Date.now(), () => onClueTimeout(io, room));
-    }
     return;
   }
 
@@ -455,14 +422,6 @@ export function registerSocketHandlers(io: IoServer): void {
       }
       const next = { ...room.settings, ...(payload?.settings ?? {}) };
 
-      if (typeof next.clueTimeSeconds !== 'number' || next.clueTimeSeconds < 15 || next.clueTimeSeconds > 120) {
-        fail(socket, ack, 'INVALID_SETTINGS', 'clueTimeSeconds doit être entre 15 et 120');
-        return;
-      }
-      if (typeof next.voteTimeSeconds !== 'number' || next.voteTimeSeconds < 15 || next.voteTimeSeconds > 90) {
-        fail(socket, ack, 'INVALID_SETTINGS', 'voteTimeSeconds doit être entre 15 et 90');
-        return;
-      }
       if (typeof next.mrWhiteEnabled !== 'boolean') {
         fail(socket, ack, 'INVALID_SETTINGS', 'mrWhiteEnabled doit être un booléen');
         return;
@@ -563,7 +522,6 @@ export function registerSocketHandlers(io: IoServer): void {
       if (engine.haveAllAlivePlayersAckedReveal(room)) {
         engine.enterClues(room);
         broadcastRoomState(io, room);
-        scheduleClueTimeout(io, room);
       }
     });
 
@@ -572,33 +530,25 @@ export function registerSocketHandlers(io: IoServer): void {
       if (!ctx) return;
       const { room, player } = ctx;
       try {
-        const result = engine.submitClue(room, player.playerId, (payload?.text ?? '').toString());
+        engine.submitClue(room, player.playerId, (payload?.text ?? '').toString());
         ok(ack);
         broadcastRoomState(io, room);
-        if (result.enteredVoting) {
-          scheduleVoteTimeout(io, room);
-        } else {
-          scheduleClueTimeout(io, room);
-        }
       } catch (err) {
         reportEngineError(socket, ack, err, 'CLUE_FAILED');
       }
     });
 
-    socket.on('vote:submit', (payload, ack) => {
+    socket.on('player:eliminate', (payload, ack) => {
       const ctx = requireCtx(socket, ack);
       if (!ctx) return;
-      const { room, player } = ctx;
+      if (!requireHost(socket, ctx, ack)) return;
+      const { room } = ctx;
       try {
-        engine.submitVote(room, player.playerId, (payload?.targetPlayerId ?? '').toString());
+        const eliminateResult = engine.eliminatePlayer(room, (payload?.targetPlayerId ?? '').toString());
         ok(ack);
-        if (engine.alivePlayers(room).every((p) => room.votes.some((v) => v.voterId === p.playerId))) {
-          finishVoting(io, room);
-        } else {
-          broadcastRoomState(io, room);
-        }
+        finishElimination(io, room, eliminateResult);
       } catch (err) {
-        reportEngineError(socket, ack, err, 'VOTE_FAILED');
+        reportEngineError(socket, ack, err, 'ELIMINATE_FAILED');
       }
     });
 
@@ -636,7 +586,6 @@ export function registerSocketHandlers(io: IoServer): void {
       }
       ok(ack);
       broadcastRoomState(io, room);
-      scheduleClueTimeout(io, room);
     });
 
     socket.on('game:restart', (_payload, ack) => {

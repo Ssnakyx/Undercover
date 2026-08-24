@@ -136,7 +136,6 @@ export function assignRolesAndEnterReveal(room: Room, options: StartGameOptions)
   room.turnOrder = [];
   room.currentTurnIndex = -1;
   room.clues = [];
-  room.votes = [];
   room.lastRoundResult = null;
   room.mrWhiteGuessPlayerId = null;
   room.phaseDeadline = Date.now() + REVEAL_ACK_TIMEOUT_MS;
@@ -170,7 +169,8 @@ export function enterClues(room: Room, options: { rng?: () => number } = {}): vo
   room.currentTurnIndex = 0;
   room.clues = [];
   room.phase = 'clues';
-  room.phaseDeadline = Date.now() + room.settings.clueTimeSeconds * 1000;
+  // Pas de minuteur de indice (voir CONTRACT.md §3) : phaseDeadline reste null durant clues.
+  room.phaseDeadline = null;
 }
 
 export function currentTurnPlayerId(room: Room): string | null {
@@ -183,19 +183,8 @@ export function currentTurnPlayerId(room: Room): string | null {
 // ---------------------------------------------------------------------------
 
 export interface SubmitClueResult {
-  /** true si la phase est passée à "voting" après cet indice (dernier joueur de l'ordre). */
-  enteredVoting: boolean;
-}
-
-function pushClueAndAdvance(room: Room, playerId: string, text: string): SubmitClueResult {
-  room.clues.push({ playerId, text });
-  room.currentTurnIndex += 1;
-  if (room.currentTurnIndex >= room.turnOrder.length) {
-    enterVoting(room);
-    return { enteredVoting: true };
-  }
-  room.phaseDeadline = Date.now() + room.settings.clueTimeSeconds * 1000;
-  return { enteredVoting: false };
+  /** true si tous les joueurs de l'ordre ont désormais donné leur indice (dernier joueur). */
+  cluesComplete: boolean;
 }
 
 /** Validation + soumission d'un indice par le joueur dont c'est le tour. */
@@ -211,113 +200,48 @@ export function submitClue(room: Room, playerId: string, rawText: string): Submi
   if (text.length < 1 || text.length > 60) {
     throw new GameEngineError('INVALID_CLUE', "L'indice doit contenir entre 1 et 60 caractères");
   }
-  return pushClueAndAdvance(room, playerId, text);
-}
-
-/** Appelé par le timer serveur quand le joueur du tour n'a rien soumis à temps. */
-export function autoPassCurrentTurn(room: Room): SubmitClueResult {
-  if (room.phase !== 'clues') {
-    throw new GameEngineError('INVALID_PHASE', 'autoPassCurrentTurn uniquement valide en phase clues');
-  }
-  const playerId = currentTurnPlayerId(room);
-  if (!playerId) {
-    throw new GameEngineError('NO_CURRENT_TURN', 'Aucun joueur courant à faire passer');
-  }
-  return pushClueAndAdvance(room, playerId, '(passé)');
+  room.clues.push({ playerId, text });
+  room.currentTurnIndex += 1;
+  return { cluesComplete: room.currentTurnIndex >= room.turnOrder.length };
 }
 
 // ---------------------------------------------------------------------------
-// voting
+// élimination (décision unique de l'hôte, cf. CONTRACT.md §3 — remplace le vote)
 // ---------------------------------------------------------------------------
 
-export function enterVoting(room: Room): void {
-  room.phase = 'voting';
-  room.votes = [];
-  room.phaseDeadline = Date.now() + room.settings.voteTimeSeconds * 1000;
-}
-
-export function submitVote(room: Room, voterId: string, targetPlayerId: string): void {
-  if (room.phase !== 'voting') {
-    throw new GameEngineError('INVALID_PHASE', 'vote:submit uniquement valide en phase voting');
-  }
-  const voter = room.players.get(voterId);
-  if (!voter || !voter.alive) {
-    throw new GameEngineError('NOT_ALIVE', 'Seul un joueur vivant peut voter');
-  }
-  if (voterId === targetPlayerId) {
-    throw new GameEngineError('VOTE_SELF_FORBIDDEN', 'Un joueur ne peut pas voter pour lui-même');
-  }
-  const target = room.players.get(targetPlayerId);
-  if (!target || !target.alive) {
-    throw new GameEngineError('INVALID_VOTE_TARGET', 'Cible de vote invalide (introuvable ou éliminée)');
-  }
-  if (room.votes.some((v) => v.voterId === voterId)) {
-    throw new GameEngineError('ALREADY_VOTED', 'Ce joueur a déjà voté ce round');
-  }
-  room.votes.push({ voterId, targetPlayerId });
-}
-
-export interface TallyResult {
+export interface EliminateResult {
   result: RoundResultPayload;
-  /** Vainqueur si la partie se termine immédiatement après ce dépouillement (hors mrwhite_guess). */
+  /** Vainqueur si la partie se termine immédiatement après cette élimination (hors mrwhite_guess). */
   winner: Winner | null;
   /** true si on doit entrer en phase mrwhite_guess (mr white éliminé). */
   enterMrWhiteGuess: boolean;
 }
 
 /**
- * Dépouille les votes des joueurs vivants (les absents/non-votants ne comptent pas), élimine
- * le joueur avec le plus de voix, ou personne en cas d'égalité au sommet (règle MVP, section 3).
+ * L'hôte désigne le joueur éliminé ce round, une fois que tous les joueurs vivants ont donné
+ * leur indice (`currentTurnPlayerId === null`). Pas de vote compté, pas de minuteur : une
+ * décision unique, prise après la discussion du groupe hors app (cf. CONTRACT.md §3).
  */
-export function tallyVotesAndEliminate(room: Room): TallyResult {
-  if (room.phase !== 'voting') {
-    throw new GameEngineError('INVALID_PHASE', 'Dépouillement uniquement valide en phase voting');
+export function eliminatePlayer(room: Room, targetPlayerId: string): EliminateResult {
+  if (room.phase !== 'clues') {
+    throw new GameEngineError('INVALID_PHASE', 'player:eliminate uniquement valide en phase clues');
+  }
+  if (currentTurnPlayerId(room) !== null) {
+    throw new GameEngineError('CLUES_NOT_FINISHED', "Tous les joueurs n'ont pas encore donné leur indice");
+  }
+  const target = room.players.get(targetPlayerId);
+  if (!target || !target.alive) {
+    throw new GameEngineError('INVALID_TARGET', 'Cible invalide (introuvable ou déjà éliminée)');
   }
 
-  const voteCounts: Record<string, number> = {};
-  for (const p of alivePlayers(room)) voteCounts[p.playerId] = 0;
-  for (const v of room.votes) {
-    voteCounts[v.targetPlayerId] = (voteCounts[v.targetPlayerId] ?? 0) + 1;
-  }
-
-  let maxVotes = -1;
-  let topIds: string[] = [];
-  for (const [playerId, count] of Object.entries(voteCounts)) {
-    if (count > maxVotes) {
-      maxVotes = count;
-      topIds = [playerId];
-    } else if (count === maxVotes) {
-      topIds.push(playerId);
-    }
-  }
-
-  // Égalité au sommet dès que plus d'un joueur partage le maximum de voix, y compris le cas
-  // "personne n'a voté" (tous à 0). Dans les deux cas : personne n'est éliminé ce round.
-  const isTopTie = topIds.length > 1;
-
-  let eliminatedPlayerId: string | null = null;
-  if (!isTopTie && maxVotes > 0) {
-    eliminatedPlayerId = topIds[0];
-  }
-
-  let eliminatedRole = null as RoundResultPayload['eliminatedRole'];
-  let eliminatedChampion: string | null = null;
-
-  if (eliminatedPlayerId) {
-    const eliminated = room.players.get(eliminatedPlayerId);
-    if (eliminated) {
-      eliminated.alive = false;
-      eliminatedRole = eliminated.role;
-      eliminatedChampion = room.settings.revealChampionOnElimination ? eliminated.champion : null;
-    }
-  }
+  target.alive = false;
+  const eliminatedRole = target.role as RoundResultPayload['eliminatedRole'];
+  const eliminatedChampion = room.settings.revealChampionOnElimination ? target.champion : null;
 
   const result: RoundResultPayload = {
-    eliminatedPlayerId,
+    eliminatedPlayerId: targetPlayerId,
     eliminatedRole,
     eliminatedChampion,
-    voteCounts,
-    tie: eliminatedPlayerId === null && maxVotes > 0,
   };
 
   room.lastRoundResult = result;
@@ -325,12 +249,12 @@ export function tallyVotesAndEliminate(room: Room): TallyResult {
   room.phaseDeadline = null;
   room.turnOrder = recomputeTurnOrderAfterElimination(room.turnOrder, alivePlayerIds(room));
 
-  if (eliminatedPlayerId && eliminatedRole === 'mrwhite') {
-    room.mrWhiteGuessPlayerId = eliminatedPlayerId;
+  if (eliminatedRole === 'mrwhite') {
+    room.mrWhiteGuessPlayerId = targetPlayerId;
     return { result, winner: null, enterMrWhiteGuess: true };
   }
 
-  const winner = eliminatedPlayerId ? evaluateWinConditions(countAliveRoles(room)) : null;
+  const winner = evaluateWinConditions(countAliveRoles(room));
   return { result, winner, enterMrWhiteGuess: false };
 }
 
@@ -427,8 +351,8 @@ export function evaluateCurrentWinner(room: Room): Winner | null {
 }
 
 export interface RemoveFromClueTurnOrderResult {
-  /** true si le retrait a fait passer la phase clues -> voting (c'était le dernier tour restant). */
-  enteredVoting: boolean;
+  /** true si le retrait a fait passer tous les indices restants à "donnés" (c'était le dernier tour). */
+  cluesComplete: boolean;
   /** true si le joueur retiré était le joueur du tour courant. */
   wasCurrentTurn: boolean;
 }
@@ -436,15 +360,15 @@ export interface RemoveFromClueTurnOrderResult {
 /**
  * Retire un joueur de l'ordre de passage en cours de round "clues" (départ en cours de
  * partie), en ajustant l'index du tour courant. Si le joueur retiré était le joueur du tour
- * et qu'il n'y a plus personne après lui, fait passer la phase à "voting".
+ * et qu'il n'y a plus personne après lui, l'hôte peut désormais éliminer (cf. `eliminatePlayer`).
  */
 export function removeFromClueTurnOrder(room: Room, playerId: string): RemoveFromClueTurnOrderResult {
   if (room.phase !== 'clues') {
-    return { enteredVoting: false, wasCurrentTurn: false };
+    return { cluesComplete: false, wasCurrentTurn: false };
   }
   const idx = room.turnOrder.indexOf(playerId);
   if (idx === -1) {
-    return { enteredVoting: false, wasCurrentTurn: false };
+    return { cluesComplete: false, wasCurrentTurn: false };
   }
 
   const wasCurrentTurn = idx === room.currentTurnIndex;
@@ -454,14 +378,9 @@ export function removeFromClueTurnOrder(room: Room, playerId: string): RemoveFro
   }
 
   if (!wasCurrentTurn) {
-    return { enteredVoting: false, wasCurrentTurn: false };
+    return { cluesComplete: false, wasCurrentTurn: false };
   }
 
-  if (room.currentTurnIndex >= room.turnOrder.length) {
-    enterVoting(room);
-    return { enteredVoting: true, wasCurrentTurn: true };
-  }
-
-  room.phaseDeadline = Date.now() + room.settings.clueTimeSeconds * 1000;
-  return { enteredVoting: false, wasCurrentTurn: true };
+  const cluesComplete = room.currentTurnIndex >= room.turnOrder.length;
+  return { cluesComplete, wasCurrentTurn: true };
 }
