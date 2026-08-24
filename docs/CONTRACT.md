@@ -34,7 +34,7 @@ multijoueur temps réel, un joueur par appareil.
   test/        tests unitaires (Vitest)
 /client        React + TypeScript + Vite + socket.io-client + react-router-dom
   src/
-    screens/   Home, Lobby, Reveal, Clues, Voting, RoundResult, GameOver
+    screens/   Home, Lobby, Reveal, Clues, RoundResult, GameOver
     components/
     styles/    design tokens (css variables), issus des maquettes /design
     socket/    client socket wrapper + hooks
@@ -91,7 +91,7 @@ interface PlayerRole {
 ## 3. Déroulement d'une partie (machine à états serveur)
 
 ```
-lobby → reveal → clues → voting → round_result → (clues | mrwhite_guess | game_over)
+lobby → reveal → clues → round_result → (clues | mrwhite_guess | game_over)
 ```
 
 - **lobby** : joueurs rejoignent, host règle les paramètres et la liste de paires, host lance.
@@ -101,17 +101,15 @@ lobby → reveal → clues → voting → round_result → (clues | mrwhite_gues
 - **clues** : tour par tour (ordre = `turnOrder`, mélangé aléatoirement au round 1, recalculé
   chaque round en retirant les éliminés en conservant l'ordre relatif). Un joueur ne peut
   soumettre un indice que si c'est son tour. Un indice = texte 1–60 caractères, non vide.
-  Timer configurable (`settings.clueTimeSeconds`, défaut 45s) : si expiré, indice vide
-  auto-soumis ("(passé)") et on passe au joueur suivant.
-- **voting** : vote secret simultané. Un joueur vivant vote pour un autre joueur vivant (pas
-  pour lui-même). `room:state` expose uniquement qui A voté (booléen), jamais la cible, avant
-  le dépouillement. Timer configurable (`settings.voteTimeSeconds`, défaut 30s) ; joueur
-  n'ayant pas voté à l'expiration = pas de vote compté pour lui.
-- **round_result** : dépouillement. Le joueur avec le plus de votes est éliminé. **Égalité au
-  sommet → personne n'est éliminé ce round** (règle MVP explicite, pas de second tour). Le
-  rôle de l'éliminé est révélé à tous ; son champion n'est révélé que si
-  `settings.revealChampionOnElimination === true`. Puis :
-  - si l'éliminé est Mr White ET qu'il y a eu élimination : passage à `mrwhite_guess`.
+  **Pas de minuteur** : chaque joueur prend le temps qu'il veut ; l'app se contente d'afficher
+  l'ordre de passage et qui a déjà parlé. Une fois le dernier joueur de `turnOrder` passé
+  (`currentTurnPlayerId === null`), la discussion se poursuit à voix haute hors app, et
+  **l'hôte élimine le joueur qu'il désigne** via `player:eliminate` — pas de vote compté,
+  secret ou chronométré : une décision unique de l'hôte, prise après la discussion du groupe.
+  L'hôte peut cibler n'importe quel joueur vivant, lui-même compris.
+- **round_result** : le joueur désigné est éliminé. Son rôle est révélé à tous ; son champion
+  n'est révélé que si `settings.revealChampionOnElimination === true`. Puis :
+  - si l'éliminé est Mr White : passage à `mrwhite_guess`.
   - sinon on évalue les conditions de victoire (section 4) ; si aucune, host déclenche le
     round suivant (`round:continue`) → retour à `clues` avec les joueurs restants.
 - **mrwhite_guess** : le joueur éliminé (Mr White) a une fenêtre pour proposer un nom de
@@ -128,8 +126,7 @@ lobby → reveal → clues → voting → round_result → (clues | mrwhite_gues
 ## 4. Conditions de victoire (évaluées après chaque élimination, dans cet ordre)
 
 Soit `civilsAlive`, `undercoverAlive`, `mrWhiteAlive` les décomptes parmi les joueurs encore
-en vie après l'élimination (et après une éventuelle non-élimination sur égalité — dans ce cas
-pas de réévaluation, la partie continue).
+en vie après l'élimination.
 
 1. Victoire immédiate de Mr White s'il vient d'être éliminé et devine correctement (cf. §3).
 2. **Civils gagnent** si `undercoverAlive === 0 && mrWhiteAlive === 0`.
@@ -160,10 +157,10 @@ Cette formule est mathématiquement complète (aucun état atteignable ne tombe 
   l'état complet adapté (y compris `role:private` à nouveau si la partie est en cours). Token
   invalide/expiré → erreur `INVALID_SESSION`, le client retombe sur l'écran d'accueil.
 - **Déconnexion** : un joueur dont le socket se déconnecte reste dans la room avec
-  `connected: false` pendant 3 minutes (timer serveur). Il ne bloque pas les votes/indices
-  (voir gestion des timers de phase — un joueur déconnecté est traité comme timeout immédiat
-  sur son tour de indice/vote s'il ne revient pas avant expiration du timer de phase normal).
-  Passé 3 minutes sans reconnexion, le joueur est marqué éliminé (rôle révélé) si la partie
+  `connected: false` pendant 3 minutes (timer serveur). S'il avait la main en phase `clues`,
+  son tour reste bloqué jusqu'à sa reconnexion ou l'expiration du délai de grâce (aucun
+  minuteur de indice n'auto-passe son tour, cf. §3) — au pire 3 minutes avant qu'il soit
+  retiré automatiquement de `turnOrder`. Passé 3 minutes sans reconnexion, le joueur est marqué éliminé (rôle révélé) si la partie
   est en cours, ou retiré si en lobby.
 - **Host quitte/déconnecte** : le rôle d'host est transféré automatiquement au joueur connecté
   suivant par ordre d'arrivée dans la room.
@@ -194,12 +191,10 @@ interface ChampionPair {
 interface RoomSettings {
   mrWhiteEnabled: boolean;
   revealChampionOnElimination: boolean;
-  clueTimeSeconds: number;   // 15-120, défaut 45
-  voteTimeSeconds: number;   // 15-90, défaut 30
   selectedPairId: string | null; // null = aléatoire parmi les paires enabled
 }
 
-type GamePhase = 'lobby' | 'reveal' | 'clues' | 'voting' | 'round_result'
+type GamePhase = 'lobby' | 'reveal' | 'clues' | 'round_result'
                | 'mrwhite_guess' | 'game_over';
 
 interface PublicPlayer {
@@ -219,10 +214,9 @@ interface RoomStatePublic {
   pairs: ChampionPair[];
   round: number;
   turnOrder: string[];          // playerIds, phase clues
-  currentTurnPlayerId: string | null;
+  currentTurnPlayerId: string | null; // null = tous les indices du round sont donnés
   clues: { playerId: string; text: string }[];   // round courant
-  votedPlayerIds: string[];     // qui a voté (pas pour qui), phase voting
-  phaseDeadline: number | null; // epoch ms, pour le compte à rebours client
+  phaseDeadline: number | null; // epoch ms, pour le compte à rebours client (reveal / mrwhite_guess uniquement)
 }
 
 // ---- Client -> Serveur ----
@@ -236,7 +230,7 @@ interface RoomStatePublic {
 'game:start'    {}                                                  // host only, phase lobby
 'reveal:ack'    {}                                                  // joueur confirme avoir vu son rôle
 'clue:submit'   { text: string }                                    // joueur du tour uniquement
-'vote:submit'   { targetPlayerId: string }                          // joueur vivant, une fois/round
+'player:eliminate' { targetPlayerId: string }                       // host only, phase clues une fois tous les indices donnés
 'mrwhite:guess' { championGuess: string }                           // le Mr White éliminé, une fois
 'round:continue' {}                                                 // host only
 'game:restart'  {}                                                  // host only, phase game_over
@@ -246,11 +240,9 @@ interface RoomStatePublic {
 'room:state'    RoomStatePublic                          // PUBLIC, à chaque changement d'état
 'role:private'  { role: Role, champion: string | null }  // PRIVATE, envoyé à reveal + à la reconnexion si phase >= reveal
 'round:result'  {                                          // PUBLIC
-  eliminatedPlayerId: string | null,  // null si égalité = personne éliminé
-  eliminatedRole: Role | null,
+  eliminatedPlayerId: string,
+  eliminatedRole: Role,
   eliminatedChampion: string | null,  // selon settings.revealChampionOnElimination, sinon null
-  voteCounts: Record<string, number>,
-  tie: boolean,
 }
 'game:ended'    {                                          // PUBLIC — révélation complète, fin de partie uniquement
   winner: 'civils' | 'undercover' | 'mrwhite',
