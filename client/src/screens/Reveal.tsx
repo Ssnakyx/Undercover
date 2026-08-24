@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRoom } from '../socket/RoomProvider';
 import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
+import { universeCopy } from '../lib/universe';
 
 export function Reveal() {
   const { roomState, myRole, ackReveal } = useRoom();
@@ -21,6 +22,7 @@ export function Reveal() {
 
   const role = myRole?.role;
   const champion = myRole?.champion;
+  const unit = universeCopy(roomState.universe).unitLabel;
 
   return (
     <div className="screen">
@@ -72,7 +74,7 @@ export function Reveal() {
                   <div className="role-face__champion">{champion}</div>
                   <p className="role-face__instruction">
                     Décris {champion} sans jamais dire son nom. Repère les indices qui sonnent faux — un ou plusieurs joueurs
-                    ne connaissent pas exactement le même champion que toi.
+                    ne connaissent pas exactement le même {unit} que toi.
                   </p>
                 </>
               )}
@@ -84,7 +86,7 @@ export function Reveal() {
                   </svg>
                   <div className="role-face__champion">{champion}</div>
                   <p className="role-face__instruction">
-                    Décris {champion} sans jamais dire son nom. Les civils ont un champion proche du tien — fonds-toi dans la
+                    Décris {champion} sans jamais dire son nom. Les civils ont un {unit} proche du tien — fonds-toi dans la
                     masse sans te faire démasquer.
                   </p>
                   <span className="role-face__secret">Rôle secret — ne le révèle pas.</span>
@@ -98,7 +100,7 @@ export function Reveal() {
                   </svg>
                   <div className="role-face__champion">Bluffe !</div>
                   <p className="role-face__instruction">
-                    Tu ne connais aucun champion. Écoute les indices des autres et fais semblant d'en connaître un pour ne pas
+                    Tu ne connais aucun {unit}. Écoute les indices des autres et fais semblant d'en connaître un pour ne pas
                     te faire démasquer.
                   </p>
                 </>

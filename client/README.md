@@ -8,6 +8,12 @@ vérité visuelle, branchées sur le contrat socket exact (`src/types.ts`, miroi
 passage affiché — et l'hôte déclenche lui-même le passage au vote (voir décision 7 ci-dessous
 et `docs/CONTRACT.md` §3).
 
+Un **menu principal** (`MainMenu`, route `/`) précède désormais l'écran `Home` : il choisit
+l'**univers** de contenu (`Universe`, voir §6/§7) — **lolCover** (League of Legends,
+`/play/lol`) ou **SmashCover** (Super Smash Bros Ultimate, `/play/smash`). Les deux partagent
+strictement le même moteur de jeu ; seuls le pool de paires et quelques mots de vocabulaire
+("champion" / "combattant", voir `src/lib/universe.ts`) diffèrent.
+
 ## Installation
 
 ```bash
@@ -92,6 +98,13 @@ qu'improvisée silencieusement (même esprit que `server/README.md`) :
    discussion terminée ; les autres joueurs voient un message d'attente. L'écran `Voting`
    reste ensuite un vote secret simultané classique (comme la toute première version du
    contrat), simplement sans minuteur — voir `docs/CONTRACT.md` §3.
+8. **Menu principal + univers** : `MainMenu` (route `/`) n'a pas de maquette dédiée — réutilise
+   `.hero` de `home.html` avec une grille de deux cartes (`.menu-card`, nouvelles classes).
+   L'univers choisi vit dans l'URL (`/play/:universe`), pas dans le contexte React ni le
+   `localStorage` : une fois dans une room, la source de vérité redevient `roomState.universe`
+   (fixé côté serveur à la création, voir `docs/CONTRACT.md` §6). Aucune icône officielle
+   Nintendo/Riot sur les cartes — mêmes formes géométriques maison que le reste du design
+   system (CONTRACT.md §0).
 
 ## Structure
 
@@ -103,9 +116,11 @@ src/
     RoomProvider.tsx     contexte React : état de room, session, tous les emit typés
   routes/
     GameRoute.tsx        /room/:roomCode — reconnexion + switch d'écran sur roomState.phase
-  screens/               Home, Lobby, Reveal, Discussion, Voting, RoundResult, MrWhiteGuess, GameOver
+  screens/               MainMenu, Home, Lobby, Reveal, Discussion, Voting, RoundResult,
+                         MrWhiteGuess, GameOver
   components/            Avatar, AppBar, ActionBar, LaneIcon, RoleBadge, IconDefs
-  lib/                   session (localStorage), roles (aperçu répartition), avatar (couleurs)
+  lib/                   session (localStorage), roles (aperçu répartition), avatar (couleurs),
+                         universe (textes par univers 'lol' / 'smash')
   styles/
     tokens.css           design-system.css porté verbatim depuis /design
     screens.css          styles par écran portés depuis /design/*.html

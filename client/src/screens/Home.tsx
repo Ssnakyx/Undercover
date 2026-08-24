@@ -1,12 +1,14 @@
 import { useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useRoom } from '../socket/RoomProvider';
+import { isUniverse, universeCopy } from '../lib/universe';
 
 const CODE_LENGTH = 5;
 
 export function Home() {
   const { createRoom, joinRoom } = useRoom();
   const navigate = useNavigate();
+  const { universe: universeParam } = useParams();
 
   const [mode, setMode] = useState<'create' | 'join'>('create');
 
@@ -20,12 +22,18 @@ export function Home() {
   const [joining, setJoining] = useState(false);
   const cellRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  if (!isUniverse(universeParam)) {
+    return <Navigate to="/" replace />;
+  }
+  const universe = universeParam;
+  const copy = universeCopy(universe);
+
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     if (!createName.trim()) return;
     setCreating(true);
     setCreateError(null);
-    const res = await createRoom(createName.trim());
+    const res = await createRoom(createName.trim(), universe);
     setCreating(false);
     if (res.ok && res.roomCode) {
       navigate(`/room/${res.roomCode}`);
@@ -77,11 +85,8 @@ export function Home() {
               <polygon points="20,9 31,20 20,31 9,20" stroke="currentColor" strokeWidth="1.4" opacity="0.75" />
               <circle cx="20" cy="20" r="2.2" fill="currentColor" />
             </svg>
-            <h1 className="hero__title font-display">lolCover</h1>
-            <p className="hero__tagline">
-              Un traître se cache dans l'équipe. Décrivez votre champion sans le nommer, et démasquez les intrus
-              avant la fin de la partie.
-            </p>
+            <h1 className="hero__title font-display">{copy.name}</h1>
+            <p className="hero__tagline">{copy.tagline}</p>
           </div>
 
           <div className="segmented" role="tablist" aria-label="Mode de connexion">
@@ -110,14 +115,14 @@ export function Home() {
               <form className="stack" style={{ '--stack-gap': 'var(--space-5)' } as CSSProperties} onSubmit={handleCreate}>
                 <div className="field">
                   <label className="field__label" htmlFor="create-name">
-                    Ton pseudo d'invocateur
+                    {copy.nameLabel}
                   </label>
                   <input
                     className="input"
                     id="create-name"
                     type="text"
                     maxLength={18}
-                    placeholder="ex. NoctaJungle"
+                    placeholder={copy.namePlaceholder}
                     autoComplete="off"
                     value={createName}
                     onChange={(e) => setCreateName(e.target.value)}
@@ -159,14 +164,14 @@ export function Home() {
                 </div>
                 <div className="field">
                   <label className="field__label" htmlFor="join-name">
-                    Ton pseudo d'invocateur
+                    {copy.nameLabel}
                   </label>
                   <input
                     className="input"
                     id="join-name"
                     type="text"
                     maxLength={18}
-                    placeholder="ex. RiftHerald_"
+                    placeholder={copy.namePlaceholder}
                     autoComplete="off"
                     value={joinName}
                     onChange={(e) => setJoinName(e.target.value)}
@@ -186,6 +191,8 @@ export function Home() {
 
           <p className="footnote">
             Aucun compte requis — un pseudo suffit. Jouable à 3–12, sur mobile comme sur ordinateur.
+            <br />
+            <Link to="/">Changer d'univers</Link>
           </p>
         </div>
       </main>

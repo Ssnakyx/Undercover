@@ -69,10 +69,11 @@ function toPublicPlayer(player: Player): PublicPlayer {
 function toPublicState(room: Room): RoomStatePublic {
   return {
     roomCode: room.roomCode,
+    universe: room.universe,
     phase: room.phase,
     players: engine.playersInJoinOrder(room).map(toPublicPlayer),
     settings: { ...room.settings },
-    pairs: getAllPairs(),
+    pairs: getAllPairs(room.universe),
     round: room.round,
     turnOrder: [...room.turnOrder],
     votedPlayerIds: room.votes.map((v) => v.voterId),
@@ -314,7 +315,11 @@ export function registerSocketHandlers(io: IoServer): void {
         ack({ ok: false, error: { code: 'INVALID_NAME', message: 'Nom du host invalide' } });
         return;
       }
-      const room = createRoom();
+      if (payload?.universe !== 'lol' && payload?.universe !== 'smash') {
+        ack({ ok: false, error: { code: 'INVALID_UNIVERSE', message: 'Univers invalide' } });
+        return;
+      }
+      const room = createRoom(payload.universe);
       const playerId = generatePlayerId();
       const sessionToken = generateSessionToken();
       const player: Player = {
@@ -437,7 +442,7 @@ export function registerSocketHandlers(io: IoServer): void {
         fail(socket, ack, 'INVALID_SETTINGS', 'revealChampionOnElimination doit être un booléen');
         return;
       }
-      if (next.selectedPairId !== null && !getPairById(next.selectedPairId)) {
+      if (next.selectedPairId !== null && !getPairById(room.universe, next.selectedPairId)) {
         fail(socket, ack, 'PAIR_NOT_FOUND', 'selectedPairId invalide');
         return;
       }
@@ -458,7 +463,7 @@ export function registerSocketHandlers(io: IoServer): void {
         fail(socket, ack, 'INVALID_PAIR', 'champA, champB et theme sont requis');
         return;
       }
-      addPair({ champA, champB, theme });
+      addPair(ctx.room.universe, { champA, champB, theme });
       ok(ack);
       broadcastPairsToAllRooms(io);
     });
@@ -467,7 +472,7 @@ export function registerSocketHandlers(io: IoServer): void {
       const ctx = requireCtx(socket, ack);
       if (!ctx) return;
       if (!requireHost(socket, ctx, ack)) return;
-      const updated = togglePair(payload?.pairId, Boolean(payload?.enabled));
+      const updated = togglePair(ctx.room.universe, payload?.pairId, Boolean(payload?.enabled));
       if (!updated) {
         fail(socket, ack, 'PAIR_NOT_FOUND', 'Paire introuvable');
         return;
@@ -480,7 +485,7 @@ export function registerSocketHandlers(io: IoServer): void {
       const ctx = requireCtx(socket, ack);
       if (!ctx) return;
       if (!requireHost(socket, ctx, ack)) return;
-      const result = removePair(payload?.pairId);
+      const result = removePair(ctx.room.universe, payload?.pairId);
       if (!result.ok) {
         const code = result.reason === 'NOT_CUSTOM' ? 'CANNOT_REMOVE_BASE_PAIR' : 'PAIR_NOT_FOUND';
         fail(socket, ack, code, 'Impossible de retirer cette paire');
@@ -500,7 +505,7 @@ export function registerSocketHandlers(io: IoServer): void {
         return;
       }
       try {
-        engine.assignRolesAndEnterReveal(room, { pairsPool: getAllPairs() });
+        engine.assignRolesAndEnterReveal(room, { pairsPool: getAllPairs(room.universe) });
       } catch (err) {
         reportEngineError(socket, ack, err, 'START_FAILED');
         return;
@@ -606,7 +611,7 @@ export function registerSocketHandlers(io: IoServer): void {
         return;
       }
       try {
-        engine.assignRolesAndEnterReveal(room, { pairsPool: getAllPairs() });
+        engine.assignRolesAndEnterReveal(room, { pairsPool: getAllPairs(room.universe) });
       } catch (err) {
         reportEngineError(socket, ack, err, 'RESTART_FAILED');
         return;

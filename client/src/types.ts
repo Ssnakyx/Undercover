@@ -3,6 +3,10 @@
 
 export type Role = 'civil' | 'undercover' | 'mrwhite';
 
+// Univers de contenu choisi au menu principal — même moteur de jeu, deux pools de paires
+// indépendants. Aucun asset visuel officiel dans les deux cas (CONTRACT.md §0).
+export type Universe = 'lol' | 'smash';
+
 export interface ChampionPair {
   id: string;
   champA: string;
@@ -39,6 +43,7 @@ export interface PublicPlayer {
 
 export interface RoomStatePublic {
   roomCode: string;
+  universe: Universe;
   phase: GamePhase;
   players: PublicPlayer[];
   settings: RoomSettings;
@@ -53,6 +58,7 @@ export interface RoomStatePublic {
 
 export interface RoomCreatePayload {
   hostName: string;
+  universe: Universe;
 }
 export interface RoomCreateAck {
   ok: boolean;

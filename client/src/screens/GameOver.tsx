@@ -3,6 +3,7 @@ import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
 import { RoleBadge } from '../components/RoleBadge';
+import { universeCopy } from '../lib/universe';
 import type { Winner } from '../types';
 
 const WINNER_COPY: Record<Winner, { eyebrow: string; title: string; sub: string; role: 'civil' | 'undercover' | 'mrwhite' }> = {
@@ -34,6 +35,7 @@ export function GameOver() {
   const me = roomState.players.find((p) => p.playerId === playerId);
   const isHost = me?.isHost ?? false;
   const copy = WINNER_COPY[lastGameEnded.winner];
+  const unit = universeCopy(roomState.universe).unitLabel;
 
   return (
     <div className="screen">
@@ -79,7 +81,7 @@ export function GameOver() {
                     <Avatar seed={player?.avatarSeed ?? p.playerId} name={p.name} />
                     <div className="reveal-chip__name">{p.name}</div>
                     <RoleBadge role={p.role} />
-                    <div className="reveal-chip__champion">{p.champion ?? 'Bluffait — aucun champion'}</div>
+                    <div className="reveal-chip__champion">{p.champion ?? `Bluffait — aucun ${unit}`}</div>
                   </div>
                 );
               })}

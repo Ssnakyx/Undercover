@@ -2,7 +2,7 @@
 // Voir docs/CONTRACT.md section 5.
 
 import { randomUUID } from 'node:crypto';
-import type { Room, RoomSettings } from '../types.js';
+import type { Room, RoomSettings, Universe } from '../types.js';
 
 // "Code de room : 5 caractères, alphabet ABCDEFGHJKMNPQRSTUVWXYZ23456789 (sans 0/O/1/I)"
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -44,11 +44,12 @@ export function generateUniqueRoomCode(): string {
   return code;
 }
 
-export function createRoom(): Room {
+export function createRoom(universe: Universe = 'lol'): Room {
   const roomCode = generateUniqueRoomCode();
   const room: Room = {
     roomCode,
     createdAt: Date.now(),
+    universe,
     phase: 'lobby',
     settings: defaultRoomSettings(),
     players: new Map(),

@@ -11,6 +11,7 @@ import type {
   RoomStatePublic,
   RolePrivatePayload,
   RoundResultPayload,
+  Universe,
 } from '../types';
 
 interface Session {
@@ -29,7 +30,7 @@ interface RoomContextValue {
   lastGameEnded: GameEndedPayload | null;
   lastError: ErrorPayload | null;
   clearError: () => void;
-  createRoom: (hostName: string) => Promise<RoomCreateAck>;
+  createRoom: (hostName: string, universe: Universe) => Promise<RoomCreateAck>;
   joinRoom: (roomCode: string, playerName: string) => Promise<RoomJoinAck>;
   rejoinFromStorage: (roomCode: string) => Promise<boolean>;
   updateSettings: (settings: Partial<RoomSettings>) => void;
@@ -117,9 +118,9 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   }, [setSession]);
 
   const createRoom = useCallback(
-    (hostName: string) =>
+    (hostName: string, universe: Universe) =>
       new Promise<RoomCreateAck>((resolve) => {
-        socket.emit('room:create', { hostName }, (res) => {
+        socket.emit('room:create', { hostName, universe }, (res) => {
           if (res.ok && res.roomCode && res.playerId && res.sessionToken) {
             const s = { roomCode: res.roomCode, playerId: res.playerId, sessionToken: res.sessionToken };
             saveSession(s.roomCode, { playerId: s.playerId, sessionToken: s.sessionToken });

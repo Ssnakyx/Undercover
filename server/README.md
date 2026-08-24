@@ -129,9 +129,14 @@ documentée ici plutôt qu'improvisée silencieusement :
    relancer `game:start` séparément.
 9. **Ack optionnels sur tous les événements client→serveur** : le contrat ne montre le format
    `-> ack {...}` explicitement que pour `room:create`/`room:join`/`room:rejoin`. Tous les
-   autres événements (settings, pairs, game:start, clue:submit, etc.) acceptent aussi un
+   autres événements (settings, pairs, game:start, vote:submit, etc.) acceptent aussi un
    callback d'ack `{ ok, error? }` en plus de l'événement `error` déjà prévu par le contrat —
    pur ajout de confort côté client, n'entre pas en conflit avec le contrat.
+10. **Univers de contenu (`Universe`)** : deux pools de paires totalement indépendants
+    (`content/pairsStore.ts`, un `Map` interne par univers), choisis une fois pour toutes à la
+    création de la room (`room:create.universe`) et jamais modifiables ensuite — rejoindre une
+    room hérite de son univers, pas de conversion à la volée. `pairs:add`/`toggle`/`remove`
+    n'affectent que le pool de l'univers de la room de l'hôte qui les déclenche.
 
 ## Sécurité (rappel des invariants vérifiés)
 
@@ -156,8 +161,9 @@ documentée ici plutôt qu'improvisée silencieusement :
 src/
   types.ts               types partagés (miroir exact du contrat)
   content/
-    championPairs.ts     liste de base (fournie par l'agent Contenu, non modifiée)
-    pairsStore.ts         état mutable global des paires (partagé par toutes les rooms)
+    championPairs.ts     liste de base League of Legends (univers 'lol')
+    smashPairs.ts          liste de base Super Smash Bros Ultimate (univers 'smash')
+    pairsStore.ts           état mutable global des paires, un pool par univers
   game/
     roles.ts              distribution des rôles (pur, testable)
     turnOrder.ts           ordre de passage (pur, testable)

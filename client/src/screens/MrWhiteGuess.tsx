@@ -4,6 +4,7 @@ import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
 import { RoleEmblem } from '../components/RoleBadge';
+import { universeCopy } from '../lib/universe';
 
 // Pas de maquette dédiée pour cette phase (absente de /design) — réutilise la
 // grammaire visuelle de round_result (eliminated-block + role-reveal), voir
@@ -18,6 +19,7 @@ export function MrWhiteGuess() {
   const eliminatedId = lastRoundResult?.eliminatedPlayerId ?? null;
   const eliminated = eliminatedId ? roomState.players.find((p) => p.playerId === eliminatedId) : null;
   const isGuesser = eliminatedId !== null && eliminatedId === playerId;
+  const unit = universeCopy(roomState.universe).unitLabel;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -43,7 +45,7 @@ export function MrWhiteGuess() {
               <div>
                 <div className="role-reveal__eyebrow">Dernière chance</div>
                 <div className="role-reveal__champion" style={{ textTransform: 'none', fontSize: 'var(--text-base)' }}>
-                  Une devinette correcte du champion des civils lui offre la victoire immédiate.
+                  Une devinette correcte du {unit} des civils lui offre la victoire immédiate.
                 </div>
               </div>
             </div>
@@ -53,12 +55,12 @@ export function MrWhiteGuess() {
 
       {isGuesser ? (
         <ActionBar>
-          <form className="clue-form" onSubmit={handleSubmit}>
-            <div className="clue-form__row">
+          <form className="inline-form" onSubmit={handleSubmit}>
+            <div className="inline-form__row">
               <input
                 className="input"
                 type="text"
-                placeholder="Nom du champion des civils"
+                placeholder={`Nom du ${unit} des civils`}
                 value={guess}
                 onChange={(e) => setGuess(e.target.value)}
                 disabled={submitted}

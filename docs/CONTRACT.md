@@ -4,21 +4,26 @@ Ce document est LA référence technique du projet. Tout agent (Design, Frontend
 Contenu, QA, Correction) doit lire ce fichier intégralement avant de produire quoi que ce
 soit, et ne doit jamais s'en écarter sans mettre ce fichier à jour d'abord.
 
-Nom du projet : **lolCover**. Jeu façon Undercover/Mr White thématisé League of Legends,
-multijoueur temps réel, un joueur par appareil.
+Nom du projet : **lolCover**. Jeu façon Undercover/Mr White, multijoueur temps réel, un joueur
+par appareil. Un menu principal propose le choix entre deux **univers** de contenu
+(`Universe`, voir §6) qui partagent exactement le même moteur de jeu : **League of Legends**
+(`'lol'`) et **Super Smash Bros Ultimate** (`'smash'`).
 
 ---
 
 ## 0. Frontière propriété intellectuelle (IMPORTANT — lire avant de designer/contenu)
 
-- **Autorisé et requis** : les noms de champions en texte brut (Garen, Darius, Ashe, ...).
-  Le jeu ne fonctionne pas sans eux — ne pas les génériciser, ne pas les remplacer par des
-  noms inventés.
-- **Interdit** : tout asset visuel officiel Riot Games — splash arts, icônes de champions
-  officielles, logo Riot/League of Legends, polices ou charte graphique copiées de leur site.
-- Toute représentation visuelle d'un champion doit être une création originale (typographie
-  du nom, silhouette géométrique stylisée maison, motif abstrait, dégradé propre au design
-  system défini section 4).
+Vaut pour les DEUX univers de contenu (League of Legends et Super Smash Bros Ultimate).
+
+- **Autorisé et requis** : les noms de champions/combattants en texte brut (Garen, Darius,
+  Ashe, ... / Mario, Fox, Marth, ...). Le jeu ne fonctionne pas sans eux — ne pas les
+  génériciser, ne pas les remplacer par des noms inventés.
+- **Interdit** : tout asset visuel officiel Riot Games ou Nintendo/Sakurai — splash arts,
+  artworks/rendus officiels, icônes de personnage officielles, logos (Riot/League of Legends,
+  Nintendo/Super Smash Bros), polices ou charte graphique copiées de leurs sites.
+- Toute représentation visuelle d'un champion/combattant doit être une création originale
+  (typographie du nom, silhouette géométrique stylisée maison, motif abstrait, dégradé propre
+  au design system défini section 4) — identique dans les deux univers.
 
 ---
 
@@ -30,11 +35,11 @@ multijoueur temps réel, un joueur par appareil.
     game/      logique pure testable (rôles, tours, votes, conditions de victoire)
     rooms/     gestion des rooms, reconnexion, expiration
     socket/    handlers des événements socket.io
-    content/   liste des paires de champions (source de vérité serveur)
+    content/   listes de paires de champions/combattants par univers (source de vérité serveur)
   test/        tests unitaires (Vitest)
 /client        React + TypeScript + Vite + socket.io-client + react-router-dom
   src/
-    screens/   Home, Lobby, Reveal, Discussion, Voting, RoundResult, GameOver
+    screens/   MainMenu, Home, Lobby, Reveal, Discussion, Voting, RoundResult, GameOver
     components/
     styles/    design tokens (css variables), issus des maquettes /design
     socket/    client socket wrapper + hooks
@@ -183,6 +188,10 @@ Convention : `->` client vers serveur (avec ack éventuel), `<-` serveur vers cl
 ```ts
 // ---- Types partagés (à dupliquer identiquement server/src et client/src) ----
 
+// Univers de contenu choisi au menu principal (voir §0/§7) — même moteur de jeu, deux pools
+// de paires indépendants. Aucun asset visuel officiel dans les deux cas.
+type Universe = 'lol' | 'smash';
+
 interface ChampionPair {
   id: string;
   champA: string;
@@ -213,6 +222,7 @@ interface PublicPlayer {
 
 interface RoomStatePublic {
   roomCode: string;
+  universe: Universe;           // fixé à la création, jamais modifiable ensuite
   phase: GamePhase;
   players: PublicPlayer[];
   settings: RoomSettings;
@@ -224,7 +234,7 @@ interface RoomStatePublic {
 }
 
 // ---- Client -> Serveur ----
-'room:create'   { hostName: string } -> ack { ok: true, roomCode, playerId, sessionToken } | { ok: false, error }
+'room:create'   { hostName: string, universe: Universe } -> ack { ok: true, roomCode, playerId, sessionToken } | { ok: false, error }
 'room:join'     { roomCode: string, playerName: string } -> ack { ok, playerId?, sessionToken?, error? }
 'room:rejoin'   { roomCode: string, playerId: string, sessionToken: string } -> ack { ok, error? }
 'settings:update' { settings: Partial<RoomSettings> }               // host only
@@ -264,20 +274,25 @@ seul joueur qui vient d'être éliminé.
 
 ---
 
-## 7. Contenu — paires de champions
+## 7. Contenu — paires de champions/combattants
 
-Le serveur détient la liste (source de vérité). Liste de départ (≥20 paires, thème +
-lane(s) si pertinent) à fournir par l'agent Contenu dans `server/src/content/championPairs.ts`,
-en partant de :
+Le serveur détient **deux pools indépendants**, un par univers (`server/src/content/pairsStore.ts`,
+voir §6 `Universe`) — les paires League of Legends et Smash Bros Ultimate ne se mélangent
+jamais, et chaque room n'accède qu'au pool de son propre `universe`.
 
-Garen/Darius, Ashe/Sivir, Katarina/Talon, Lux/Morgana, Malphite/Ornn, Miss Fortune/Caitlyn,
-Jinx/Vayne, Yasuo/Yone, Vi/Jax, Nidalee/Rengar, Xin Zhao/Renekton, Ezreal/Kai'Sa, Annie/Zoe,
-Braum/Thresh, Soraka/Janna, Shen/Zed, Fiora/Riven, Karma/Sona, Teemo/Heimerdinger,
-Nautilus/Illaoi, Kled/Rumble, Ahri/Neeko, Diana/Leona, Tristana/Corki.
+- **Univers `'lol'`** — `server/src/content/championPairs.ts` (≥20 paires, thème + lane(s) si
+  pertinent), en partant de : Garen/Darius, Ashe/Sivir, Katarina/Talon, Lux/Morgana,
+  Malphite/Ornn, Miss Fortune/Caitlyn, Jinx/Vayne, Yasuo/Yone, Vi/Jax, Nidalee/Rengar,
+  Xin Zhao/Renekton, Ezreal/Kai'Sa, Annie/Zoe, Braum/Thresh, Soraka/Janna, Shen/Zed,
+  Fiora/Riven, Karma/Sona, Teemo/Heimerdinger, Nautilus/Illaoi, Kled/Rumble, Ahri/Neeko,
+  Diana/Leona, Tristana/Corki.
+- **Univers `'smash'`** — `server/src/content/smashPairs.ts` (≥20 paires, thème = lien de
+  moveset/lore — Echo Fighter officiel, clone, rivalité canon), ex. Mario/Luigi, Fox/Falco,
+  Marth/Lucina, Pit/Dark Pit, Pikachu/Pichu.
 
-L'host peut, depuis le lobby (`pairs:add` / `pairs:toggle` / `pairs:remove`), éditer la liste
-pour la durée de vie du process serveur (persistée en mémoire globale, pas par room, pour que
-les ajouts profitent à toutes les rooms suivantes).
+L'host peut, depuis le lobby (`pairs:add` / `pairs:toggle` / `pairs:remove`), éditer le pool de
+l'univers de sa room pour la durée de vie du process serveur (persisté en mémoire globale, pas
+par room, pour que les ajouts profitent à toutes les rooms suivantes du même univers).
 
 ---
 

@@ -18,6 +18,13 @@ export interface PlayerRole {
 // Section 6 — types partagés socket
 // ---------------------------------------------------------------------------
 
+/**
+ * Univers de contenu choisi au menu principal — même moteur de jeu, deux pools de paires
+ * indépendants (voir content/pairsStore.ts). 'lol' = League of Legends, 'smash' = Super
+ * Smash Bros Ultimate. Aucun asset visuel officiel dans les deux cas (CONTRACT.md §0).
+ */
+export type Universe = 'lol' | 'smash';
+
 export interface ChampionPair {
   id: string;
   champA: string;
@@ -54,6 +61,7 @@ export interface PublicPlayer {
 
 export interface RoomStatePublic {
   roomCode: string;
+  universe: Universe;
   phase: GamePhase;
   players: PublicPlayer[];
   settings: RoomSettings;
@@ -68,6 +76,7 @@ export interface RoomStatePublic {
 
 export interface RoomCreatePayload {
   hostName: string;
+  universe: Universe;
 }
 export interface RoomCreateAck {
   ok: boolean;
@@ -186,6 +195,7 @@ export interface VoteRecord {
 export interface Room {
   roomCode: string;
   createdAt: number;
+  universe: Universe;
   phase: GamePhase;
   settings: RoomSettings;
   players: Map<string, Player>; // playerId -> Player, ordre non garanti (utiliser joinOrder)

@@ -5,6 +5,7 @@ import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
 import { LaneIcon } from '../components/LaneIcon';
 import { computeRoleCounts, isMrWhiteAvailable } from '../lib/roles';
+import { universeCopy } from '../lib/universe';
 
 export function Lobby() {
   const { roomState, playerId, updateSettings, togglePair, addPair, startGame } = useRoom();
@@ -15,6 +16,7 @@ export function Lobby() {
 
   if (!roomState) return null;
 
+  const unit = universeCopy(roomState.universe).unitLabelCapitalized;
   const me = roomState.players.find((p) => p.playerId === playerId);
   const isHost = me?.isHost ?? false;
   const host = roomState.players.find((p) => p.isHost);
@@ -155,7 +157,7 @@ export function Lobby() {
           <section aria-labelledby="pairs-title" className="mt-6">
             <div className="section-title">
               <h2 id="pairs-title" className="font-display">
-                Paires de champions
+                Paires de {universeCopy(roomState.universe).unitLabel}s
               </h2>
               <span className="count">
                 {enabledPairsCount} activées / {roomState.pairs.length}
@@ -207,26 +209,26 @@ export function Lobby() {
                   <form className="add-pair-form" onSubmit={handleAddPair}>
                     <div className="field">
                       <label className="field__label" htmlFor="add-champa">
-                        Champion A (majorité)
+                        {unit} A (majorité)
                       </label>
                       <input
                         className="input"
                         id="add-champa"
                         type="text"
-                        placeholder="ex. Diana"
+                        placeholder={roomState.universe === 'lol' ? 'ex. Diana' : 'ex. Fox'}
                         value={champA}
                         onChange={(e) => setChampA(e.target.value)}
                       />
                     </div>
                     <div className="field">
                       <label className="field__label" htmlFor="add-champb">
-                        Champion B (undercover)
+                        {unit} B (undercover)
                       </label>
                       <input
                         className="input"
                         id="add-champb"
                         type="text"
-                        placeholder="ex. Leona"
+                        placeholder={roomState.universe === 'lol' ? 'ex. Leona' : 'ex. Falco'}
                         value={champB}
                         onChange={(e) => setChampB(e.target.value)}
                       />

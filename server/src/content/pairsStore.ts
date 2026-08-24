@@ -1,27 +1,34 @@
-// État mutable global des paires de champions — voir docs/CONTRACT.md section 7.
+// État mutable global des paires — voir docs/CONTRACT.md section 7. Un pool indépendant par
+// univers (`Universe`, voir types.ts) : les paires League of Legends et Smash Bros Ultimate
+// ne se mélangent jamais, chacune éditable par les hosts de son propre univers.
 // "L'host peut, depuis le lobby (pairs:add / pairs:toggle / pairs:remove), éditer la liste
 // pour la durée de vie du process serveur (persistée en mémoire globale, pas par room, pour
-// que les ajouts profitent à toutes les rooms suivantes)."
-//
-// Ce module détient donc UNE seule liste partagée par tout le process, initialisée à partir
-// de la liste de base fournie par l'agent Contenu (championPairs.ts, non modifié).
+// que les ajouts profitent à toutes les rooms suivantes [du même univers])."
 
 import { randomUUID } from 'node:crypto';
-import { championPairs as basePairs, type ChampionPair } from './championPairs.js';
+import type { ChampionPair, Universe } from '../types.js';
+import { championPairs as baseLolPairs } from './championPairs.js';
+import { smashPairs as baseSmashPairs } from './smashPairs.js';
 
-// Copie défensive : on ne mute jamais le tableau exporté par championPairs.ts.
-let pairs: ChampionPair[] = basePairs.map((p) => ({ ...p }));
-
-export function getAllPairs(): ChampionPair[] {
-  return pairs.map((p) => ({ ...p }));
+function basePairsFor(universe: Universe): ChampionPair[] {
+  return universe === 'lol' ? baseLolPairs : baseSmashPairs;
 }
 
-export function getEnabledPairs(): ChampionPair[] {
-  return pairs.filter((p) => p.enabled);
+const pools: Record<Universe, ChampionPair[]> = {
+  lol: baseLolPairs.map((p) => ({ ...p })),
+  smash: baseSmashPairs.map((p) => ({ ...p })),
+};
+
+export function getAllPairs(universe: Universe): ChampionPair[] {
+  return pools[universe].map((p) => ({ ...p }));
 }
 
-export function getPairById(pairId: string): ChampionPair | undefined {
-  return pairs.find((p) => p.id === pairId);
+export function getEnabledPairs(universe: Universe): ChampionPair[] {
+  return pools[universe].filter((p) => p.enabled);
+}
+
+export function getPairById(universe: Universe, pairId: string): ChampionPair | undefined {
+  return pools[universe].find((p) => p.id === pairId);
 }
 
 export interface AddPairInput {
@@ -30,7 +37,7 @@ export interface AddPairInput {
   theme: string;
 }
 
-export function addPair(input: AddPairInput): ChampionPair {
+export function addPair(universe: Universe, input: AddPairInput): ChampionPair {
   const pair: ChampionPair = {
     id: randomUUID(),
     champA: input.champA.trim(),
@@ -39,28 +46,32 @@ export function addPair(input: AddPairInput): ChampionPair {
     enabled: true,
     isCustom: true,
   };
-  pairs = [...pairs, pair];
+  pools[universe] = [...pools[universe], pair];
   return pair;
 }
 
-export function togglePair(pairId: string, enabled: boolean): ChampionPair | null {
-  const idx = pairs.findIndex((p) => p.id === pairId);
+export function togglePair(universe: Universe, pairId: string, enabled: boolean): ChampionPair | null {
+  const idx = pools[universe].findIndex((p) => p.id === pairId);
   if (idx === -1) return null;
-  const updated: ChampionPair = { ...pairs[idx], enabled };
-  pairs = [...pairs.slice(0, idx), updated, ...pairs.slice(idx + 1)];
+  const updated: ChampionPair = { ...pools[universe][idx], enabled };
+  pools[universe] = [...pools[universe].slice(0, idx), updated, ...pools[universe].slice(idx + 1)];
   return updated;
 }
 
 /** Retrait autorisé uniquement pour les paires custom (isCustom === true), voir contrat. */
-export function removePair(pairId: string): { ok: true } | { ok: false; reason: 'NOT_FOUND' | 'NOT_CUSTOM' } {
-  const pair = pairs.find((p) => p.id === pairId);
+export function removePair(
+  universe: Universe,
+  pairId: string
+): { ok: true } | { ok: false; reason: 'NOT_FOUND' | 'NOT_CUSTOM' } {
+  const pair = pools[universe].find((p) => p.id === pairId);
   if (!pair) return { ok: false, reason: 'NOT_FOUND' };
   if (!pair.isCustom) return { ok: false, reason: 'NOT_CUSTOM' };
-  pairs = pairs.filter((p) => p.id !== pairId);
+  pools[universe] = pools[universe].filter((p) => p.id !== pairId);
   return { ok: true };
 }
 
-/** Utilitaire de test uniquement : réinitialise le store à la liste de base. */
+/** Utilitaire de test uniquement : réinitialise les deux pools à leur liste de base. */
 export function _resetPairsStoreForTests(): void {
-  pairs = basePairs.map((p) => ({ ...p }));
+  pools.lol = basePairsFor('lol').map((p) => ({ ...p }));
+  pools.smash = basePairsFor('smash').map((p) => ({ ...p }));
 }
