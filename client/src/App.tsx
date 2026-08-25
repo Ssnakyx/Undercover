@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { RoomProvider } from './socket/RoomProvider';
 import { IconDefs } from './components/IconDefs';
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/room/:roomCode" element={<GameRoute />} />
         </Routes>
       </BrowserRouter>
+      <Analytics />
     </RoomProvider>
   );
 }
