@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useRoom } from '../socket/RoomProvider';
 import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
@@ -34,7 +35,8 @@ const WINNER_COPY: Record<Winner, { eyebrow: string; title: string; sub: string;
 };
 
 export function GameOver() {
-  const { roomState, playerId, lastGameEnded, restartGame } = useRoom();
+  const { roomState, playerId, lastGameEnded, restartGame, leaveRoom } = useRoom();
+  const navigate = useNavigate();
 
   if (!roomState || !lastGameEnded) return null;
 
@@ -42,6 +44,14 @@ export function GameOver() {
   const isHost = me?.isHost ?? false;
   const copy = WINNER_COPY[lastGameEnded.winner];
   const unit = universeCopy(roomState.universe).unitLabel;
+
+  // La partie est déjà terminée ici : contrairement à HostQuitButton (qui coupe une partie en
+  // cours pour tout le monde), quitter depuis game_over n'affecte que soi — pas de confirmation
+  // nécessaire, tous les joueurs (host inclus) peuvent revenir au menu librement.
+  function backToMenu() {
+    leaveRoom();
+    navigate('/', { replace: true });
+  }
 
   return (
     <div className="screen">
@@ -116,6 +126,9 @@ export function GameOver() {
             En attente de l'hôte…
           </button>
         )}
+        <button className="btn btn-secondary" type="button" onClick={backToMenu}>
+          Retour au menu
+        </button>
       </ActionBar>
     </div>
   );
