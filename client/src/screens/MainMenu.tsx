@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { listStoredRoomCodes } from '../lib/session';
+import { getLastRoomCode } from '../lib/session';
 
 // Menu principal : choix de l'univers de contenu (CONTRACT.md §0/§7). Aucune icône/logo
 // officiel — simples formes géométriques maison, cohérentes avec le design system.
@@ -9,7 +9,7 @@ export function MainMenu() {
   // Quitter une partie (bouton, fermeture d'onglet, navigation ailleurs) ne doit pas être un
   // cul-de-sac : toute room avec une session encore valide en localStorage (voir lib/session.ts)
   // est proposée en reprise ici, l'unique point d'entrée commun à toute navigation "de zéro".
-  const [resumableCodes] = useState(() => listStoredRoomCodes());
+  const [lastRoomCode] = useState(() => getLastRoomCode());
 
   return (
     <div className="screen">
@@ -27,7 +27,7 @@ export function MainMenu() {
             </p>
           </div>
 
-          {resumableCodes.length > 0 && (
+          {lastRoomCode && (
             <section aria-labelledby="resume-title" className="resume-section">
               <div className="section-title">
                 <h2 id="resume-title" className="font-display">
@@ -35,22 +35,15 @@ export function MainMenu() {
                 </h2>
               </div>
               <div className="panel resume-panel">
-                {resumableCodes.map((code) => (
-                  <button
-                    key={code}
-                    type="button"
-                    className="resume-row"
-                    onClick={() => navigate(`/room/${code}`)}
-                  >
-                    <span className="resume-row__code font-mono">{code.split('').join(' ')}</span>
-                    <span className="resume-row__cta">
-                      Reprendre
-                      <svg viewBox="0 0 24 24" fill="none" width={16} height={16}>
-                        <path d="M9 6 L15 12 L9 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </span>
-                  </button>
-                ))}
+                <button type="button" className="resume-row" onClick={() => navigate(`/room/${lastRoomCode}`)}>
+                  <span className="resume-row__code font-mono">{lastRoomCode.split('').join(' ')}</span>
+                  <span className="resume-row__cta">
+                    Reprendre
+                    <svg viewBox="0 0 24 24" fill="none" width={16} height={16}>
+                      <path d="M9 6 L15 12 L9 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                </button>
               </div>
             </section>
           )}
