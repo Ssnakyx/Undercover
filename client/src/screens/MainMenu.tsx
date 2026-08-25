@@ -1,6 +1,31 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getLastRoomCode } from '../lib/session';
+import { RoleEmblem, roleDescription, roleLabel } from '../components/RoleBadge';
+import {
+  GHOST_MIN_PLAYERS,
+  HUNTER_MIN_PLAYERS,
+  JESTER_MIN_PLAYERS,
+  LOVERS_MIN_PLAYERS,
+  MR_WHITE_MIN_PLAYERS,
+  PROTECTOR_MIN_PLAYERS,
+  SPY_MIN_PLAYERS,
+} from '../lib/roles';
+import type { Role } from '../types';
+
+// Rôles de base (civil/undercover) toujours actifs, puis rôles optionnels dans l'ordre du
+// Lobby, puis Amoureux en dernier (relation entre 2 joueurs, pas un Role à part entière —
+// voir types.ts#Role).
+const ROLE_ROWS: { role: Role; minPlayers?: number }[] = [
+  { role: 'civil' },
+  { role: 'undercover' },
+  { role: 'mrwhite', minPlayers: MR_WHITE_MIN_PLAYERS },
+  { role: 'spy', minPlayers: SPY_MIN_PLAYERS },
+  { role: 'protector', minPlayers: PROTECTOR_MIN_PLAYERS },
+  { role: 'ghost', minPlayers: GHOST_MIN_PLAYERS },
+  { role: 'hunter', minPlayers: HUNTER_MIN_PLAYERS },
+  { role: 'jester', minPlayers: JESTER_MIN_PLAYERS },
+];
 
 // Menu principal : choix de l'univers de contenu (CONTRACT.md §0/§7). Aucune icône/logo
 // officiel — simples formes géométriques maison, cohérentes avec le design system.
@@ -77,6 +102,37 @@ export function MainMenu() {
               <div className="menu-card__sub">Pokémon</div>
             </Link>
           </div>
+
+          <details className="roles-info panel frame-cut frame-cut--flat">
+            <summary className="roles-info__summary font-display">Les rôles</summary>
+            <div className="roles-info__list">
+              {ROLE_ROWS.map(({ role, minPlayers }) => (
+                <div key={role} className="roles-info__row">
+                  <RoleEmblem role={role} className="roles-info__icon" />
+                  <div>
+                    <div className="roles-info__name">
+                      {roleLabel(role)}
+                      {minPlayers && <span className="roles-info__min"> — dès {minPlayers} joueurs</span>}
+                    </div>
+                    <div className="roles-info__desc">{roleDescription(role)}</div>
+                  </div>
+                </div>
+              ))}
+              <div className="roles-info__row">
+                <span className="roles-info__icon roles-info__icon--emoji" aria-hidden="true">
+                  💘
+                </span>
+                <div>
+                  <div className="roles-info__name">
+                    Amoureux<span className="roles-info__min"> — dès {LOVERS_MIN_PLAYERS} joueurs</span>
+                  </div>
+                  <div className="roles-info__desc">
+                    2 joueurs (de n'importe quel rôle) liés en secret. Si l'un meurt, l'autre le suit aussitôt.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </details>
 
           <p className="footnote">Aucun compte requis — un pseudo suffit. Jouable à 3–12, sur mobile comme sur ordinateur.</p>
         </div>
