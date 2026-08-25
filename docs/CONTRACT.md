@@ -256,9 +256,11 @@ décomptes qu'ils utilisent.
 - **Reprise depuis le menu principal** : `room:rejoin` n'était auparavant déclenché que si le
   client atterrissait directement sur `/room/{roomCode}` (lien gardé, onglet jamais fermé) — en
   revanche fermer l'onglet puis rouvrir l'app sur `/` n'offrait aucun moyen de revenir dans la
-  partie sans retaper l'URL exacte. `MainMenu` liste désormais, au montage, tous les codes de
-  room ayant encore une session valide en `localStorage` (`lib/session.ts` :
-  `listStoredRoomCodes`) et propose un bouton "Reprendre" par room, qui navigue simplement vers
+  partie sans retaper l'URL exacte. `MainMenu` propose désormais, au montage, un bouton
+  "Reprendre" pour la **dernière** room rejointe/créée (`lib/session.ts` : `getLastRoomCode`,
+  basé sur un timestamp `savedAt` par session) — `saveSession` purge aussi toute autre session
+  de room en `localStorage` à chaque nouvelle jointure/création, donc une seule partie est
+  reprenable à la fois, jamais une liste de parties passées. Le bouton navigue simplement vers
   `/room/{roomCode}` — le flux `room:rejoin` existant s'occupe du reste (session invalide/room
   expirée → nettoyage silencieux et retour à `/`, cf. `GameRoute`).
 - **Déconnexion** : un joueur dont le socket se déconnecte reste dans la room avec
@@ -278,6 +280,34 @@ décomptes qu'ils utilisent.
   (transfert de host normal, la room continue en lobby).
 - **Room vide** : quand plus aucun joueur n'est connecté (0 socket actif), la room est détruite
   après 5 minutes.
+
+### 5bis. Spectateurs
+
+Rejoindre une room dont la partie est déjà en cours (`GAME_IN_PROGRESS`, voir ci-dessus) propose
+une alternative : `room:joinSpectator`, en lecture seule. Décisions de conception délibérément
+minimalistes (le besoin réel est "regarder maintenant, jouer à la prochaine partie" — pas une
+garantie de reconnexion pour un rôle qui n'a jamais eu de siège) :
+
+- Un spectateur est stocké dans `room.spectators` (map séparée de `room.players`, jamais
+  fusionnée) — par construction, **aucune** logique de jeu (assignation des rôles, décompte de
+  votes, conditions de victoire, tours de parole) ne le voit jamais, sans code de filtrage
+  dédié à écrire ou à maintenir.
+- **Pas de session persistée** : contrairement à `room:join`/`room:create`, le client ne stocke
+  rien en `localStorage` pour un spectateur. Un rafraîchissement de page ou une coupure réseau
+  pendant le spectate retire immédiatement le spectateur (pas de délai de grâce, jamais de
+  transfert de host puisqu'un spectateur n'est jamais host) ; revenir consiste simplement à
+  relancer `room:joinSpectator` depuis `Home`.
+- **Promotion automatique** : à la prochaine `game:restart`, tous les spectateurs présents sont
+  transférés en bloc dans `room.players` (mêmes `playerId`/`sessionToken`/socket, donc aucune
+  reconnexion nécessaire s'ils sont restés sur l'onglet) puis `room.spectators` est vidée — ils
+  reçoivent rôle et champion comme n'importe quel joueur pour cette nouvelle partie.
+- `RoomStatePublic.spectators: PublicSpectator[]` (voir §6) est diffusé à tous, y compris aux
+  joueurs actifs — un spectateur n'a rien de secret à cacher (aucun rôle, aucun champion).
+- Écran client dédié (`SpectatorView`) commun à toutes les phases plutôt qu'une adaptation des
+  écrans interactifs existants : un spectateur n'a jamais de rôle privé et le serveur rejette de
+  toute façon silencieusement toute tentative d'action de jeu (vote, protect, etc. — ces
+  fonctions du moteur cherchent toujours le joueur dans `room.players`, où un spectateur ne
+  figure jamais), donc réutiliser `Voting`/`Reveal`/etc. serait trompeur.
 
 ---
 
@@ -311,6 +341,7 @@ interface RoomSettings {
   ghostEnabled: boolean;
   jesterEnabled: boolean;
   hunterEnabled: boolean;
+  customPairsEnabled: boolean; // voir §7bis — nécessite room.customPairs non vide pour passer à true
 }
 
 type GamePhase = 'lobby' | 'reveal' | 'discussion' | 'voting' | 'round_result'
@@ -325,16 +356,25 @@ interface PublicPlayer {
   avatarSeed: string; // déterministe (hash du playerId), pour silhouette/couleur custom
 }
 
+// Spectateur (voir §5bis) — jamais dans `players`, jamais de role/champion (n'en a pas).
+interface PublicSpectator {
+  playerId: string;
+  name: string;
+  avatarSeed: string;
+}
+
 interface RoomStatePublic {
   roomCode: string;
   universe: Universe;           // fixé à la création, jamais modifiable ensuite
   phase: GamePhase;
   players: PublicPlayer[];
+  spectators: PublicSpectator[];
   settings: RoomSettings;
   round: number;
   turnOrder: string[];          // playerIds, ordre d'affichage indicatif (phase discussion)
   votedPlayerIds: string[];     // qui a voté (pas pour qui), phase voting
   phaseDeadline: number | null; // epoch ms, pour le compte à rebours client (reveal / mrwhite_guess / hunter_shoot uniquement)
+  customPairs: ChampionPair[];  // voir §7bis — paires "univers maison" de cette room, vide sinon
 }
 
 // Chat texte libre entre joueurs d'une room — pure convenience, hors boucle de jeu (aucun
@@ -352,8 +392,11 @@ interface ChatMessage {
 // ---- Client -> Serveur ----
 'room:create'   { hostName: string, universe: Universe } -> ack { ok: true, roomCode, playerId, sessionToken } | { ok: false, error }
 'room:join'     { roomCode: string, playerName: string } -> ack { ok, playerId?, sessionToken?, error? }
+'room:joinSpectator' { roomCode: string, playerName: string } -> ack { ok, playerId?, sessionToken?, error? } // voir §5bis, phase != lobby/aborted uniquement
 'room:rejoin'   { roomCode: string, playerId: string, sessionToken: string } -> ack { ok, error? }
-'settings:update' { settings: Partial<RoomSettings> }               // host only
+'settings:update' { settings: Partial<RoomSettings> }               // host only ; "Mode Chaos" (Lobby) n'est qu'un raccourci client qui envoie ceci avec tous les rôles disponibles pour N à true, aucun événement dédié
+'custom:addPair' { champA: string, champB: string, theme?: string } // host only, phase lobby — voir §7bis
+'custom:removePair' { id: string }                                  // host only, phase lobby — voir §7bis
 'game:start'    {}                                                  // host only, phase lobby
 'reveal:ack'    {}                                                  // joueur confirme avoir vu son rôle
 'round:startVoting' {}                                              // host only, phase discussion
@@ -362,9 +405,9 @@ interface ChatMessage {
 'mrwhite:guess' { championGuess: string }                           // le Mr White éliminé, une fois
 'hunter:shoot'  { targetPlayerId: string | null }                   // le Chasseur éliminé, une fois (null = passe)
 'round:continue' {}                                                 // host only
-'game:restart'  {}                                                  // host only, toute phase sauf lobby/aborted
-'player:leave'  {}                                                  // hôte + partie en cours -> termine la partie (§5), sinon départ normal
-'chat:send'     { text: string }                                    // n'importe quel joueur, n'importe quelle phase, texte non vide (300 car. max)
+'game:restart'  {}                                                  // host only, toute phase sauf lobby/aborted — promeut aussi tout spectateur en joueur (§5bis)
+'player:leave'  {}                                                  // hôte + partie en cours -> termine la partie (§5), sinon départ normal (ou simple retrait de room.spectators)
+'chat:send'     { text: string }                                    // n'importe quel joueur ou spectateur, n'importe quelle phase, texte non vide (300 car. max)
 
 // ---- Serveur -> Client(s) ----
 'room:state'    RoomStatePublic                          // PUBLIC, à chaque changement d'état
@@ -426,17 +469,40 @@ mélangent jamais, et chaque room n'accède qu'au pool de son propre `universe`.
   jumeaux), avec nettement moins de paires moyennes et encore moins de paires faciles.
 
 Chaque pool est une **liste fixe définie en code**, sans édition possible en cours de partie
-(pas d'UI host pour ajouter/désactiver une paire) : à `game:start`/`game:restart`, le serveur
-tire une paire au hasard dans le pool entier de l'univers de la room. Décision de conception :
-un pool global mutable partagé entre toutes les rooms d'un univers (ancienne mécanique
-`pairs:add`/`pairs:toggle`/`pairs:remove`) faisait qu'une action d'un host affectait aussi les
-rooms des autres hosts en cours de partie simultanément — contraire à l'exigence que chaque
-partie soit indépendante. Le pool étant maintenant immuable, ce risque n'existe plus.
+(pas d'UI host pour ajouter/désactiver une paire **de ces trois pools**) : à
+`game:start`/`game:restart`, le serveur tire une paire au hasard dans le pool entier de
+l'univers de la room (sauf si `settings.customPairsEnabled`, voir §7bis). Décision de
+conception : un pool global mutable partagé entre toutes les rooms d'un univers (ancienne
+mécanique `pairs:add`/`pairs:toggle`/`pairs:remove`) faisait qu'une action d'un host affectait
+aussi les rooms des autres hosts en cours de partie simultanément — contraire à l'exigence que
+chaque partie soit indépendante. Ces trois pools restent immuables pour cette raison précise ;
+§7bis ajoute une UI host, mais scopée à `room.customPairs` (jamais un pool partagé entre rooms),
+donc sans réintroduire ce risque.
 
 Chaque pool mélange volontairement des paires très proches (undercover difficile à repérer,
 ex. Echo Fighters officiels côté `'smash'`, frères/rivaux canon côté `'lol'`, formes régionales
 côté `'pokemon'`) et des paires plus éloignées (undercover plus facilement repérable) — voir les
 commentaires en tête de `championPairs.ts` / `smashPairs.ts` / `pokemonPairs.ts`.
+
+### 7bis. Paires personnalisées ("univers maison")
+
+En plus des trois pools fixes ci-dessus, l'hôte peut composer un pool de paires propre à SA
+room (`custom:addPair`/`custom:removePair`, phase `lobby` uniquement) — pour des memes internes,
+un groupe d'amis, etc. Scopé strictement à `room.customPairs`, jamais un pool partagé entre
+rooms (voir la mise en garde ci-dessus) : la room qui l'a créé est la seule à jamais le lire.
+
+- Chaque paire ajoutée : `champA`/`champB` requis (40 caractères max chacun, non vides après
+  trim), `theme` optionnel (80 caractères max, défaut `"Paire personnalisée"` si omis). Pas de
+  champ `lanes`. Maximum 30 paires par room (`MAX_CUSTOM_PAIRS_PER_ROOM`).
+- `settings.customPairsEnabled` (toggle host, comme les rôles optionnels) ne peut passer à
+  `true` que si `room.customPairs` contient au moins une paire — `settings:update` le rejette
+  sinon (`INVALID_SETTINGS`). Symétriquement, retirer la dernière paire personnalisée
+  redésactive automatiquement l'option côté serveur.
+- Si actif, `game:start`/`game:restart` tire dans `room.customPairs` au lieu du pool fixe de
+  `room.universe` pour toute la partie (même mécanique de tirage aléatoire, une seule paire par
+  partie).
+- Visible de tous les joueurs de la room dans le Lobby (`RoomStatePublic.customPairs`, voir
+  §6) — rien de secret dans le contenu d'un pool, comme pour les trois pools fixes.
 
 ---
 
@@ -449,6 +515,11 @@ commentaires en tête de `championPairs.ts` / `smashPairs.ts` / `pokemonPairs.ts
   Bouffon/Chasseur) et lanes (Top/Jungle/Mid/ADC/Support).
 - Mobile-first, cibles tactiles ≥44px, jamais de :hover comme seule affordance.
 - WCAG AA minimum, focus visibles.
+- Motion : transition d'entrée (`fade-in-up`) sur chaque changement de phase (`GameRoute`,
+  wrapper `.phase-transition` keyé par `phase`) et sur les écrans hors-partie (`MainMenu`,
+  `Home`), listes courtes en cascade (`.stagger-item` — joueurs du lobby, cartes d'univers),
+  et quelques micro-moments dédiés (burst + emblème du `winner-banner`, `.confirm-banner`).
+  Tout est neutralisé sous `prefers-reduced-motion: reduce` (voir `tokens.css`).
 
 ---
 

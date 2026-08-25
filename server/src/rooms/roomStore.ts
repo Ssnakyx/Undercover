@@ -24,8 +24,12 @@ export function defaultRoomSettings(): RoomSettings {
     ghostEnabled: false,
     jesterEnabled: false,
     hunterEnabled: false,
+    customPairsEnabled: false,
   };
 }
+
+export const MAX_CUSTOM_PAIRS_PER_ROOM = 30;
+export const MAX_SPECTATORS_PER_ROOM = 20;
 
 function generateRoomCodeCandidate(): string {
   let code = '';
@@ -59,6 +63,8 @@ export function createRoom(universe: Universe = 'lol'): Room {
     phase: 'lobby',
     settings: defaultRoomSettings(),
     players: new Map(),
+    spectators: new Map(),
+    customPairs: [],
     round: 0,
     turnOrder: [],
     votes: [],
@@ -109,11 +115,15 @@ export function computeAvatarSeed(playerId: string): string {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-/** Nombre de sockets actuellement connectés dans la room. */
+/** Nombre de sockets actuellement connectés dans la room (joueurs + spectateurs — un
+ * spectateur seul connecté doit lui aussi empêcher l'expiration de la room vide). */
 export function countConnectedPlayers(room: Room): number {
   let count = 0;
   for (const player of room.players.values()) {
     if (player.connected) count++;
+  }
+  for (const spectator of room.spectators.values()) {
+    if (spectator.connected) count++;
   }
   return count;
 }

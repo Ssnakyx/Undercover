@@ -11,10 +11,12 @@ import type {
 } from './events.js';
 import { randomUUID } from 'node:crypto';
 import type {
+  ChampionPair,
   ChatMessage,
   GameEndedPayload,
   Player,
   PublicPlayer,
+  PublicSpectator,
   Room,
   RoomStatePublic,
   RoundResultPayload,
@@ -22,9 +24,12 @@ import type {
 } from '../types.js';
 import {
   CHAT_HISTORY_LIMIT,
+  MAX_CUSTOM_PAIRS_PER_ROOM,
   MAX_PLAYERS_PER_ROOM,
+  MAX_SPECTATORS_PER_ROOM,
   cancelEmptyRoomExpiration,
   computeAvatarSeed,
+  countConnectedPlayers,
   createRoom,
   deleteRoom,
   generatePlayerId,
@@ -56,6 +61,8 @@ type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEv
 
 const NAME_MAX_LENGTH = 24;
 const CHAT_MESSAGE_MAX_LENGTH = 300;
+const CUSTOM_PAIR_FIELD_MAX_LENGTH = 40;
+const CUSTOM_PAIR_THEME_MAX_LENGTH = 80;
 
 // ---------------------------------------------------------------------------
 // Sérialisation publique — ne JAMAIS inclure role/champion ici (contrat section 6).
@@ -72,22 +79,54 @@ function toPublicPlayer(player: Player): PublicPlayer {
   };
 }
 
+function toPublicSpectator(spectator: Player): PublicSpectator {
+  return {
+    playerId: spectator.playerId,
+    name: spectator.name,
+    avatarSeed: spectator.avatarSeed,
+  };
+}
+
 function toPublicState(room: Room): RoomStatePublic {
   return {
     roomCode: room.roomCode,
     universe: room.universe,
     phase: room.phase,
     players: engine.playersInJoinOrder(room).map(toPublicPlayer),
+    spectators: [...room.spectators.values()]
+      .sort((a, b) => a.joinOrder - b.joinOrder)
+      .map(toPublicSpectator),
     settings: { ...room.settings },
     round: room.round,
     turnOrder: [...room.turnOrder],
     votedPlayerIds: room.votes.map((v) => v.voterId),
     phaseDeadline: room.phaseDeadline,
+    customPairs: [...room.customPairs],
   };
 }
 
 function broadcastRoomState(io: IoServer, room: Room): void {
   io.to(room.roomCode).emit('room:state', toPublicState(room));
+}
+
+/** "Univers maison" (voir §7bis) : pool réellement utilisé pour game:start/restart. */
+function pickPairsPool(room: Room): ChampionPair[] {
+  if (room.settings.customPairsEnabled && room.customPairs.length > 0) {
+    return room.customPairs;
+  }
+  return getAllPairs(room.universe);
+}
+
+/** Fait entrer tous les spectateurs en jeu au prochain game:restart (voir §5bis) : "rejoindre
+ * une partie déjà lancée afin de pouvoir la rejoindre plus tard" — ils regardent la partie en
+ * cours puis deviennent joueurs complets dès la suivante, sans action de leur part. */
+function promoteSpectatorsToPlayers(room: Room): void {
+  if (room.spectators.size === 0) return;
+  let joinOrder = room.players.size;
+  for (const spectator of room.spectators.values()) {
+    room.players.set(spectator.playerId, { ...spectator, joinOrder: joinOrder++ });
+  }
+  room.spectators.clear();
 }
 
 // Rôles considérés comme des variantes du camp civils pour l'insight de l'Espion (voir
@@ -323,9 +362,15 @@ function reportEngineError(
 interface Ctx {
   room: Room;
   player: Player;
+  /** true si `player` vient de room.spectators (jamais de room.players) — voir §5bis. Les
+   * handlers de jeu (vote, protect, etc.) n'ont pas besoin de la vérifier : ils re-résolvent
+   * toujours le joueur via room.players.get() en interne, ce qui échoue naturellement pour un
+   * spectateur puisqu'il n'y figure jamais. */
+  isSpectator: boolean;
 }
 
-/** Récupère la room + le joueur associés au socket courant, ou signale l'erreur. */
+/** Récupère la room + le joueur (ou spectateur) associés au socket courant, ou signale
+ * l'erreur. */
 function requireCtx(
   socket: IoSocket,
   ack?: (res: { ok: boolean; error?: { code: string; message: string } }) => void
@@ -341,11 +386,11 @@ function requireCtx(
     return null;
   }
   const player = room.players.get(playerId);
-  if (!player) {
-    fail(socket, ack, 'PLAYER_NOT_FOUND', 'Joueur introuvable dans cette room');
-    return null;
-  }
-  return { room, player };
+  if (player) return { room, player, isSpectator: false };
+  const spectator = room.spectators.get(playerId);
+  if (spectator) return { room, player: spectator, isSpectator: true };
+  fail(socket, ack, 'PLAYER_NOT_FOUND', 'Joueur introuvable dans cette room');
+  return null;
 }
 
 function requireHost(
@@ -468,6 +513,66 @@ export function registerSocketHandlers(io: IoServer): void {
       sendChatHistory(io, socket.id, room);
     });
 
+    // Rejoindre une partie déjà en cours en lecture seule (voir §5bis) : jamais dans
+    // room.players, aucune session persistée nécessaire côté client (contrairement à
+    // room:join) — si le spectateur se déconnecte ou recharge, il re-rejoint simplement en
+    // spectateur. Promu joueur complet au prochain game:restart.
+    socket.on('room:joinSpectator', (payload, ack) => {
+      const roomCode = (payload?.roomCode ?? '').toString().trim().toUpperCase();
+      const room = getRoom(roomCode);
+      if (!room) {
+        ack({ ok: false, error: { code: 'ROOM_NOT_FOUND', message: 'Room introuvable ou expirée' } });
+        return;
+      }
+      if (room.phase === 'lobby' || room.phase === 'aborted') {
+        ack({
+          ok: false,
+          error: { code: 'INVALID_PHASE', message: 'Aucune partie en cours à regarder dans cette room' },
+        });
+        return;
+      }
+      if (room.spectators.size >= MAX_SPECTATORS_PER_ROOM) {
+        ack({ ok: false, error: { code: 'ROOM_FULL', message: 'Trop de spectateurs dans cette room' } });
+        return;
+      }
+      if (!isValidName(payload?.playerName)) {
+        ack({ ok: false, error: { code: 'INVALID_NAME', message: 'Nom de spectateur invalide' } });
+        return;
+      }
+
+      const playerId = generatePlayerId();
+      const sessionToken = generateSessionToken();
+      const spectator: Player = {
+        playerId,
+        sessionToken,
+        name: payload.playerName.trim(),
+        isHost: false,
+        connected: true,
+        alive: true,
+        avatarSeed: computeAvatarSeed(playerId),
+        socketId: socket.id,
+        role: null,
+        champion: null,
+        hasAckedReveal: false,
+        joinOrder: room.players.size + room.spectators.size,
+        disconnectedAt: null,
+        disconnectTimer: null,
+        loverPlayerId: null,
+        spyInsightPlayerId: null,
+        protectUsedThisGame: false,
+        ghostVoteAvailable: false,
+      };
+      room.spectators.set(playerId, spectator);
+      socket.join(room.roomCode);
+      socket.data.roomCode = room.roomCode;
+      socket.data.playerId = playerId;
+      cancelEmptyRoomExpiration(room);
+
+      ack({ ok: true, playerId, sessionToken });
+      broadcastRoomState(io, room);
+      sendChatHistory(io, socket.id, room);
+    });
+
     socket.on('room:rejoin', (payload, ack) => {
       const roomCode = (payload?.roomCode ?? '').toString().trim().toUpperCase();
       const room = getRoom(roomCode);
@@ -514,6 +619,7 @@ export function registerSocketHandlers(io: IoServer): void {
         'ghostEnabled',
         'jesterEnabled',
         'hunterEnabled',
+        'customPairsEnabled',
       ];
       for (const field of boolFields) {
         if (typeof next[field] !== 'boolean') {
@@ -537,8 +643,71 @@ export function registerSocketHandlers(io: IoServer): void {
           return;
         }
       }
+      if (next.customPairsEnabled && room.customPairs.length === 0) {
+        fail(socket, ack, 'INVALID_SETTINGS', 'Ajoute au moins une paire personnalisée avant d\'activer cette option');
+        return;
+      }
 
       room.settings = next;
+      ok(ack);
+      broadcastRoomState(io, room);
+    });
+
+    // "Univers maison" (voir §7bis) : paires scoped à CETTE room uniquement, jamais un pool
+    // partagé mutable entre rooms (voir l'historique documenté en §7 sur l'ancienne mécanique
+    // pairs:add/toggle/remove, abandonnée pour cette raison précise).
+    socket.on('custom:addPair', (payload, ack) => {
+      const ctx = requireCtx(socket, ack);
+      if (!ctx) return;
+      if (!requireHost(socket, ctx, ack)) return;
+      const { room } = ctx;
+      if (room.phase !== 'lobby') {
+        fail(socket, ack, 'INVALID_PHASE', 'Les paires personnalisées ne peuvent être modifiées qu\'en lobby');
+        return;
+      }
+      if (room.customPairs.length >= MAX_CUSTOM_PAIRS_PER_ROOM) {
+        fail(socket, ack, 'TOO_MANY_PAIRS', `Maximum ${MAX_CUSTOM_PAIRS_PER_ROOM} paires personnalisées`);
+        return;
+      }
+      const champA = (payload?.champA ?? '').toString().trim().slice(0, CUSTOM_PAIR_FIELD_MAX_LENGTH);
+      const champB = (payload?.champB ?? '').toString().trim().slice(0, CUSTOM_PAIR_FIELD_MAX_LENGTH);
+      const theme = (payload?.theme ?? '').toString().trim().slice(0, CUSTOM_PAIR_THEME_MAX_LENGTH);
+      if (!champA || !champB) {
+        fail(socket, ack, 'INVALID_PAIR', 'champA et champB sont requis');
+        return;
+      }
+      const pair: ChampionPair = {
+        id: randomUUID(),
+        champA,
+        champB,
+        theme: theme || 'Paire personnalisée',
+      };
+      room.customPairs.push(pair);
+      ok(ack);
+      broadcastRoomState(io, room);
+    });
+
+    socket.on('custom:removePair', (payload, ack) => {
+      const ctx = requireCtx(socket, ack);
+      if (!ctx) return;
+      if (!requireHost(socket, ctx, ack)) return;
+      const { room } = ctx;
+      if (room.phase !== 'lobby') {
+        fail(socket, ack, 'INVALID_PHASE', 'Les paires personnalisées ne peuvent être modifiées qu\'en lobby');
+        return;
+      }
+      const id = (payload?.id ?? '').toString();
+      const next = room.customPairs.filter((p) => p.id !== id);
+      if (next.length === room.customPairs.length) {
+        fail(socket, ack, 'PAIR_NOT_FOUND', 'Paire personnalisée introuvable');
+        return;
+      }
+      room.customPairs = next;
+      // Si le dernier retrait vide la liste, redésactiver l'option pour rester cohérent avec
+      // la règle "au moins 1 paire pour l'activer" (settings:update).
+      if (room.customPairs.length === 0 && room.settings.customPairsEnabled) {
+        room.settings = { ...room.settings, customPairsEnabled: false };
+      }
       ok(ack);
       broadcastRoomState(io, room);
     });
@@ -553,7 +722,7 @@ export function registerSocketHandlers(io: IoServer): void {
         return;
       }
       try {
-        engine.assignRolesAndEnterReveal(room, { pairsPool: getAllPairs(room.universe) });
+        engine.assignRolesAndEnterReveal(room, { pairsPool: pickPairsPool(room) });
       } catch (err) {
         reportEngineError(socket, ack, err, 'START_FAILED');
         return;
@@ -696,8 +865,9 @@ export function registerSocketHandlers(io: IoServer): void {
         fail(socket, ack, 'INVALID_PHASE', 'game:restart invalide en phase lobby ou aborted');
         return;
       }
+      promoteSpectatorsToPlayers(room);
       try {
-        engine.assignRolesAndEnterReveal(room, { pairsPool: getAllPairs(room.universe) });
+        engine.assignRolesAndEnterReveal(room, { pairsPool: pickPairsPool(room) });
       } catch (err) {
         reportEngineError(socket, ack, err, 'RESTART_FAILED');
         return;
@@ -735,11 +905,16 @@ export function registerSocketHandlers(io: IoServer): void {
     socket.on('player:leave', (_payload, ack) => {
       const ctx = requireCtx(socket, ack);
       if (!ctx) return;
-      const { room, player } = ctx;
+      const { room, player, isSpectator } = ctx;
       socket.leave(room.roomCode);
       socket.data.roomCode = null;
       socket.data.playerId = null;
       ok(ack);
+      if (isSpectator) {
+        room.spectators.delete(player.playerId);
+        broadcastRoomState(io, room);
+        return;
+      }
       handlePlayerDeparture(io, room, player.playerId, { explicit: true });
     });
 
@@ -748,14 +923,27 @@ export function registerSocketHandlers(io: IoServer): void {
       if (!roomCode || !playerId) return;
       const room = getRoom(roomCode);
       if (!room) return;
+
+      // Spectateur : pas de délai de grâce ni de migration de host (jamais host) — voir
+      // §5bis, retiré immédiatement, il pourra re-rejoindre en spectateur s'il revient.
+      const spectator = room.spectators.get(playerId);
+      if (spectator) {
+        if (spectator.socketId !== socket.id) return; // déjà remplacé par une reconnexion
+        room.spectators.delete(playerId);
+        broadcastRoomState(io, room);
+        if (countConnectedPlayers(room) === 0) {
+          scheduleEmptyRoomExpiration(room, (code) => deleteRoom(code));
+        }
+        return;
+      }
+
       const player = room.players.get(playerId);
       if (!player || player.socketId !== socket.id) return; // déjà remplacé par une reconnexion
 
       registerDisconnect(room, playerId, (r, pid) => handleDisconnectGraceExpired(io, r, pid));
       broadcastRoomState(io, room);
 
-      const stillConnected = [...room.players.values()].some((p) => p.connected);
-      if (!stillConnected) {
+      if (countConnectedPlayers(room) === 0) {
         scheduleEmptyRoomExpiration(room, (code) => deleteRoom(code));
       }
     });

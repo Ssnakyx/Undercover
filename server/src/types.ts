@@ -56,6 +56,9 @@ export interface RoomSettings {
   ghostEnabled: boolean;
   jesterEnabled: boolean;
   hunterEnabled: boolean;
+  /** "Univers maison" (voir §7bis) : si true et room.customPairs non vide, game:start/restart
+   * tire dans room.customPairs au lieu du pool fixe de l'univers. */
+  customPairsEnabled: boolean;
 }
 
 export type GamePhase =
@@ -78,16 +81,28 @@ export interface PublicPlayer {
   avatarSeed: string; // déterministe (hash du playerId), pour silhouette/couleur custom
 }
 
+/** Spectateur : rejoint une partie déjà en cours en lecture seule, promu joueur complet au
+ * prochain game:restart (voir §5bis). Jamais dans `RoomStatePublic.players`. */
+export interface PublicSpectator {
+  playerId: string;
+  name: string;
+  avatarSeed: string;
+}
+
 export interface RoomStatePublic {
   roomCode: string;
   universe: Universe;
   phase: GamePhase;
   players: PublicPlayer[];
+  spectators: PublicSpectator[];
   settings: RoomSettings;
   round: number;
   turnOrder: string[]; // playerIds, ordre d'affichage indicatif (phase discussion)
   votedPlayerIds: string[]; // qui a voté (pas pour qui), phase voting
   phaseDeadline: number | null; // epoch ms, pour le compte à rebours client (reveal / mrwhite_guess / hunter_shoot uniquement)
+  /** "Univers maison" : paires ajoutées par l'hôte pour cette room, visibles de tous en lobby
+   * (rien de secret dans le contenu d'un pool, voir §7). Vide hors usage de la fonctionnalité. */
+  customPairs: ChampionPair[];
 }
 
 // ---- Client -> Serveur (payloads) ----
@@ -147,6 +162,27 @@ export interface HunterShootPayload {
 
 export interface ProtectorProtectPayload {
   targetPlayerId: string;
+}
+
+export interface CustomPairAddPayload {
+  champA: string;
+  champB: string;
+  theme?: string;
+}
+
+export interface CustomPairRemovePayload {
+  id: string;
+}
+
+export interface SpectatorJoinPayload {
+  roomCode: string;
+  playerName: string;
+}
+export interface SpectatorJoinAck {
+  ok: boolean;
+  playerId?: string;
+  sessionToken?: string;
+  error?: { code: string; message: string };
 }
 
 export interface AckResponse {
@@ -240,6 +276,14 @@ export interface Room {
   phase: GamePhase;
   settings: RoomSettings;
   players: Map<string, Player>; // playerId -> Player, ordre non garanti (utiliser joinOrder)
+  /** Spectateurs (voir §5bis) : jamais mêlés à `players` — aucune logique de jeu (rôles,
+   * votes, décomptes de victoire) ne les voit jamais, par construction (map séparée). Promus
+   * en bloc dans `players` au prochain game:restart, puis cette map est vidée. */
+  spectators: Map<string, Player>;
+  /** "Univers maison" (voir §7bis) : paires ajoutées par l'hôte, scoped à CETTE room
+   * uniquement (jamais de pool partagé mutable entre rooms — voir l'historique documenté en
+   * §7 sur pairs:add/toggle/remove). */
+  customPairs: ChampionPair[];
   round: number;
   turnOrder: string[]; // playerIds vivants, ordre d'affichage indicatif (phase discussion)
   votes: VoteRecord[];

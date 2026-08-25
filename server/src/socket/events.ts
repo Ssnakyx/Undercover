@@ -5,6 +5,8 @@ import type {
   AckResponse,
   ChatMessage,
   ChatSendPayload,
+  CustomPairAddPayload,
+  CustomPairRemovePayload,
   GameEndedPayload,
   HunterShootPayload,
   MrWhiteGuessPayload,
@@ -20,14 +22,19 @@ import type {
   RolePrivatePayload,
   RoundResultPayload,
   SettingsUpdatePayload,
+  SpectatorJoinAck,
+  SpectatorJoinPayload,
   VoteSubmitPayload,
 } from '../types.js';
 
 export interface ClientToServerEvents {
   'room:create': (payload: RoomCreatePayload, ack: (res: RoomCreateAck) => void) => void;
   'room:join': (payload: RoomJoinPayload, ack: (res: RoomJoinAck) => void) => void;
+  'room:joinSpectator': (payload: SpectatorJoinPayload, ack: (res: SpectatorJoinAck) => void) => void;
   'room:rejoin': (payload: RoomRejoinPayload, ack: (res: RoomRejoinAck) => void) => void;
   'settings:update': (payload: SettingsUpdatePayload, ack?: (res: AckResponse) => void) => void;
+  'custom:addPair': (payload: CustomPairAddPayload, ack?: (res: AckResponse) => void) => void;
+  'custom:removePair': (payload: CustomPairRemovePayload, ack?: (res: AckResponse) => void) => void;
   'game:start': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'reveal:ack': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'round:startVoting': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
