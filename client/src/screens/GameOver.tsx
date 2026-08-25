@@ -4,6 +4,7 @@ import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
 import { RoleBadge } from '../components/RoleBadge';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { universeCopy } from '../lib/universe';
 import type { Winner } from '../types';
 
@@ -50,12 +51,20 @@ export function GameOver() {
   // nécessaire, tous les joueurs (host inclus) peuvent revenir au menu librement.
   function backToMenu() {
     leaveRoom();
-    navigate('/', { replace: true });
+    navigate('/', { replace: true, viewTransition: true });
   }
 
   return (
-    <div className="screen">
-      <AppBar title="Fin de partie" right={<span className="badge badge--muted">Round {roomState.round}</span>} />
+    <div className="screen theme-paper">
+      <AppBar
+        title="Fin de partie"
+        right={
+          <>
+            <ThemeToggle />
+            <span className="badge badge--muted">Round {roomState.round}</span>
+          </>
+        }
+      />
 
       <main className="main">
         <div className={`winner-banner winner-banner--${copy.role} frame-cut frame-cut--lg`}>

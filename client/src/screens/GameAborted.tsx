@@ -16,7 +16,7 @@ export function GameAborted() {
 
   function backToHome() {
     leaveRoom();
-    navigate('/', { replace: true });
+    navigate('/', { replace: true, viewTransition: true });
   }
 
   return (

@@ -112,6 +112,15 @@ export function IconDefs() {
           <line x1="8" y1="20" x2="13" y2="20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           <line x1="27" y1="20" x2="32" y2="20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </symbol>
+        {/* Signature de la refonte "Cérémonie douce" — crest du menu, texture du dos de carte
+            (Reveal), rideau de transition. Hexagones concentriques, pointe en haut. */}
+        <symbol id="hex-lattice" viewBox="0 0 200 200">
+          <g fill="none" stroke="currentColor" strokeWidth="0.6" opacity="0.9">
+            <polygon points="100,40 152,70 152,130 100,160 48,130 48,70" />
+            <polygon points="100,10 178,55 178,145 100,190 22,145 22,55" />
+            <polygon points="100,70 126,85 126,115 100,130 74,115 74,85" />
+          </g>
+        </symbol>
       </defs>
     </svg>
   );

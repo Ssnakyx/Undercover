@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-r
 import { useRoom } from '../socket/RoomProvider';
 import { isUniverse, universeCopy } from '../lib/universe';
 import { loadPseudo, savePseudo } from '../lib/session';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 const CODE_LENGTH = 5;
 
@@ -16,7 +17,7 @@ function codeFromSearchParams(params: URLSearchParams): string[] {
 }
 
 export function Home() {
-  const { createRoom, joinRoom } = useRoom();
+  const { createRoom, joinRoom, joinAsSpectator } = useRoom();
   const navigate = useNavigate();
   const { universe: universeParam } = useParams();
   const [searchParams] = useSearchParams();
@@ -37,7 +38,9 @@ export function Home() {
 
   const [codeCells, setCodeCells] = useState<string[]>(() => codeFromSearchParams(searchParams));
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [joinErrorCode, setJoinErrorCode] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
+  const [spectating, setSpectating] = useState(false);
   const cellRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   if (!isUniverse(universeParam)) {
@@ -54,7 +57,7 @@ export function Home() {
     const res = await createRoom(pseudo.trim(), universe);
     setCreating(false);
     if (res.ok && res.roomCode) {
-      navigate(`/room/${res.roomCode}`);
+      navigate(`/room/${res.roomCode}`, { viewTransition: true });
     } else {
       setCreateError(res.error?.message ?? 'Impossible de créer la partie.');
     }
@@ -84,24 +87,43 @@ export function Home() {
     if (code.length !== CODE_LENGTH || !pseudo.trim()) return;
     setJoining(true);
     setJoinError(null);
+    setJoinErrorCode(null);
     const res = await joinRoom(code, pseudo.trim());
     setJoining(false);
     if (res.ok) {
-      navigate(`/room/${code}`);
+      navigate(`/room/${code}`, { viewTransition: true });
     } else {
       setJoinError(res.error?.message ?? 'Impossible de rejoindre cette partie.');
+      setJoinErrorCode(res.error?.code ?? null);
+    }
+  }
+
+  // Partie déjà lancée (GAME_IN_PROGRESS) : proposer de regarder plutôt qu'un simple échec —
+  // le spectateur rejoindra automatiquement en tant que joueur à la prochaine partie.
+  async function handleSpectate() {
+    const code = codeCells.join('');
+    if (code.length !== CODE_LENGTH || !pseudo.trim()) return;
+    setSpectating(true);
+    const res = await joinAsSpectator(code, pseudo.trim());
+    setSpectating(false);
+    if (res.ok) {
+      navigate(`/room/${code}`, { viewTransition: true });
+    } else {
+      setJoinError(res.error?.message ?? 'Impossible de regarder cette partie.');
+      setJoinErrorCode(res.error?.code ?? null);
     }
   }
 
   return (
-    <div className="screen">
+    <div className="screen theme-paper fade-in-up">
+      <div className="theme-toggle-float">
+        <ThemeToggle />
+      </div>
       <main className="main">
         <div className="container">
           <div className="hero">
-            <svg className="hero__crest" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-              <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" stroke="currentColor" strokeWidth="2" />
-              <polygon points="20,9 31,20 20,31 9,20" stroke="currentColor" strokeWidth="1.4" opacity="0.75" />
-              <circle cx="20" cy="20" r="2.2" fill="currentColor" />
+            <svg className="hero__crest" viewBox="0 0 200 200" aria-hidden="true">
+              <use href="#hex-lattice" />
             </svg>
             <h1 className="hero__title font-display">{copy.name}</h1>
             <p className="hero__tagline">{copy.tagline}</p>
@@ -205,6 +227,16 @@ export function Home() {
                 >
                   {joining ? 'Connexion…' : 'Rejoindre la partie'}
                 </button>
+                {joinErrorCode === 'GAME_IN_PROGRESS' && (
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    disabled={spectating || !pseudo.trim()}
+                    onClick={handleSpectate}
+                  >
+                    {spectating ? 'Connexion…' : '👁 Regarder en spectateur'}
+                  </button>
+                )}
               </form>
             )}
           </div>
@@ -212,7 +244,7 @@ export function Home() {
           <p className="footnote">
             Aucun compte requis — un pseudo suffit. Jouable à 3–12, sur mobile comme sur ordinateur.
             <br />
-            <Link to="/">Changer d'univers</Link>
+            <Link to="/" viewTransition>Changer d'univers</Link>
           </p>
         </div>
       </main>

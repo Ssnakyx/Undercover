@@ -33,6 +33,11 @@ export const JESTER_MIN_PLAYERS = 6;
 export const HUNTER_MIN_PLAYERS = 4;
 export const LOVERS_MIN_PLAYERS = 4;
 
+// Miroir de server/src/rooms/roomStore.ts#MAX_CUSTOM_PAIRS_PER_ROOM — pas de package partagé
+// (voir CONTRACT.md §1), juste pour désactiver le bouton "Ajouter" côté client avant la limite
+// serveur ; le serveur reste la seule source de vérité (voir custom:addPair, §7bis).
+export const MAX_CUSTOM_PAIRS_PER_ROOM = 30;
+
 export function isMrWhiteAvailable(n: number): boolean {
   return n >= MR_WHITE_MIN_PLAYERS;
 }

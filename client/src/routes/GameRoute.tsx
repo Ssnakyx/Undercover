@@ -10,6 +10,7 @@ import { MrWhiteGuess } from '../screens/MrWhiteGuess';
 import { HunterShoot } from '../screens/HunterShoot';
 import { GameOver } from '../screens/GameOver';
 import { GameAborted } from '../screens/GameAborted';
+import { SpectatorView } from '../screens/SpectatorView';
 import { ChatBox } from '../components/ChatBox';
 
 function LoadingScreen() {
@@ -28,7 +29,7 @@ function LoadingScreen() {
 
 export function GameRoute() {
   const { roomCode: paramCode } = useParams();
-  const { roomCode, connected, roomState, rejoinFromStorage } = useRoom();
+  const { roomCode, connected, roomState, rejoinFromStorage, isSpectator } = useRoom();
   const navigate = useNavigate();
   const upper = paramCode?.toUpperCase();
 
@@ -52,7 +53,20 @@ export function GameRoute() {
 
   return (
     <>
-      <PhaseScreen phase={roomState.phase} />
+      {/* key={phase} force le remount du wrapper à chaque changement de phase (reveal ->
+          discussion -> voting -> ...), ce qui relance l'animation fade-in-up — sans ça le
+          <div> persisterait et l'animation ne jouerait qu'une fois au tout premier mount. */}
+      <div key={roomState.phase} className="phase-transition">
+        {isSpectator ? <SpectatorView /> : <PhaseScreen phase={roomState.phase} />}
+      </div>
+      {/* Rideau d'hexagones — voir CONTRACT.md §8 "Motion" : seul moment où l'interface
+          "parle" à la place des joueurs, entre deux actes. pointer-events:none (tokens.css
+          .curtain), remonté par la même clé donc rejoué à chaque transition de phase. */}
+      <div key={`curtain-${roomState.phase}`} className="curtain" aria-hidden="true">
+        <span className="curtain__hex" />
+        <span className="curtain__hex" />
+        <span className="curtain__hex" />
+      </div>
       <ChatBox />
     </>
   );

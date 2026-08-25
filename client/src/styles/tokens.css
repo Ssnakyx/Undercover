@@ -1,80 +1,98 @@
 /* ==========================================================================
-   lolCover — Design System
-   Maquettes statiques /design — source de vérité visuelle pour l'agent Frontend.
-   Direction : "Hextech de garage" — ferronnerie arcanique, or & acier sur bleu
-   nuit profond, coins biseautés (pas de rond mou, pas de glassmorphism),
-   tuiles hexagonales pour avatars/icônes. Aucun asset Riot : formes et
-   silhouettes 100% dessinées ici.
-   Polices : Cinzel (display, gravé) + Manrope (lecture) + JetBrains Mono
-   (codes, chiffres, timers).
+   lolCover — Design System v2 "Cérémonie douce"
+   Refonte : le jeu est un rituel — on se réunit, on reçoit un secret, on
+   parle, on accuse, on révèle. Deux mondes : papier chaud (menus, avant/après
+   la partie) et encre profonde (pendant la partie). Un seul accent or,
+   réservé au tour du joueur / à son action — le reste du temps l'accent est
+   violet. L'hexagone reste (pointe en haut) pour avatars, emblèmes, tuiles
+   d'univers ; plus aucun coin coupé ailleurs — rayons généreux et pilules.
+   Polices : Bodoni Moda (display, jamais en capitales) + Figtree (lecture) +
+   DM Mono (codes, chiffres, sur-titres).
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;900&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400&family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;600;700&display=swap');
 
 /* --------------------------------------------------------------------------
    1. TOKENS
    -------------------------------------------------------------------------- */
 :root {
-  /* -- Couleurs de fond (bleu-encre profond, pas de noir pur) -- */
-  --color-bg: #070b12;
-  --color-bg-elevated: #0d131c;
-  --color-surface: #161d28;
-  --color-surface-hover: #1e2733;
-  --color-surface-inset: #0b1119;
+  /* -- Palette brute -- */
+  --ink-900: #150c1a;
+  --ink-800: #1d1024;
+  --plum-700: #2e1738;
+  --plum-accent: #8a5fb0;
+  --paper: #f7f2f4;
+  --paper-card: #fffcfd;
+  --paper-text: #1e1022;
+  --paper-mid: #6b5872;
+
+  /* -- Fond / surfaces — thème par défaut = encre (écrans de partie) -- */
+  --color-bg: var(--ink-900);
+  --color-bg-elevated: var(--ink-800);
+  --color-surface: #1a0f21;
+  --color-surface-hover: #241531;
+  --color-surface-inset: #120a16;
 
   /* -- Bordures -- */
-  --color-border: #232d3a;                 /* hairline décoratif */
-  --color-border-interactive: #6e93c2;      /* 6.2:1 sur bg — bordures de champs/boutons */
-  --color-border-gold: #9c7530;             /* 4.7:1 sur bg — hairline doré décoratif */
+  --color-border: rgba(244, 236, 221, 0.10);
+  --color-border-interactive: rgba(244, 236, 221, 0.20);
+  --color-border-gold: rgba(245, 197, 138, 0.35);
 
   /* -- Texte -- */
-  --color-text-high: #ede6d6;               /* 15.8:1 sur bg — parchemin chaud, jamais blanc pur */
-  --color-text-mid: #b8af9e;                /* 9.1:1 sur bg */
-  --color-text-low: #7d7666;                /* méta / désactivé, non porteur de sens */
-  --color-text-on-gold: #0a0e14;            /* 8.9:1 sur gold-500 */
+  --color-text-high: #f4ecdd;
+  --color-text-mid: #a693ae;
+  --color-text-low: #7e6d88;
+  --color-text-on-gold: #2b1533;
 
-  /* -- Or Hextech (accent primaire / CTA) -- */
-  --color-gold-100: #f6e4b8;
-  --color-gold-300: #f0ce85;
-  --color-gold-500: #d8a94e;
-  --color-gold-700: #9c7530;
+  /* -- Or — réservé au tour du joueur / à son action, jamais un accent générique -- */
+  --color-gold-100: #fbe0b8;
+  --color-gold-300: #f5c58a;
+  --color-gold-500: #e3a45f;
+  --color-gold-700: #b9803f;
   --color-gold-900: #4a3719;
 
-  /* -- Acier (accent secondaire / infos neutres) -- */
-  --color-steel-300: #6e93c2;               /* texte/bordures OK (6.2:1) */
-  --color-steel-500: #3e6fa0;               /* grandes surfaces/icônes uniquement (3.7:1) */
-  --color-steel-700: #284a6e;
+  /* -- Accent d'interface (violet hors action, or pendant — voir .theme-paper) -- */
+  --color-accent: var(--color-gold-300);
+  --color-accent-strong: var(--color-gold-500);
+  --color-btn-primary-bg: linear-gradient(180deg, var(--color-gold-100), var(--color-gold-300));
+  --color-btn-primary-text: var(--color-text-on-gold);
+  --shadow-btn-primary: 0 16px 40px -16px rgba(245, 197, 138, 0.55);
 
-  /* -- Couleurs de rôle (identité forte, 3 teintes bien distinctes) -- */
-  --color-role-civil: #4f8fcb;              /* 5.75:1 sur bg */
-  --color-role-civil-dim: #1f3552;
-  --color-role-undercover: #dd6b5c;         /* 5.94:1 sur bg */
-  --color-role-undercover-dim: #4a2018;
-  --color-role-mrwhite: #9a8bc4;            /* 6.44:1 sur bg */
-  --color-role-mrwhite-dim: #2f2a48;
-  --color-role-spy: #4fb8c9;
-  --color-role-spy-dim: #1c3a40;
-  --color-role-protector: #6bb86a;
-  --color-role-protector-dim: #253a24;
-  --color-role-ghost: #a3abc2;
-  --color-role-ghost-dim: #33384a;
-  --color-role-jester: #cf6fae;
-  --color-role-jester-dim: #442a3c;
-  --color-role-hunter: #d98a4f;
-  --color-role-hunter-dim: #402c18;
-  --color-role-lover: #e08fb0;
-  --color-role-lover-dim: #4a2c3a;
+  /* -- Acier / violet (accent secondaire, ex. capacité Protecteur) -- */
+  --color-steel-300: #b9a6d6;
+  --color-steel-500: var(--plum-accent);
+  --color-steel-700: #5b3d78;
+
+  /* -- Pierres de rôle (identité forte, jamais deux visibles à la fois hors révélation finale) -- */
+  --color-role-civil: #6b9ef5;
+  --color-role-civil-dim: #1c2c4a;
+  --color-role-undercover: #e2506b;
+  --color-role-undercover-dim: #401621;
+  --color-role-mrwhite: #b98cf0;
+  --color-role-mrwhite-dim: #2c1f42;
+  --color-role-spy: #3fc7c2;
+  --color-role-spy-dim: #133330;
+  --color-role-protector: #4fc07a;
+  --color-role-protector-dim: #163a26;
+  --color-role-ghost: #a9b4cc;
+  --color-role-ghost-dim: #2a2e3d;
+  --color-role-jester: #f06fb0;
+  --color-role-jester-dim: #401f34;
+  --color-role-hunter: #f0913f;
+  --color-role-hunter-dim: #3c220f;
+  --color-role-lover: #f58aa8;
+  --color-role-lover-dim: #3c1e29;
 
   /* -- États -- */
-  --color-success: #4f9e72;                 /* 6.07:1 sur bg */
-  --color-success-dim: #1c3527;
-  --color-danger: #dd6b5c;
-  --color-warning: #d8a94e;
+  --color-success: #4fc07a;
+  --color-success-dim: #163a26;
+  --color-danger: #e2506b;
+  --color-warning: var(--color-gold-500);
 
   /* -- Typographie -- */
-  --font-display: 'Cinzel', 'Iowan Old Style', serif;
-  --font-body: 'Manrope', -apple-system, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+  --font-display: 'Bodoni Moda', 'Iowan Old Style', serif;
+  --font-body: 'Figtree', -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'DM Mono', 'SF Mono', monospace;
 
   --text-xs: 0.75rem;     /* 12px */
   --text-sm: 0.8125rem;   /* 13px */
@@ -86,14 +104,14 @@
   --text-3xl: 2.25rem;    /* 36px */
   --text-4xl: clamp(2.4rem, 8vw + 1rem, 3.4rem);
 
-  --leading-tight: 1.15;
+  --leading-tight: 1.1;
   --leading-snug: 1.35;
   --leading-normal: 1.55;
 
   --tracking-normal: 0;
-  --tracking-wide: 0.04em;
+  --tracking-wide: 0.01em;
   --tracking-wider: 0.14em;
-  --tracking-widest: 0.22em;
+  --tracking-widest: 0.26em;
 
   /* -- Espacement (grille 4/8) -- */
   --space-1: 0.25rem;  /* 4 */
@@ -107,41 +125,107 @@
   --space-9: 3rem;     /* 48 */
   --space-10: 4rem;    /* 64 */
 
-  /* -- Rayons (usage restreint — le vocabulaire principal est le coin coupé) -- */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
+  /* -- Rayons — plus aucun coin coupé ; l'hexagone (pointe en haut) reste réservé aux
+     avatars/emblèmes/tuiles -- */
+  --radius-xs: 10px;
+  --radius-sm: 14px;
+  --radius-md: 18px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-2xl: 30px;
+  --radius-pill: 999px;
+  --hex-point-up: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
 
-  /* -- Coins coupés (signature visuelle) -- */
-  --cut-sm: 8px;
-  --cut-md: 14px;
-  --cut-lg: 22px;
-
-  /* -- Élévation (lueurs, pas d'ombres noires plates sur fond sombre) -- */
-  --shadow-elevated: 0 12px 34px -14px rgba(0, 0, 0, 0.65);
-  --glow-gold: 0 0 0 1px rgba(216, 169, 78, 0.4), 0 6px 28px -10px rgba(216, 169, 78, 0.38);
-  --glow-steel: 0 0 0 1px rgba(110, 147, 194, 0.35), 0 6px 24px -10px rgba(62, 111, 160, 0.35);
-  --glow-civil: 0 0 0 1px rgba(79, 143, 203, 0.45), 0 0 20px -4px rgba(79, 143, 203, 0.45);
-  --glow-undercover: 0 0 0 1px rgba(221, 107, 92, 0.45), 0 0 20px -4px rgba(221, 107, 92, 0.45);
-  --glow-mrwhite: 0 0 0 1px rgba(154, 139, 196, 0.45), 0 0 20px -4px rgba(154, 139, 196, 0.45);
-  --glow-spy: 0 0 0 1px rgba(79, 184, 201, 0.45), 0 0 20px -4px rgba(79, 184, 201, 0.45);
-  --glow-protector: 0 0 0 1px rgba(107, 184, 106, 0.45), 0 0 20px -4px rgba(107, 184, 106, 0.45);
-  --glow-ghost: 0 0 0 1px rgba(163, 171, 194, 0.45), 0 0 20px -4px rgba(163, 171, 194, 0.45);
-  --glow-jester: 0 0 0 1px rgba(207, 111, 174, 0.45), 0 0 20px -4px rgba(207, 111, 174, 0.45);
-  --glow-hunter: 0 0 0 1px rgba(217, 138, 79, 0.45), 0 0 20px -4px rgba(217, 138, 79, 0.45);
+  /* -- Élévation -- */
+  --shadow-elevated: 0 20px 44px -24px rgba(0, 0, 0, 0.7);
+  --glow-gold: 0 0 0 1px rgba(245, 197, 138, 0.4), 0 6px 28px -10px rgba(245, 197, 138, 0.4);
+  --glow-steel: 0 0 0 1px rgba(138, 95, 176, 0.35), 0 6px 24px -10px rgba(138, 95, 176, 0.35);
+  --glow-civil: 0 0 0 1px rgba(107, 158, 245, 0.45), 0 0 20px -4px rgba(107, 158, 245, 0.45);
+  --glow-undercover: 0 0 0 1px rgba(226, 80, 107, 0.45), 0 0 20px -4px rgba(226, 80, 107, 0.45);
+  --glow-mrwhite: 0 0 0 1px rgba(185, 140, 240, 0.45), 0 0 20px -4px rgba(185, 140, 240, 0.45);
+  --glow-spy: 0 0 0 1px rgba(63, 199, 194, 0.45), 0 0 20px -4px rgba(63, 199, 194, 0.45);
+  --glow-protector: 0 0 0 1px rgba(79, 192, 122, 0.45), 0 0 20px -4px rgba(79, 192, 122, 0.45);
+  --glow-ghost: 0 0 0 1px rgba(169, 180, 204, 0.45), 0 0 20px -4px rgba(169, 180, 204, 0.45);
+  --glow-jester: 0 0 0 1px rgba(240, 111, 176, 0.45), 0 0 20px -4px rgba(240, 111, 176, 0.45);
+  --glow-hunter: 0 0 0 1px rgba(240, 145, 63, 0.45), 0 0 20px -4px rgba(240, 145, 63, 0.45);
 
   /* -- Mouvement -- */
-  --duration-fast: 120ms;
-  --duration-base: 220ms;
-  --duration-slow: 420ms;
+  --duration-fast: 180ms;
+  --duration-base: 420ms;
+  --duration-slow: 720ms;
   --duration-flip: 720ms;
-  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-slowest: 1100ms;
+  --ease-standard: cubic-bezier(0.2, 0.9, 0.15, 1);
   --ease-flip: cubic-bezier(0.6, 0.05, 0.15, 1);
 
   --z-header: 10;
   --z-actionbar: 20;
   --z-chat: 30;
   --z-toast: 40;
+  --z-curtain: 50;
+}
+
+/* --------------------------------------------------------------------------
+   1bis. THÈME PAPIER — menus & fin de partie (voir .screen--paper appliqué au
+   composant racine de MainMenu / Home / Lobby / GameOver). L'accent bascule
+   sur le violet ; l'or disparaît (il ne veut dire qu'une chose : "à toi").
+   -------------------------------------------------------------------------- */
+.theme-paper {
+  --color-bg: var(--paper);
+  --color-bg-elevated: var(--paper-card);
+  --color-surface: var(--paper-card);
+  --color-surface-hover: #ffffff;
+  --color-surface-inset: #ffffff;
+  --color-border: rgba(36, 21, 40, 0.08);
+  --color-border-interactive: rgba(36, 21, 40, 0.16);
+  --color-border-gold: rgba(138, 95, 176, 0.35);
+  --color-text-high: var(--paper-text);
+  --color-text-mid: var(--paper-mid);
+  --color-text-low: #9b8ba1;
+  --color-text-on-gold: #f7ede0;
+  --color-accent: var(--plum-accent);
+  --color-accent-strong: var(--plum-accent);
+  --color-btn-primary-bg: var(--plum-700);
+  --color-btn-primary-text: #f7ede0;
+  --shadow-btn-primary: 0 16px 34px -16px rgba(46, 23, 56, 0.6);
+  color-scheme: light;
+}
+
+/* Mode sombre du monde "papier" uniquement (voir components/ThemeToggle.tsx) — les écrans
+   d'encre (partie en cours) ne portent jamais .theme-paper et restent donc inchangés, quel
+   que soit ce réglage : ce n'est pas un mode clair/sombre générique de l'app, seulement une
+   préférence pour les écrans avant/après la partie. Même accent violet qu'en clair — pas
+   l'or, qui reste réservé à l'encre. */
+html[data-theme='dark'] .theme-paper {
+  --color-bg: var(--ink-900);
+  --color-bg-elevated: var(--ink-800);
+  --color-surface: #1e1327;
+  --color-surface-hover: #281a34;
+  --color-surface-inset: #140b1a;
+  --color-border: rgba(244, 236, 221, 0.10);
+  --color-border-interactive: rgba(244, 236, 221, 0.20);
+  --color-border-gold: rgba(138, 95, 176, 0.35);
+  --color-text-high: #f4ecdd;
+  --color-text-mid: #a693ae;
+  --color-text-low: #7e6d88;
+  --color-text-on-gold: #f7ede0;
+  --color-btn-primary-bg: var(--plum-accent);
+  --color-btn-primary-text: #f7ede0;
+  --shadow-btn-primary: 0 16px 34px -16px rgba(138, 95, 176, 0.55);
+  color-scheme: dark;
+}
+
+/* Bouton clair/sombre — voir components/ThemeToggle.tsx. Réutilise .icon-btn (même gabarit
+   que HostQuitButton/HostRestartButton dans l'AppBar) ; sur les écrans sans AppBar
+   (MainMenu/Home), enveloppé dans .theme-toggle-float pour flotter en haut à droite. */
+.theme-toggle { color: var(--color-accent); border-radius: 50%; }
+.theme-toggle:hover { transform: rotate(-14deg) scale(1.06); border-color: var(--color-accent); color: var(--color-accent); }
+.theme-toggle:active { transform: scale(0.92); }
+.theme-toggle-float {
+  position: fixed;
+  top: calc(var(--space-4) + env(safe-area-inset-top));
+  right: var(--space-4);
+  z-index: var(--z-header);
 }
 
 /* --------------------------------------------------------------------------
@@ -152,36 +236,34 @@
 html { -webkit-text-size-adjust: 100%; color-scheme: dark; }
 
 body {
-  background: var(--color-bg);
-  background-image:
-    radial-gradient(ellipse 900px 500px at 15% -10%, rgba(62, 111, 160, 0.10), transparent 60%),
-    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(216, 169, 78, 0.06), transparent 55%);
-  background-attachment: fixed;
+  background: var(--ink-900);
   color: var(--color-text-high);
   font-family: var(--font-body);
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   min-height: 100dvh;
+  overflow-x: hidden; /* les taches d'ambiance encre débordent légèrement du viewport */
   -webkit-font-smoothing: antialiased;
 }
 
 img, svg { display: block; max-width: 100%; }
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
-a { color: inherit; }
+a { color: var(--color-accent); text-decoration: none; }
+a:hover { color: var(--color-gold-100); }
 ul, ol { list-style: none; padding: 0; }
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 400;
   line-height: var(--leading-tight);
-  letter-spacing: var(--tracking-wide);
+  letter-spacing: -0.01em;
 }
 
 /* Focus visible — jamais supprimé, toujours remplacé */
 :focus { outline: none; }
 :focus-visible {
-  outline: 2px solid var(--color-gold-300);
+  outline: 2px solid var(--color-accent);
   outline-offset: 3px;
   border-radius: var(--radius-xs);
 }
@@ -206,8 +288,8 @@ h1, h2, h3, h4 {
   font-size: var(--text-xs);
   letter-spacing: var(--tracking-widest);
   text-transform: uppercase;
-  color: var(--color-gold-500);
-  font-weight: 600;
+  color: var(--color-accent);
+  font-weight: 500;
 }
 
 .text-mid { color: var(--color-text-mid); }
@@ -221,6 +303,36 @@ h1, h2, h3, h4 {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  isolation: isolate;
+  background: var(--color-bg);
+  color: var(--color-text-high);
+  transition: background var(--duration-slowest) ease, color var(--duration-slowest) ease;
+}
+
+/* Ambiance encre : deux taches floutées en dérive lente derrière tout écran de partie — le
+   rituel se joue dans la pénombre. Jamais sur .theme-paper (menus/fin de partie, en pleine
+   lumière). Pseudo-éléments : aucun JSX à ajouter par écran. */
+.screen:not(.theme-paper)::before,
+.screen:not(.theme-paper)::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(30px);
+  pointer-events: none;
+}
+.screen:not(.theme-paper)::before {
+  left: 2%; top: -6%;
+  width: 60%; height: 46%;
+  background: radial-gradient(circle, rgba(138, 95, 176, 0.30), transparent 68%);
+  animation: drift-a 20s ease-in-out infinite alternate;
+}
+.screen:not(.theme-paper)::after {
+  right: 2%; bottom: 4%;
+  width: 56%; height: 42%;
+  background: radial-gradient(circle, rgba(245, 197, 138, 0.14), transparent 66%);
+  animation: drift-b 26s ease-in-out infinite alternate;
 }
 
 .container {
@@ -250,7 +362,7 @@ h1, h2, h3, h4 {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
-  background: linear-gradient(180deg, rgba(7, 11, 18, 0.97) 60%, rgba(7, 11, 18, 0.85));
+  background: linear-gradient(180deg, var(--color-bg) 60%, transparent);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--color-border);
 }
@@ -258,7 +370,6 @@ h1, h2, h3, h4 {
 .app-bar__title {
   font-family: var(--font-display);
   font-size: var(--text-md);
-  letter-spacing: var(--tracking-wide);
 }
 
 /* Barre d'action fixe basse (zone pouce, mobile-first) */
@@ -271,7 +382,7 @@ h1, h2, h3, h4 {
   gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
-  background: linear-gradient(0deg, rgba(7, 11, 18, 0.98) 65%, rgba(7, 11, 18, 0.85));
+  background: linear-gradient(0deg, var(--color-bg) 65%, transparent);
   border-top: 1px solid var(--color-border);
 }
 
@@ -301,10 +412,10 @@ h1, h2, h3, h4 {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-gold-300), var(--color-gold-500) 60%, var(--color-gold-700));
-  color: var(--color-text-on-gold);
+  background: var(--color-btn-primary-bg);
+  color: var(--color-btn-primary-text);
   border: none;
-  box-shadow: var(--glow-gold);
+  box-shadow: var(--shadow-btn-primary);
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 .chat-toggle:active { transform: scale(0.95); }
@@ -321,7 +432,7 @@ h1, h2, h3, h4 {
   justify-content: center;
   border-radius: 999px;
   background: var(--color-role-undercover);
-  color: var(--color-bg);
+  color: var(--paper-card);
   font-size: var(--text-xs);
   font-weight: 700;
   line-height: 1;
@@ -335,10 +446,11 @@ h1, h2, h3, h4 {
   max-height: min(60vh, 480px);
   padding: var(--space-4);
   gap: var(--space-3);
+  border-radius: var(--radius-xl);
 }
 
 .chat-panel__header { display: flex; align-items: center; justify-content: space-between; }
-.chat-panel__title { font-size: var(--text-md); letter-spacing: var(--tracking-wide); }
+.chat-panel__title { font-size: var(--text-md); }
 .chat-panel__close { width: 32px; height: 32px; }
 
 .chat-panel__list {
@@ -354,7 +466,7 @@ h1, h2, h3, h4 {
 
 .chat-message { display: flex; align-items: flex-start; gap: var(--space-2); }
 .chat-message__body { min-width: 0; }
-.chat-message__name { font-size: var(--text-xs); font-weight: 700; color: var(--color-gold-300); }
+.chat-message__name { font-size: var(--text-xs); font-weight: 700; color: var(--color-accent); }
 .chat-message--self .chat-message__name { color: var(--color-text-mid); }
 .chat-message__text { font-size: var(--text-sm); color: var(--color-text-high); word-break: break-word; white-space: pre-wrap; }
 
@@ -364,29 +476,21 @@ h1, h2, h3, h4 {
 .chat-panel__form .icon-btn[disabled] { opacity: 0.4; pointer-events: none; }
 
 /* --------------------------------------------------------------------------
-   5. FORME SIGNATURE — cadre à coin coupé
+   5. CADRE (ex-coin coupé) — rayon généreux, halo doux au lieu du biseau
    -------------------------------------------------------------------------- */
 .frame-cut {
-  --cut: var(--cut-md);
   position: relative;
-  clip-path: polygon(
-    var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)
-  );
-  border: 1px solid transparent;
-  background:
-    linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
-    linear-gradient(135deg, var(--color-gold-700), var(--color-gold-300) 45%, var(--color-gold-700)) border-box;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .frame-cut--flat {
-  background:
-    linear-gradient(var(--color-surface), var(--color-surface)) padding-box,
-    linear-gradient(135deg, var(--color-border-interactive), var(--color-steel-700)) border-box;
+  border-color: var(--color-border-interactive);
 }
 
-.frame-cut--sm { --cut: var(--cut-sm); }
-.frame-cut--lg { --cut: var(--cut-lg); }
+.frame-cut--sm { border-radius: var(--radius-md); }
+.frame-cut--lg { border-radius: var(--radius-2xl); }
 
 /* --------------------------------------------------------------------------
    6. CARTES
@@ -394,37 +498,33 @@ h1, h2, h3, h4 {
 .card {
   padding: var(--space-6);
   box-shadow: var(--shadow-elevated);
+  border-radius: var(--radius-xl);
 }
 
-.card--tight { padding: var(--space-4) var(--space-5); }
+.card--tight { padding: var(--space-4) var(--space-5); border-radius: var(--radius-lg); }
 
 .panel {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   padding: var(--space-5);
 }
 
 /* --------------------------------------------------------------------------
-   7. BOUTONS
+   7. BOUTONS — pilules, plus aucun coin coupé
    -------------------------------------------------------------------------- */
 .btn {
-  --cut: var(--cut-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  min-height: 48px;
+  min-height: 54px;
   padding: var(--space-3) var(--space-6);
   font-family: var(--font-body);
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--text-base);
-  letter-spacing: var(--tracking-wide);
   border: 1px solid transparent;
-  clip-path: polygon(
-    var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)),
-    calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)
-  );
+  border-radius: var(--radius-pill);
   transition: transform var(--duration-fast) var(--ease-standard),
               filter var(--duration-fast) var(--ease-standard),
               background var(--duration-base) var(--ease-standard);
@@ -434,14 +534,25 @@ h1, h2, h3, h4 {
 .btn:active { transform: translateY(1px) scale(0.99); }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-gold-300), var(--color-gold-500) 60%, var(--color-gold-700));
-  color: var(--color-text-on-gold);
-  box-shadow: var(--glow-gold);
+  position: relative;
+  overflow: hidden;
+  background: var(--color-btn-primary-bg);
+  color: var(--color-btn-primary-text);
+  box-shadow: var(--shadow-btn-primary);
 }
 .btn-primary:hover { filter: brightness(1.06); }
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: translateX(-130%);
+  animation: sheen 4.6s ease-in-out infinite;
+  pointer-events: none;
+}
 
 .btn-secondary {
-  background: var(--color-surface);
+  background: transparent;
   color: var(--color-text-high);
   border-color: var(--color-border-interactive);
 }
@@ -467,6 +578,7 @@ h1, h2, h3, h4 {
   box-shadow: none;
   pointer-events: none;
 }
+.btn[disabled]::after { animation: none; content: none; }
 
 .btn-sm { min-height: 40px; padding: var(--space-2) var(--space-4); font-size: var(--text-sm); width: auto; }
 
@@ -479,10 +591,10 @@ h1, h2, h3, h4 {
   background: var(--color-surface);
   border: 1px solid var(--color-border-interactive);
   color: var(--color-text-mid);
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  border-radius: var(--radius-md);
   transition: color var(--duration-fast), border-color var(--duration-fast), background var(--duration-fast);
 }
-.icon-btn:hover { color: var(--color-gold-300); border-color: var(--color-gold-500); }
+.icon-btn:hover { color: var(--color-accent); border-color: var(--color-accent); }
 
 /* --------------------------------------------------------------------------
    8. CHAMPS DE FORMULAIRE
@@ -490,11 +602,12 @@ h1, h2, h3, h4 {
 .field { display: flex; flex-direction: column; gap: var(--space-2); }
 
 .field__label {
+  font-family: var(--font-mono);
   font-size: var(--text-xs);
   letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
   color: var(--color-text-mid);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 .field__hint { font-size: var(--text-xs); color: var(--color-text-low); }
@@ -502,11 +615,11 @@ h1, h2, h3, h4 {
 
 .input, .textarea {
   width: 100%;
-  min-height: 48px;
+  min-height: 54px;
   padding: var(--space-3) var(--space-4);
   background: var(--color-surface-inset);
   border: 1px solid var(--color-border-interactive);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--color-text-high);
   font-size: var(--text-md);
   transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
@@ -516,8 +629,8 @@ h1, h2, h3, h4 {
 
 .input:focus-visible, .textarea:focus-visible {
   outline: none;
-  border-color: var(--color-gold-500);
-  box-shadow: 0 0 0 3px rgba(216, 169, 78, 0.22);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
 .input--code {
@@ -532,12 +645,12 @@ h1, h2, h3, h4 {
 
 /* Interrupteur (toggle) custom — accessible, sans apparence native */
 .switch { display: inline-flex; align-items: center; gap: var(--space-3); cursor: pointer; min-height: 44px; }
-.switch input { position: absolute; opacity: 0; width: 44px; height: 26px; margin: 0; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 46px; height: 27px; margin: 0; cursor: pointer; }
 
 .switch__track {
   position: relative;
-  width: 44px;
-  height: 26px;
+  width: 46px;
+  height: 27px;
   flex: none;
   background: var(--color-surface-inset);
   border: 1px solid var(--color-border-interactive);
@@ -548,14 +661,14 @@ h1, h2, h3, h4 {
   content: '';
   position: absolute;
   top: 2px; left: 2px;
-  width: 20px; height: 20px;
+  width: 21px; height: 21px;
   background: var(--color-text-mid);
   border-radius: 50%;
   transition: transform var(--duration-base) var(--ease-standard), background var(--duration-base);
 }
-.switch input:checked + .switch__track { background: var(--color-gold-900); border-color: var(--color-gold-500); }
-.switch input:checked + .switch__track::after { transform: translateX(18px); background: var(--color-gold-300); }
-.switch input:focus-visible + .switch__track { outline: 2px solid var(--color-gold-300); outline-offset: 3px; }
+.switch input:checked + .switch__track { background: var(--plum-700); border-color: var(--color-gold-500); }
+.switch input:checked + .switch__track::after { transform: translateX(19px); background: var(--color-gold-300); }
+.switch input:focus-visible + .switch__track { outline: 2px solid var(--color-accent); outline-offset: 3px; }
 .switch input:disabled + .switch__track { opacity: 0.4; cursor: not-allowed; }
 .switch__label { display: flex; flex-direction: column; }
 .switch__label-title { font-weight: 600; font-size: var(--text-sm); color: var(--color-text-high); }
@@ -580,58 +693,55 @@ h1, h2, h3, h4 {
   text-align: center;
 }
 
-/* Segmented control (onglets créer/rejoindre) */
+/* Segmented control (onglets créer/rejoindre) — pilule pleine largeur */
 .segmented {
   display: grid;
   grid-auto-flow: column;
   background: var(--color-surface-inset);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  padding: 5px;
   gap: var(--space-1);
 }
 .segmented__btn {
   min-height: 44px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--color-text-mid);
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--text-sm);
-  letter-spacing: var(--tracking-wide);
   border: none;
-  transition: background var(--duration-base), color var(--duration-base);
+  transition: background var(--duration-base), color var(--duration-base), box-shadow var(--duration-base);
 }
 .segmented__btn[aria-selected="true"] {
-  background: var(--color-surface-hover);
-  color: var(--color-gold-300);
-  box-shadow: inset 0 0 0 1px var(--color-gold-700);
+  background: var(--color-surface);
+  color: var(--color-text-high);
+  box-shadow: var(--shadow-elevated);
 }
 
 /* --------------------------------------------------------------------------
-   9. TUILE HEXAGONALE (avatars, icônes) — second motif de signature
+   9. TUILE HEXAGONALE (avatars, icônes) — signature conservée, pointe en haut
    -------------------------------------------------------------------------- */
 .hex {
-  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  clip-path: var(--hex-point-up);
 }
 
 .avatar {
   --avatar-size: 44px;
   position: relative;
   width: var(--avatar-size);
-  height: var(--avatar-size);
+  height: calc(var(--avatar-size) * 1.15);
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  clip-path: var(--hex-point-up);
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: calc(var(--avatar-size) * 0.36);
-  color: var(--color-text-on-gold);
-  background: linear-gradient(155deg, var(--avatar-c1, #6e93c2), var(--avatar-c2, #284a6e));
+  font-size: calc(var(--avatar-size) * 0.42);
+  color: var(--avatar-text, var(--color-text-on-gold));
+  background: linear-gradient(160deg, var(--avatar-c1, #8fb6f5), var(--avatar-c2, #4f74c4));
 }
 
-.avatar--lg { --avatar-size: 72px; }
+.avatar--lg { --avatar-size: 88px; }
 .avatar--host { box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-gold-500); }
 
 .status-dot {
@@ -645,21 +755,19 @@ h1, h2, h3, h4 {
 .status-dot--offline { background: var(--color-text-low); }
 
 /* --------------------------------------------------------------------------
-   10. BADGES DE RÔLE
+   10. BADGES DE RÔLE — pilules, contour seul (jamais de fond plein)
    -------------------------------------------------------------------------- */
 .badge {
-  --cut: 6px;
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
+  padding: 5px var(--space-3);
   font-size: var(--text-xs);
-  font-weight: 700;
-  letter-spacing: var(--tracking-wide);
+  font-weight: 600;
   white-space: nowrap;
-  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  border: 1px solid var(--color-border-interactive);
   color: var(--color-text-mid);
 }
 
@@ -694,20 +802,30 @@ h1, h2, h3, h4 {
 .player-row--offline .player-row__name { color: var(--color-text-low); }
 .player-row--offline .avatar { filter: grayscale(0.7); opacity: 0.55; }
 
-/* état "en train de parler / a la main" */
+/* état "en train de parler / a la main" — c'est le SEUL moment où l'or apparaît hors bouton */
 .player-row--active {
-  background: linear-gradient(90deg, rgba(216, 169, 78, 0.12), transparent 70%);
-  border-left: 3px solid var(--color-gold-500);
-  padding-left: calc(var(--space-4) - 3px);
+  background: linear-gradient(100deg, rgba(245, 197, 138, 0.16), rgba(245, 197, 138, 0.03));
+  border-radius: var(--radius-lg);
+  border-bottom-color: transparent;
+  position: relative;
+  overflow: hidden;
 }
-.player-row--active .player-row__name { color: var(--color-gold-300); }
+.player-row--active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent, rgba(245, 197, 138, 0.14), transparent);
+  animation: sheen 3.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.player-row--active .player-row__name { color: var(--color-gold-100); }
 
 .player-row--done { opacity: 0.7; }
 .player-row--eliminated .avatar { filter: grayscale(1); opacity: 0.5; }
 .player-row--eliminated .player-row__name { text-decoration: line-through; color: var(--color-text-low); }
 
 /* --------------------------------------------------------------------------
-   12. MINUTEUR (anneau hexagonal facetté)
+   12. MINUTEUR (anneau)
    -------------------------------------------------------------------------- */
 .timer {
   --size: 96px;
@@ -722,7 +840,7 @@ h1, h2, h3, h4 {
   fill: none;
   stroke: var(--color-gold-500);
   stroke-width: 4;
-  stroke-linecap: butt;
+  stroke-linecap: round;
   stroke-dasharray: 169.6;
   stroke-dashoffset: var(--offset, 0);
   transition: stroke-dashoffset var(--duration-slow) linear, stroke var(--duration-base);
@@ -754,7 +872,6 @@ h1, h2, h3, h4 {
   gap: var(--space-1);
 }
 .room-code__char {
-  --cut: 6px;
   width: 2.4rem;
   height: 2.8rem;
   display: flex;
@@ -762,40 +879,53 @@ h1, h2, h3, h4 {
   justify-content: center;
   font-family: var(--font-mono);
   font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--color-gold-300);
+  font-weight: 500;
+  color: var(--color-accent);
   background: var(--color-surface-inset);
-  border: 1px solid var(--color-gold-700);
-  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  border: 1px solid var(--color-border-interactive);
+  border-radius: var(--radius-md);
 }
 
 /* Saisie de code de room (5 cases, façon code OTP) */
 .code-input-group { display: flex; gap: var(--space-2); justify-content: center; }
 .code-input-group__cell {
-  --cut: 6px;
   width: 2.75rem;
   height: 3rem;
   text-align: center;
   font-family: var(--font-mono);
   font-size: var(--text-xl);
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
   color: var(--color-text-high);
   background: var(--color-surface-inset);
   border: 1px solid var(--color-border-interactive);
-  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  border-radius: var(--radius-md);
   transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
 }
 .code-input-group__cell:focus-visible {
   outline: none;
-  border-color: var(--color-gold-500);
-  box-shadow: 0 0 0 3px rgba(216, 169, 78, 0.22);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
 /* --------------------------------------------------------------------------
-   14. CARTE DE RÉVÉLATION (flip 3D)
+   14. CARTE DE RÉVÉLATION (flip 3D physique — "la carte a un poids")
    -------------------------------------------------------------------------- */
-.flip-scene { perspective: 1400px; }
+.flip-scene { perspective: 1600px; position: relative; }
+.flip-scene::before {
+  /* Ombre portée qui s'écarte quand la carte se soulève au retournement. */
+  content: '';
+  position: absolute;
+  left: 8%; right: 8%; bottom: -14px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0, 0, 0, 0.7), transparent 70%);
+  filter: blur(9px);
+  transform: scaleX(0.86);
+  opacity: 0.6;
+  transition: transform var(--duration-flip) var(--ease-flip), opacity var(--duration-flip) ease;
+}
+.flip-scene:has(.flip-card.is-flipped)::before { transform: scaleX(1.06) translateY(6px); opacity: 0.95; }
 .flip-card {
   position: relative;
   width: 100%;
@@ -816,6 +946,7 @@ h1, h2, h3, h4 {
   text-align: center;
   padding: var(--space-7) var(--space-6);
   overflow: hidden;
+  border-radius: var(--radius-2xl);
 }
 .flip-card__face--back { transform: rotateY(180deg); }
 
@@ -825,18 +956,19 @@ h1, h2, h3, h4 {
 .vote-bar-row { display: flex; align-items: center; gap: var(--space-3); }
 .vote-bar-row__track {
   flex: 1 1 auto;
-  height: 10px;
+  height: 8px;
   background: var(--color-surface-inset);
   border-radius: 999px;
   overflow: hidden;
 }
 .vote-bar-row__fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--color-steel-700), var(--color-steel-500));
+  background: var(--color-role-mrwhite);
+  opacity: 0.55;
   border-radius: 999px;
   transition: width var(--duration-slow) var(--ease-standard);
 }
-.vote-bar-row--eliminated .vote-bar-row__fill { background: linear-gradient(90deg, var(--color-role-undercover-dim), var(--color-role-undercover)); }
+.vote-bar-row--eliminated .vote-bar-row__fill { background: linear-gradient(90deg, var(--color-role-undercover-dim), var(--color-role-undercover)); opacity: 1; }
 .vote-bar-row__count { font-family: var(--font-mono); font-size: var(--text-sm); min-width: 2ch; text-align: right; }
 
 /* --------------------------------------------------------------------------
@@ -851,7 +983,7 @@ h1, h2, h3, h4 {
   gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
-.section-title h2 { font-size: var(--text-md); letter-spacing: var(--tracking-wide); }
+.section-title h2 { font-size: var(--text-lg); }
 .section-title .count { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text-low); }
 
 .confirm-hint {
@@ -871,9 +1003,12 @@ h1, h2, h3, h4 {
 .mt-4 { margin-top: var(--space-4) !important; }
 .mt-6 { margin-top: var(--space-6) !important; }
 
+/* --------------------------------------------------------------------------
+   17. MOUVEMENT — jetons partagés + signature de la refonte
+   -------------------------------------------------------------------------- */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(216, 169, 78, 0.35); }
-  50% { box-shadow: 0 0 0 6px rgba(216, 169, 78, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 197, 138, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(245, 197, 138, 0); }
 }
 .pulse { animation: pulse-glow 2.2s ease-in-out infinite; }
 
@@ -882,3 +1017,86 @@ h1, h2, h3, h4 {
   to { opacity: 1; transform: translateY(0); }
 }
 .fade-in-up { animation: fade-in-up var(--duration-slow) var(--ease-standard) both; }
+
+/* Ambiance encre : deux taches floutées en dérive lente, jamais > 0.34 d'opacité — voir
+   .ink-ambience posé en fond des écrans de partie (screens.css, par écran/acte). */
+@keyframes drift-a { 0% { transform: translate3d(0, 0, 0) scale(1); } 100% { transform: translate3d(38px, -26px, 0) scale(1.12); } }
+@keyframes drift-b { 0% { transform: translate3d(0, 0, 0) scale(1.08); } 100% { transform: translate3d(-32px, 22px, 0) scale(1); } }
+@keyframes lattice-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes rays-spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes breathe { 0%, 100% { opacity: 0.35; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.06); } }
+@keyframes sheen { 0% { transform: translateX(-130%); } 55%, 100% { transform: translateX(130%); } }
+@keyframes float-y { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes hex-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.7; } }
+
+/* Transition entre phases de partie (reveal -> discussion -> voting -> ...) et entre écrans
+   de menu — voir GameRoute.tsx, MainMenu.tsx, Home.tsx. */
+.phase-transition { position: relative; animation: fade-in-up var(--duration-slow) var(--ease-standard) both; }
+
+/* Transition de page (View Transitions API native, voir <Link viewTransition> / navigate(...,
+   { viewTransition: true }) dans MainMenu/Home/GameOver/etc.) — fondu doux au lieu du
+   cross-fade par défaut du navigateur, sur les jetons de mouvement du design system. Ignoré
+   sans support (Safari < 18, anciens Firefox) : la navigation reste instantanée, sans erreur. */
+::view-transition-old(root) { animation: view-out var(--duration-base) var(--ease-standard) both; }
+::view-transition-new(root) { animation: view-in var(--duration-base) var(--ease-standard) both; }
+@keyframes view-out { to { opacity: 0; transform: scale(0.985); } }
+@keyframes view-in { from { opacity: 0; transform: scale(1.015); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}
+
+/* Rideau d'hexagones — voir GameRoute.tsx : balaie l'écran au changement de phase, seul
+   moment où l'interface "parle" à la place des joueurs. */
+@keyframes curtain-sweep {
+  0% { transform: translateY(100%); opacity: 0; }
+  35% { transform: translateY(0); opacity: 1; }
+  65% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-100%); opacity: 0; }
+}
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-curtain);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: linear-gradient(120deg, var(--plum-700), var(--ink-900));
+  pointer-events: none;
+  animation: curtain-sweep 620ms var(--ease-standard) both;
+}
+.curtain__hex { width: 34px; height: 39px; clip-path: var(--hex-point-up); background: rgba(245, 197, 138, 0.55); }
+.curtain__hex:nth-child(2) { background: rgba(245, 197, 138, 0.35); }
+
+/* Entrée en cascade pour les listes courtes (joueurs en lobby, cartes d'univers) — plafonné à
+   12 (MAX_PLAYERS_PER_ROOM) au-delà duquel les éléments partagent le dernier délai. */
+.stagger-item { animation: fade-in-up var(--duration-base) var(--ease-standard) both; }
+.stagger-item:nth-child(1) { animation-delay: 0ms; }
+.stagger-item:nth-child(2) { animation-delay: 35ms; }
+.stagger-item:nth-child(3) { animation-delay: 70ms; }
+.stagger-item:nth-child(4) { animation-delay: 105ms; }
+.stagger-item:nth-child(5) { animation-delay: 140ms; }
+.stagger-item:nth-child(6) { animation-delay: 175ms; }
+.stagger-item:nth-child(7) { animation-delay: 210ms; }
+.stagger-item:nth-child(8) { animation-delay: 245ms; }
+.stagger-item:nth-child(9) { animation-delay: 280ms; }
+.stagger-item:nth-child(10) { animation-delay: 315ms; }
+.stagger-item:nth-child(11) { animation-delay: 350ms; }
+.stagger-item:nth-child(n+12) { animation-delay: 385ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .phase-transition,
+  .fade-in-up,
+  .stagger-item,
+  .pulse,
+  .curtain,
+  .front-crest .pulse-ring,
+  .winner-banner__burst,
+  .winner-banner__title,
+  .winner-banner__sub,
+  .winner-banner__emblem,
+  .btn-primary::after,
+  .player-row--active::after {
+    animation: none !important;
+  }
+}

@@ -12,6 +12,7 @@ import type {
   RoomStatePublic,
   RolePrivatePayload,
   RoundResultPayload,
+  SpectatorJoinAck,
   Universe,
 } from '../types';
 
@@ -32,6 +33,9 @@ interface RoomContextValue {
   myRole: RolePrivatePayload | null;
   playerId: string | null;
   roomCode: string | null;
+  /** true si `playerId` figure dans roomState.spectators (jamais persisté en session — voir
+   * joinAsSpectator, un refresh en cours de spectate re-rejoint simplement en spectateur). */
+  isSpectator: boolean;
   lastRoundResult: RoundResultPayload | null;
   lastGameEnded: GameEndedPayload | null;
   lastError: ErrorPayload | null;
@@ -41,8 +45,11 @@ interface RoomContextValue {
   clearError: () => void;
   createRoom: (hostName: string, universe: Universe) => Promise<RoomCreateAck>;
   joinRoom: (roomCode: string, playerName: string) => Promise<RoomJoinAck>;
+  joinAsSpectator: (roomCode: string, playerName: string) => Promise<SpectatorJoinAck>;
   rejoinFromStorage: (roomCode: string) => Promise<boolean>;
   updateSettings: (settings: Partial<RoomSettings>) => void;
+  addCustomPair: (champA: string, champB: string, theme?: string) => void;
+  removeCustomPair: (id: string) => void;
   startGame: () => void;
   ackReveal: () => void;
   startVoting: () => void;
@@ -176,6 +183,22 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     [setSession]
   );
 
+  // Pas de saveSession ici, volontairement : un spectateur n'a pas de siège persistant à
+  // retrouver (voir server/src/types.ts#Room.spectators) — un refresh en cours de spectate
+  // re-déclenche simplement ce flow depuis Home.tsx plutôt qu'un rejoin de session.
+  const joinAsSpectator = useCallback(
+    (roomCode: string, playerName: string) =>
+      new Promise<SpectatorJoinAck>((resolve) => {
+        socket.emit('room:joinSpectator', { roomCode, playerName }, (res) => {
+          if (res.ok && res.playerId && res.sessionToken) {
+            setSession({ roomCode, playerId: res.playerId, sessionToken: res.sessionToken });
+          }
+          resolve(res);
+        });
+      }),
+    [setSession]
+  );
+
   const rejoinFromStorage = useCallback(
     (roomCode: string) =>
       new Promise<boolean>((resolve) => {
@@ -200,6 +223,12 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   const updateSettings = useCallback((settings: Partial<RoomSettings>) => {
     socket.emit('settings:update', { settings });
+  }, []);
+  const addCustomPair = useCallback((champA: string, champB: string, theme?: string) => {
+    socket.emit('custom:addPair', { champA, champB, theme });
+  }, []);
+  const removeCustomPair = useCallback((id: string) => {
+    socket.emit('custom:removePair', { id });
   }, []);
   const startGame = useCallback(() => {
     socket.emit('game:start', {});
@@ -246,12 +275,16 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   const clearError = useCallback(() => setLastError(null), []);
 
+  const playerId = session?.playerId ?? null;
+  const isSpectator = playerId !== null && (roomState?.spectators.some((s) => s.playerId === playerId) ?? false);
+
   const value: RoomContextValue = {
     connected,
     roomState,
     myRole,
-    playerId: session?.playerId ?? null,
+    playerId,
     roomCode: session?.roomCode ?? null,
+    isSpectator,
     lastRoundResult,
     lastGameEnded,
     lastError,
@@ -261,8 +294,11 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     clearError,
     createRoom,
     joinRoom,
+    joinAsSpectator,
     rejoinFromStorage,
     updateSettings,
+    addCustomPair,
+    removeCustomPair,
     startGame,
     ackReveal,
     startVoting,

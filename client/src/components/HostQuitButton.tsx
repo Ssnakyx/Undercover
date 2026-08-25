@@ -12,7 +12,7 @@ export function HostQuitButton() {
   function handleQuit() {
     if (!window.confirm('Quitter maintenant termine la partie pour tous les joueurs. Confirmer ?')) return;
     leaveRoom();
-    navigate('/', { replace: true });
+    navigate('/', { replace: true, viewTransition: true });
   }
 
   return (

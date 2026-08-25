@@ -1,17 +1,13 @@
-// Couleurs d'avatar déterministes à partir de avatarSeed — palette reprise des
-// maquettes /design (paires de tons proches, lisibles sur fond sombre).
+// Couleurs d'avatar déterministes à partir de avatarSeed — palette reprise de la refonte
+// "Cérémonie douce" (5 tons chauds/froids alternés, initiale en texte sombre lisible sur
+// chaque dégradé — jamais une seule couleur de texte fixe, voir design/Cover - Nouveau design).
 
-const PALETTE: [string, string][] = [
-  ['#6e93c2', '#284a6e'],
-  ['#d8a94e', '#7a5620'],
-  ['#6fbe90', '#1f4430'],
-  ['#c68a6e', '#5a3626'],
-  ['#8ea6c9', '#34506e'],
-  ['#9a8bc4', '#423a66'],
-  ['#b3986e', '#5a4726'],
-  ['#7fa0b0', '#2c4450'],
-  ['#dd6b5c', '#4a2018'],
-  ['#4f8fcb', '#1f3552'],
+const PALETTE: [string, string, string][] = [
+  ['#f5c58a', '#e3a45f', '#2b1533'], // or
+  ['#8fb6f5', '#4f74c4', '#101a2b'], // bleu
+  ['#8ddcb4', '#3f9d72', '#0e2419'], // vert
+  ['#cdb0f0', '#8a5fb0', '#1c1026'], // violet
+  ['#e0c7b3', '#a3765c', '#2b1a10'], // ambre
 ];
 
 function hashString(input: string): number {
@@ -22,9 +18,9 @@ function hashString(input: string): number {
   return hash;
 }
 
-export function avatarColors(seed: string): { c1: string; c2: string } {
-  const [c1, c2] = PALETTE[hashString(seed) % PALETTE.length];
-  return { c1, c2 };
+export function avatarColors(seed: string): { c1: string; c2: string; text: string } {
+  const [c1, c2, text] = PALETTE[hashString(seed) % PALETTE.length];
+  return { c1, c2, text };
 }
 
 export function avatarInitial(name: string): string {

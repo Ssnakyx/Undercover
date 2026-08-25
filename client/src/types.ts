@@ -18,6 +18,14 @@ export interface RoomSettings {
   ghostEnabled: boolean;
   jesterEnabled: boolean;
   hunterEnabled: boolean;
+  customPairsEnabled: boolean;
+}
+
+export interface ChampionPair {
+  id: string;
+  champA: string;
+  champB: string;
+  theme: string;
 }
 
 export type GamePhase =
@@ -40,16 +48,26 @@ export interface PublicPlayer {
   avatarSeed: string;
 }
 
+/** Spectateur : rejoint une partie déjà en cours en lecture seule, promu joueur complet au
+ * prochain game:restart. Jamais dans `RoomStatePublic.players`. */
+export interface PublicSpectator {
+  playerId: string;
+  name: string;
+  avatarSeed: string;
+}
+
 export interface RoomStatePublic {
   roomCode: string;
   universe: Universe;
   phase: GamePhase;
   players: PublicPlayer[];
+  spectators: PublicSpectator[];
   settings: RoomSettings;
   round: number;
   turnOrder: string[];
   votedPlayerIds: string[];
   phaseDeadline: number | null;
+  customPairs: ChampionPair[];
 }
 
 // ---- Client -> Serveur (payloads) ----
@@ -111,6 +129,27 @@ export interface ProtectorProtectPayload {
   targetPlayerId: string;
 }
 
+export interface CustomPairAddPayload {
+  champA: string;
+  champB: string;
+  theme?: string;
+}
+
+export interface CustomPairRemovePayload {
+  id: string;
+}
+
+export interface SpectatorJoinPayload {
+  roomCode: string;
+  playerName: string;
+}
+export interface SpectatorJoinAck {
+  ok: boolean;
+  playerId?: string;
+  sessionToken?: string;
+  error?: { code: string; message: string };
+}
+
 export interface AckResponse {
   ok: boolean;
   error?: { code: string; message: string };
@@ -163,8 +202,11 @@ export interface ChatMessage {
 export interface ClientToServerEvents {
   'room:create': (payload: RoomCreatePayload, ack: (res: RoomCreateAck) => void) => void;
   'room:join': (payload: RoomJoinPayload, ack: (res: RoomJoinAck) => void) => void;
+  'room:joinSpectator': (payload: SpectatorJoinPayload, ack: (res: SpectatorJoinAck) => void) => void;
   'room:rejoin': (payload: RoomRejoinPayload, ack: (res: RoomRejoinAck) => void) => void;
   'settings:update': (payload: SettingsUpdatePayload, ack?: (res: AckResponse) => void) => void;
+  'custom:addPair': (payload: CustomPairAddPayload, ack?: (res: AckResponse) => void) => void;
+  'custom:removePair': (payload: CustomPairRemovePayload, ack?: (res: AckResponse) => void) => void;
   'game:start': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'reveal:ack': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'round:startVoting': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;

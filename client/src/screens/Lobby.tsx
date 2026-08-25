@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useRoom } from '../socket/RoomProvider';
 import { Avatar } from '../components/Avatar';
 import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
+import { ThemeToggle } from '../components/ThemeToggle';
 import {
+  MAX_CUSTOM_PAIRS_PER_ROOM,
   computeRoleCounts,
   isGhostAvailable,
   isHunterAvailable,
@@ -14,7 +17,10 @@ import {
 } from '../lib/roles';
 
 export function Lobby() {
-  const { roomState, playerId, updateSettings, startGame } = useRoom();
+  const { roomState, playerId, updateSettings, startGame, addCustomPair, removeCustomPair } = useRoom();
+  const [pairChampA, setPairChampA] = useState('');
+  const [pairChampB, setPairChampB] = useState('');
+  const [pairTheme, setPairTheme] = useState('');
 
   if (!roomState) return null;
 
@@ -53,17 +59,43 @@ export function Lobby() {
     navigator.clipboard?.writeText(inviteLink()).catch(() => {});
   }
 
+  // Active d'un coup tous les rôles optionnels disponibles pour N (jamais ceux sous le seuil
+  // — settings:update rejette toute la requête si un seul champ dépasse le seuil, voir
+  // handlers.ts). Idempotent : relancer le Mode Chaos réaligne juste les toggles sur N courant.
+  function activateChaosMode() {
+    updateSettings({
+      mrWhiteEnabled: mrWhiteAvailable,
+      spyEnabled: spyAvailable,
+      protectorEnabled: protectorAvailable,
+      ghostEnabled: ghostAvailable,
+      jesterEnabled: jesterAvailable,
+      hunterEnabled: hunterAvailable,
+      loversEnabled: loversAvailable,
+    });
+  }
+
+  function handleAddPair() {
+    if (!pairChampA.trim() || !pairChampB.trim()) return;
+    addCustomPair(pairChampA.trim(), pairChampB.trim(), pairTheme.trim() || undefined);
+    setPairChampA('');
+    setPairChampB('');
+    setPairTheme('');
+  }
+
   return (
-    <div className="screen">
+    <div className="screen theme-paper">
       <AppBar
         title="Lobby"
         right={
-          <span className="badge badge--host">
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M4 18 L6 8 L10 13 L12 6 L14 13 L18 8 L20 18 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-            </svg>
-            Hôte : {host?.name ?? '—'}
-          </span>
+          <>
+            <ThemeToggle />
+            <span className="badge badge--host">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 18 L6 8 L10 13 L12 6 L14 13 L18 8 L20 18 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+              Hôte : {host?.name ?? '—'}
+            </span>
+          </>
         }
       />
 
@@ -112,7 +144,7 @@ export function Lobby() {
             </div>
             <div className="panel" style={{ padding: '0 var(--space-5)' }}>
               {roomState.players.map((p) => (
-                <div key={p.playerId} className={`player-row${p.connected ? '' : ' player-row--offline'}`}>
+                <div key={p.playerId} className={`player-row stagger-item${p.connected ? '' : ' player-row--offline'}`}>
                   <Avatar seed={p.avatarSeed} name={p.name} host={p.isHost} />
                   <div>
                     <div className="player-row__name">{p.name}</div>
@@ -148,6 +180,14 @@ export function Lobby() {
                   {counts.lovers && <span className="badge badge--lover">💘 Amoureux</span>}
                 </div>
               </div>
+
+              {isHost && (
+                <div className="setting-row">
+                  <button type="button" className="btn btn-secondary chaos-btn" onClick={activateChaosMode}>
+                    🎲 Mode Chaos — active tous les rôles disponibles
+                  </button>
+                </div>
+              )}
 
               <div className="setting-row">
                 <label className="switch" htmlFor="toggle-mrwhite">
@@ -295,6 +335,103 @@ export function Lobby() {
                   <span className="switch__label">
                     <span className="switch__label-title">Révéler le champion à l'élimination</span>
                     <span className="switch__label-hint">Sinon, seul le rôle du joueur éliminé est annoncé</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section aria-labelledby="custom-pairs-title" className="mt-6">
+            <div className="section-title">
+              <h2 id="custom-pairs-title" className="font-display">
+                Paires personnalisées
+              </h2>
+              <span className="count">{roomState.customPairs.length}</span>
+            </div>
+            <div className="panel">
+              {isHost && (
+                <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--space-3)' }}>
+                  <input
+                    className="input"
+                    type="text"
+                    maxLength={40}
+                    placeholder="Ex. Batman"
+                    aria-label="Nom du premier champion/personnage"
+                    value={pairChampA}
+                    onChange={(e) => setPairChampA(e.target.value)}
+                  />
+                  <input
+                    className="input"
+                    type="text"
+                    maxLength={40}
+                    placeholder="Ex. Robin"
+                    aria-label="Nom du second champion/personnage"
+                    value={pairChampB}
+                    onChange={(e) => setPairChampB(e.target.value)}
+                  />
+                  <input
+                    className="input"
+                    type="text"
+                    maxLength={80}
+                    placeholder="Thème (optionnel)"
+                    aria-label="Thème de la paire"
+                    value={pairTheme}
+                    onChange={(e) => setPairTheme(e.target.value)}
+                  />
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    disabled={!pairChampA.trim() || !pairChampB.trim() || roomState.customPairs.length >= MAX_CUSTOM_PAIRS_PER_ROOM}
+                    onClick={handleAddPair}
+                  >
+                    Ajouter la paire
+                  </button>
+                </div>
+              )}
+
+              {roomState.customPairs.length === 0 ? (
+                <p className="text-low" style={{ padding: 'var(--space-4) 0', fontSize: 'var(--text-sm)' }}>
+                  Aucune paire personnalisée — {isHost ? 'ajoutes-en une pour créer un univers maison' : "l'hôte peut en ajouter"}.
+                </p>
+              ) : (
+                roomState.customPairs.map((pair) => (
+                  <div className="setting-row" key={pair.id}>
+                    <span style={{ fontSize: 'var(--text-sm)' }}>
+                      {pair.champA} / {pair.champB} — <span className="text-low">{pair.theme}</span>
+                    </span>
+                    {isHost && (
+                      <button
+                        className="icon-btn"
+                        type="button"
+                        aria-label={`Retirer la paire ${pair.champA} / ${pair.champB}`}
+                        onClick={() => removeCustomPair(pair.id)}
+                      >
+                        <svg className="icon" viewBox="0 0 24 24" fill="none" width={16} height={16}>
+                          <path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+
+              <div className="setting-row">
+                <label className="switch" htmlFor="toggle-custom-pairs">
+                  <input
+                    type="checkbox"
+                    id="toggle-custom-pairs"
+                    checked={roomState.settings.customPairsEnabled}
+                    disabled={!isHost || roomState.customPairs.length === 0}
+                    onChange={(e) => updateSettings({ customPairsEnabled: e.target.checked })}
+                  />
+                  <span className="switch__track" />
+                  <span className="switch__label">
+                    <span className="switch__label-title">Utiliser uniquement ces paires</span>
+                    <span className="switch__label-hint">
+                      {roomState.customPairs.length === 0
+                        ? 'Ajoute au moins une paire pour activer'
+                        : `Remplace le pool ${roomState.universe} par ces ${roomState.customPairs.length} paire${roomState.customPairs.length > 1 ? 's' : ''} pour cette partie`}
+                    </span>
                   </span>
                 </label>
               </div>

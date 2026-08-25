@@ -12,15 +12,11 @@
   text-align: center;
   padding: var(--space-9) 0 var(--space-7);
 }
-.hero__crest { width: 72px; height: 72px; color: var(--color-gold-500); margin-bottom: var(--space-5); }
+.hero__crest { width: 72px; height: 72px; color: var(--color-accent); margin-bottom: var(--space-5); opacity: 0.9; }
 .hero__title {
   font-size: var(--text-4xl);
-  letter-spacing: var(--tracking-wide);
-  background: linear-gradient(135deg, var(--color-gold-100), var(--color-gold-500) 55%, var(--color-gold-700));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+  color: var(--color-text-high);
 }
 .hero__tagline {
   margin-top: var(--space-4);
@@ -55,7 +51,7 @@
   text-align: left;
 }
 .resume-row:last-child { border-bottom: none; }
-.resume-row:hover .resume-row__cta { color: var(--color-gold-300); }
+.resume-row:hover .resume-row__cta { color: var(--color-accent-strong); }
 .resume-row__code { font-size: var(--text-md); letter-spacing: var(--tracking-wider); }
 .resume-row__cta {
   display: inline-flex;
@@ -63,7 +59,7 @@
   gap: var(--space-1);
   font-size: var(--text-sm);
   font-weight: 700;
-  color: var(--color-gold-500);
+  color: var(--color-accent);
   white-space: nowrap;
 }
 
@@ -79,15 +75,14 @@
   cursor: pointer;
   list-style: none;
   font-size: var(--text-md);
-  letter-spacing: var(--tracking-wide);
-  color: var(--color-gold-300);
+  color: var(--color-accent);
 }
 .roles-info__summary::-webkit-details-marker { display: none; }
 .roles-info__summary::before { content: '▸ '; }
 .roles-info[open] .roles-info__summary::before { content: '▾ '; }
 .roles-info__list { margin-top: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); }
 .roles-info__row { display: flex; align-items: flex-start; gap: var(--space-3); }
-.roles-info__icon { width: 32px; height: 32px; flex: none; color: var(--color-gold-500); }
+.roles-info__icon { width: 32px; height: 32px; flex: none; color: var(--color-accent); }
 .roles-info__icon--emoji { display: flex; align-items: center; justify-content: center; font-size: var(--text-lg); line-height: 1; }
 .roles-info__name { font-weight: 700; color: var(--color-text-high); }
 .roles-info__min { font-weight: 400; color: var(--color-text-low); font-size: var(--text-xs); }
@@ -107,13 +102,50 @@
   padding: var(--space-7) var(--space-5);
   color: var(--color-text-high);
   text-decoration: none;
-  transition: transform var(--duration-fast) var(--ease-standard), filter var(--duration-fast) var(--ease-standard);
+  transition: transform var(--duration-base) var(--ease-standard),
+              filter var(--duration-fast) var(--ease-standard),
+              border-color var(--duration-base) var(--ease-standard),
+              box-shadow var(--duration-base) var(--ease-standard);
 }
-.menu-card:hover { filter: brightness(1.08); }
-.menu-card:active { transform: scale(0.98); }
-.menu-card__icon { width: 48px; height: 48px; color: var(--color-gold-500); }
-.menu-card__title { font-size: var(--text-lg); letter-spacing: var(--tracking-wide); }
+.menu-card:hover {
+  filter: brightness(1.02);
+  transform: translateY(-6px) scale(1.015);
+  box-shadow: var(--shadow-elevated);
+  border-color: var(--color-accent);
+}
+.menu-card:active { transform: translateY(-2px) scale(0.98); }
+.menu-card__icon-chip {
+  position: relative;
+  overflow: hidden;
+  width: 52px;
+  height: 60px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: var(--hex-point-up);
+  background: linear-gradient(160deg, var(--plum-700), #5b2f6e);
+  transition: transform var(--duration-base) var(--ease-flip);
+}
+.menu-card:hover .menu-card__icon-chip { transform: rotate(-8deg) scale(1.1); }
+.menu-card__icon-chip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent, rgba(245, 197, 138, 0.4), transparent);
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+.menu-card:hover .menu-card__icon-chip::after { animation: sheen 900ms ease-in-out; }
+.menu-card__icon { width: 26px; height: 26px; color: var(--color-gold-300); transition: transform var(--duration-base) var(--ease-standard); }
+.menu-card:hover .menu-card__icon { transform: scale(1.12); }
+.menu-card__title { font-size: var(--text-lg); transition: color var(--duration-base) var(--ease-standard); }
+.menu-card:hover .menu-card__title { color: var(--color-accent); }
 .menu-card__sub { font-size: var(--text-xs); color: var(--color-text-mid); }
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-card:hover .menu-card__icon-chip::after { animation: none; }
+}
 
 /* -------------------- Lobby -------------------- */
 .code-share {
@@ -126,6 +158,9 @@
 .setting-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4) 0; border-bottom: 1px solid var(--color-border); }
 .setting-row:last-child { border-bottom: none; }
 .setting-row--stat { align-items: flex-start; flex-direction: column; gap: var(--space-2); }
+
+.chaos-btn { border-color: var(--color-accent); color: var(--color-accent-strong); }
+.chaos-btn:hover { background: var(--color-surface-hover); }
 
 /* -------------------- Reveal -------------------- */
 .reveal-main {
@@ -160,42 +195,42 @@
 
 .role-face { position: relative; }
 .role-face--civil {
-  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(79, 143, 203, 0.18), transparent 65%), var(--color-surface);
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(107, 158, 245, 0.18), transparent 65%), var(--color-surface);
   border-color: var(--color-role-civil);
   box-shadow: var(--glow-civil);
 }
 .role-face--undercover {
-  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(221, 107, 92, 0.18), transparent 65%), var(--color-surface);
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(226, 80, 107, 0.18), transparent 65%), var(--color-surface);
   border-color: var(--color-role-undercover);
   box-shadow: var(--glow-undercover);
 }
 .role-face--mrwhite {
-  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(154, 139, 196, 0.18), transparent 65%), var(--color-surface);
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(185, 140, 240, 0.18), transparent 65%), var(--color-surface);
   border-color: var(--color-role-mrwhite);
   box-shadow: var(--glow-mrwhite);
 }
 .role-face--spy {
-  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(79, 184, 201, 0.18), transparent 65%), var(--color-surface);
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(63, 199, 194, 0.18), transparent 65%), var(--color-surface);
   border-color: var(--color-role-spy);
   box-shadow: var(--glow-spy);
 }
 .role-face--protector {
-  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(107, 184, 106, 0.18), transparent 65%), var(--color-surface);
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(79, 192, 122, 0.18), transparent 65%), var(--color-surface);
   border-color: var(--color-role-protector);
   box-shadow: var(--glow-protector);
 }
 .role-face--ghost {
-  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(163, 171, 194, 0.18), transparent 65%), var(--color-surface);
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(169, 180, 204, 0.18), transparent 65%), var(--color-surface);
   border-color: var(--color-role-ghost);
   box-shadow: var(--glow-ghost);
 }
 .role-face--jester {
-  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(207, 111, 174, 0.18), transparent 65%), var(--color-surface);
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(240, 111, 176, 0.18), transparent 65%), var(--color-surface);
   border-color: var(--color-role-jester);
   box-shadow: var(--glow-jester);
 }
 .role-face--hunter {
-  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(217, 138, 79, 0.18), transparent 65%), var(--color-surface);
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(240, 145, 63, 0.18), transparent 65%), var(--color-surface);
   border-color: var(--color-role-hunter);
   box-shadow: var(--glow-hunter);
 }
@@ -212,9 +247,7 @@
 .role-face__champion {
   font-family: var(--font-display);
   font-size: var(--text-3xl);
-  letter-spacing: var(--tracking-wide);
   color: var(--color-text-high);
-  text-transform: uppercase;
 }
 .role-face__instruction {
   margin-top: var(--space-5);
@@ -232,7 +265,7 @@
   padding: var(--space-5); margin-bottom: var(--space-6);
 }
 .turn-banner__text { flex: 1 1 auto; min-width: 0; }
-.turn-banner__who { font-family: var(--font-display); font-size: var(--text-lg); color: var(--color-gold-300); letter-spacing: var(--tracking-wide); }
+.turn-banner__who { font-family: var(--font-display); font-size: var(--text-2xl); color: var(--color-text-high); }
 .turn-banner__sub { font-size: var(--text-xs); color: var(--color-text-low); margin-top: var(--space-1); }
 .turn-order__item { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); }
 .turn-order__item:last-child { border-bottom: none; }
@@ -255,7 +288,7 @@
   padding: var(--space-5); margin-bottom: var(--space-5);
 }
 .vote-banner__text { flex: 1 1 auto; }
-.vote-banner__title { font-family: var(--font-display); font-size: var(--text-lg); letter-spacing: var(--tracking-wide); }
+.vote-banner__title { font-family: var(--font-display); font-size: var(--text-2xl); color: var(--color-text-high); }
 .vote-banner__sub { font-size: var(--text-xs); color: var(--color-text-low); margin-top: var(--space-1); }
 .vote-progress { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-6); padding: 0 var(--space-1); }
 .vote-progress__dots { display: flex; gap: 5px; }
@@ -274,25 +307,23 @@
 .vote-row__status--voted { color: var(--color-success); }
 .vote-row__status--pending { color: var(--color-text-low); }
 .vote-btn {
-  --cut: 6px;
   flex: none;
   min-height: 44px;
   min-width: 84px;
   padding: 0 var(--space-4);
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--text-sm);
-  letter-spacing: var(--tracking-wide);
-  background: var(--color-surface);
-  color: var(--color-gold-300);
-  border: 1px solid var(--color-gold-700);
-  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-border-gold);
+  border-radius: var(--radius-pill);
   transition: background var(--duration-fast), color var(--duration-fast), transform var(--duration-fast), opacity var(--duration-fast);
 }
 .vote-btn:active { transform: scale(0.96); }
-.vote-btn--selected { background: var(--color-gold-500); color: var(--color-text-on-gold); border-color: var(--color-gold-300); }
+.vote-btn--selected { background: var(--color-btn-primary-bg); color: var(--color-btn-primary-text); border-color: transparent; font-weight: 700; box-shadow: var(--shadow-btn-primary); }
 .vote-btn:disabled { opacity: 0.35; pointer-events: none; }
 .vote-btn--protect { color: var(--color-steel-300); border-color: var(--color-steel-500); min-width: 96px; }
-.vote-btn--protect.vote-btn--selected { background: var(--color-steel-500); color: var(--color-text-high); border-color: var(--color-steel-300); }
+.vote-btn--protect.vote-btn--selected { background: var(--color-steel-500); color: var(--color-text-high); border-color: var(--color-steel-300); box-shadow: none; }
 .vote-row--self .vote-row__name { color: var(--color-text-mid); }
 .confirm-banner {
   display: none;
@@ -302,9 +333,9 @@
   border: 1px solid var(--color-success);
   color: var(--color-success);
   font-weight: 700;
-  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  border-radius: var(--radius-lg);
 }
-.confirm-banner.is-visible { display: flex; }
+.confirm-banner.is-visible { display: flex; animation: fade-in-up var(--duration-base) var(--ease-standard) both; }
 .confirm-banner svg { width: 22px; height: 22px; flex: none; }
 
 /* -------------------- RoundResult -------------------- */
@@ -314,16 +345,61 @@
   margin-bottom: var(--space-6);
 }
 .eliminated-block .eyebrow { margin-bottom: var(--space-4); }
-.eliminated-block .avatar { --avatar-size: 88px; margin-bottom: var(--space-4); filter: grayscale(0.35); }
-.eliminated-block__name { font-family: var(--font-display); font-size: var(--text-2xl); letter-spacing: var(--tracking-wide); }
+.eliminated-block__name { font-family: var(--font-display); font-size: var(--text-2xl); }
+.eliminated-block__name--struck {
+  animation: struck-in var(--duration-slowest) ease both;
+}
+@keyframes struck-in {
+  0% { color: var(--color-text-high); text-decoration-color: transparent; }
+  100% { color: var(--color-text-low); text-decoration: line-through; text-decoration-color: var(--color-role-undercover); }
+}
 .eliminated-block__votes { margin-top: var(--space-2); font-size: var(--text-sm); color: var(--color-text-mid); }
+
+/* Éclatement de l'avatar à l'élimination (voir design/Cover - Nouveau design, 1e) — la
+   couleur part, le nom se barre (ci-dessus), le rôle apparaît dessous (.role-reveal--delayed).
+   Généré par ShatteringAvatar dans RoundResult.tsx. */
+.elim-shatter {
+  position: relative;
+  width: 88px;
+  height: 101px;
+  margin: 0 auto var(--space-4);
+}
+.elim-shatter__avatar {
+  margin: 0 !important;
+  animation: elim-avatar-out var(--duration-base) ease both;
+}
+@keyframes elim-avatar-out {
+  0% { opacity: 1; transform: scale(1); filter: grayscale(0); }
+  100% { opacity: 0; transform: scale(0.9); filter: grayscale(1); }
+}
+.elim-shard {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 44px; height: 50px;
+  margin: -25px 0 0 -22px;
+  clip-path: var(--hex-point-up);
+  animation: shard-out var(--duration-slowest) var(--ease-standard) both;
+}
+@keyframes shard-out {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(1); filter: grayscale(0); }
+  16% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.5); filter: grayscale(1) blur(3px); }
+}
+.role-reveal--delayed { animation: fade-in-up 600ms var(--ease-standard) 480ms both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .eliminated-block__name--struck { animation: none; color: var(--color-text-low); text-decoration: line-through; text-decoration-color: var(--color-role-undercover); }
+  .elim-shatter__avatar { animation: none; opacity: 1; filter: grayscale(1); }
+  .elim-shard { animation: none; opacity: 0; }
+  .role-reveal--delayed { animation: none; }
+}
 .role-reveal {
   display: flex; align-items: center; gap: var(--space-5);
   padding: var(--space-5); margin-top: var(--space-6); width: 100%;
 }
 .role-reveal__emblem { width: 64px; height: 64px; flex: none; }
 .role-reveal__eyebrow { font-size: var(--text-xs); letter-spacing: var(--tracking-widest); font-weight: 800; }
-.role-reveal__champion { font-family: var(--font-display); font-size: var(--text-xl); letter-spacing: var(--tracking-wide); margin-top: var(--space-1); text-transform: uppercase; }
+.role-reveal__champion { font-family: var(--font-display); font-size: var(--text-xl); margin-top: var(--space-1); }
 .role-reveal--civil { border-color: var(--color-role-civil); box-shadow: var(--glow-civil); }
 .role-reveal--civil .role-reveal__emblem, .role-reveal--civil .role-reveal__eyebrow { color: var(--color-role-civil); }
 .role-reveal--undercover { border-color: var(--color-role-undercover); box-shadow: var(--glow-undercover); }
@@ -362,11 +438,17 @@
   overflow: hidden;
   background: var(--color-surface);
 }
-.winner-banner--civil { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(79, 143, 203, 0.22), transparent 70%), var(--color-surface); border-color: var(--color-role-civil); box-shadow: var(--glow-civil); }
-.winner-banner--undercover { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(221, 107, 92, 0.22), transparent 70%), var(--color-surface); border-color: var(--color-role-undercover); box-shadow: var(--glow-undercover); }
-.winner-banner--mrwhite { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(154, 139, 196, 0.22), transparent 70%), var(--color-surface); border-color: var(--color-role-mrwhite); box-shadow: var(--glow-mrwhite); }
-.winner-banner--jester { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(207, 111, 174, 0.22), transparent 70%), var(--color-surface); border-color: var(--color-role-jester); box-shadow: var(--glow-jester); }
-.winner-banner__burst { position: absolute; top: -40px; width: 260px; height: 260px; opacity: 0.35; }
+.winner-banner--civil { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(107, 158, 245, 0.28), transparent 70%), var(--paper-card); border-color: transparent; box-shadow: var(--shadow-elevated); }
+.winner-banner--undercover { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(226, 80, 107, 0.28), transparent 70%), var(--paper-card); border-color: transparent; box-shadow: var(--shadow-elevated); }
+.winner-banner--mrwhite { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(185, 140, 240, 0.28), transparent 70%), var(--paper-card); border-color: transparent; box-shadow: var(--shadow-elevated); }
+.winner-banner--jester { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(240, 111, 176, 0.28), transparent 70%), var(--paper-card); border-color: transparent; box-shadow: var(--shadow-elevated); }
+.winner-banner__burst { position: absolute; top: -40px; width: 260px; height: 260px; opacity: 0.35; animation: burst-spin 18s linear infinite; }
+@keyframes burst-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes emblem-pop {
+  0% { opacity: 0; transform: scale(0.4) rotate(-8deg); }
+  60% { opacity: 1; transform: scale(1.08) rotate(2deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
 .winner-banner--civil .winner-banner__burst, .winner-banner--civil .winner-banner__eyebrow, .winner-banner--civil .winner-banner__emblem { color: var(--color-role-civil); }
 .winner-banner--undercover .winner-banner__burst, .winner-banner--undercover .winner-banner__eyebrow, .winner-banner--undercover .winner-banner__emblem { color: var(--color-role-undercover); }
 .winner-banner--mrwhite .winner-banner__burst, .winner-banner--mrwhite .winner-banner__eyebrow, .winner-banner--mrwhite .winner-banner__emblem { color: var(--color-role-mrwhite); }
@@ -378,9 +460,26 @@
   letter-spacing: var(--tracking-wide);
   margin-top: var(--space-3);
   color: var(--color-text-high);
+  animation: fade-in-up var(--duration-slow) var(--ease-standard) both;
+  animation-delay: 80ms;
 }
-.winner-banner__sub { position: relative; margin-top: var(--space-3); color: var(--color-text-mid); font-size: var(--text-sm); max-width: 30ch; }
-.winner-banner__emblem { position: relative; width: 88px; height: 88px; margin-top: var(--space-6); }
+.winner-banner__sub {
+  position: relative;
+  margin-top: var(--space-3);
+  color: var(--color-text-mid);
+  font-size: var(--text-sm);
+  max-width: 30ch;
+  animation: fade-in-up var(--duration-slow) var(--ease-standard) both;
+  animation-delay: 160ms;
+}
+.winner-banner__emblem {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  margin-top: var(--space-6);
+  animation: emblem-pop 640ms var(--ease-flip) both;
+  animation-delay: 220ms;
+}
 .reveal-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -392,6 +491,6 @@
   gap: var(--space-2);
 }
 .reveal-chip__name { font-weight: 700; font-size: var(--text-sm); }
-.reveal-chip__champion { font-family: var(--font-display); font-size: var(--text-base); letter-spacing: var(--tracking-wide); margin-top: 2px; text-transform: uppercase; }
+.reveal-chip__champion { font-family: var(--font-display); font-size: var(--text-base); margin-top: 2px; }
 .reveal-chip--mrwhite .reveal-chip__champion { color: var(--color-role-mrwhite); font-style: italic; font-family: var(--font-body); font-size: var(--text-xs); text-transform: none; }
 .reveal-chip__lover { margin-top: var(--space-1); font-size: var(--text-xs); color: var(--color-role-lover); }

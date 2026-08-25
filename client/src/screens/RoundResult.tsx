@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { useRoom } from '../socket/RoomProvider';
 import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
@@ -5,6 +6,33 @@ import { Avatar } from '../components/Avatar';
 import { RoleEmblem, roleLabel } from '../components/RoleBadge';
 import { HostQuitButton } from '../components/HostQuitButton';
 import { HostRestartButton } from '../components/HostRestartButton';
+import { avatarColors } from '../lib/avatar';
+
+const SHARD_COUNT = 6;
+
+// "L'hexagone du joueur se fend en six éclats qui s'écartent et s'éteignent" — voir
+// design/Cover - Nouveau design (1e). Calculé une fois au montage (pas de rng), chaque éclat
+// hérite du dégradé de l'avatar du joueur éliminé pour rester identifiable en s'évanouissant.
+function ShatteringAvatar({ seed, name }: { seed: string; name: string }) {
+  const { c1, c2 } = avatarColors(seed);
+  return (
+    <div className="elim-shatter">
+      {Array.from({ length: SHARD_COUNT }, (_, i) => {
+        const angle = (i / SHARD_COUNT) * Math.PI * 2 + 0.4;
+        const dist = 46 + (i % 3) * 6;
+        const style = {
+          '--dx': `${Math.round(Math.cos(angle) * dist)}px`,
+          '--dy': `${Math.round(Math.sin(angle) * dist)}px`,
+          '--rot': `${Math.round(Math.cos(angle) * 40)}deg`,
+          animationDelay: `${i * 45}ms`,
+          background: `linear-gradient(160deg, ${c1}, ${c2})`,
+        } as CSSProperties;
+        return <span key={i} className="elim-shard" style={style} aria-hidden="true" />;
+      })}
+      <Avatar seed={seed} name={name} size="lg" className="elim-shatter__avatar" />
+    </div>
+  );
+}
 
 export function RoundResult() {
   const { roomState, playerId, lastRoundResult, continueRound } = useRoom();
@@ -71,14 +99,14 @@ export function RoundResult() {
             ) : (
               <>
                 <span className="eyebrow">Éliminé ce round</span>
-                <Avatar seed={eliminated.avatarSeed} name={eliminated.name} size="lg" />
-                <div className="eliminated-block__name">{eliminated.name}</div>
+                <ShatteringAvatar seed={eliminated.avatarSeed} name={eliminated.name} />
+                <div className="eliminated-block__name eliminated-block__name--struck">{eliminated.name}</div>
                 <div className="eliminated-block__votes">
                   {eliminatedVotes} vote{eliminatedVotes > 1 ? 's' : ''} sur {totalVotes}
                 </div>
 
                 {eliminatedRole && (
-                  <div className={`role-reveal role-reveal--${eliminatedRole} frame-cut`}>
+                  <div className={`role-reveal role-reveal--${eliminatedRole} role-reveal--delayed frame-cut`}>
                     <RoleEmblem role={eliminatedRole} className="role-reveal__emblem" />
                     <div>
                       <div className="role-reveal__eyebrow">Était {roleLabel(eliminatedRole)}</div>
@@ -100,9 +128,9 @@ export function RoundResult() {
           {chainEliminated && chainEliminatedRole && (
             <div className="eliminated-block frame-cut frame-cut--lg" style={{ marginTop: 'var(--space-4)' }}>
               <span className="eyebrow">💘 Mort·e de chagrin</span>
-              <Avatar seed={chainEliminated.avatarSeed} name={chainEliminated.name} size="lg" />
-              <div className="eliminated-block__name">{chainEliminated.name}</div>
-              <div className={`role-reveal role-reveal--${chainEliminatedRole} frame-cut`}>
+              <ShatteringAvatar seed={chainEliminated.avatarSeed} name={chainEliminated.name} />
+              <div className="eliminated-block__name eliminated-block__name--struck">{chainEliminated.name}</div>
+              <div className={`role-reveal role-reveal--${chainEliminatedRole} role-reveal--delayed frame-cut`}>
                 <RoleEmblem role={chainEliminatedRole} className="role-reveal__emblem" />
                 <div>
                   <div className="role-reveal__eyebrow">Était {roleLabel(chainEliminatedRole)}</div>

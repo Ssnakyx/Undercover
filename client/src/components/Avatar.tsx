@@ -10,14 +10,14 @@ interface AvatarProps {
 }
 
 export function Avatar({ seed, name, size = 'md', host = false, className }: AvatarProps) {
-  const { c1, c2 } = avatarColors(seed);
+  const { c1, c2, text } = avatarColors(seed);
   const classes = ['avatar', size === 'lg' ? 'avatar--lg' : '', host ? 'avatar--host' : '', className]
     .filter(Boolean)
     .join(' ');
   return (
     <span
       className={classes}
-      style={{ '--avatar-c1': c1, '--avatar-c2': c2 } as CSSProperties}
+      style={{ '--avatar-c1': c1, '--avatar-c2': c2, '--avatar-text': text } as CSSProperties}
       aria-hidden="true"
     >
       {avatarInitial(name)}
