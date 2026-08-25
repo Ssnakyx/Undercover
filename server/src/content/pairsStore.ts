@@ -7,10 +7,12 @@
 import type { ChampionPair, Universe } from '../types.js';
 import { championPairs as lolPairs } from './championPairs.js';
 import { smashPairs } from './smashPairs.js';
+import { pokemonPairs } from './pokemonPairs.js';
 
 const pools: Record<Universe, ChampionPair[]> = {
   lol: lolPairs,
   smash: smashPairs,
+  pokemon: pokemonPairs,
 };
 
 export function getAllPairs(universe: Universe): ChampionPair[] {

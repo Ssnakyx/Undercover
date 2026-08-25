@@ -13,8 +13,22 @@ export function RoundResult() {
 
   const me = roomState.players.find((p) => p.playerId === playerId);
   const isHost = me?.isHost ?? false;
-  const { eliminatedPlayerId, eliminatedRole, eliminatedChampion, voteCounts, tie } = lastRoundResult;
+  const {
+    eliminatedPlayerId,
+    eliminatedRole,
+    eliminatedChampion,
+    voteCounts,
+    tie,
+    protectedThisRound,
+    hunterDeclined,
+    chainEliminatedPlayerId,
+    chainEliminatedRole,
+    chainEliminatedChampion,
+  } = lastRoundResult;
   const eliminated = eliminatedPlayerId ? roomState.players.find((p) => p.playerId === eliminatedPlayerId) : null;
+  const chainEliminated = chainEliminatedPlayerId
+    ? roomState.players.find((p) => p.playerId === chainEliminatedPlayerId)
+    : null;
 
   const totalVotes = Object.values(voteCounts).reduce((a, b) => a + b, 0);
   const eliminatedVotes = eliminatedPlayerId ? voteCounts[eliminatedPlayerId] ?? 0 : 0;
@@ -39,7 +53,17 @@ export function RoundResult() {
       <main className="main">
         <div className="container">
           <div className="eliminated-block frame-cut frame-cut--lg">
-            {tie || !eliminated ? (
+            {protectedThisRound ? (
+              <>
+                <span className="eyebrow">Protection</span>
+                <div className="eliminated-block__name">Le Protecteur a sauvé la mise — personne n'est éliminé ce round</div>
+              </>
+            ) : hunterDeclined ? (
+              <>
+                <span className="eyebrow">Chasseur</span>
+                <div className="eliminated-block__name">Le Chasseur n'a tiré sur personne</div>
+              </>
+            ) : tie || !eliminated ? (
               <>
                 <span className="eyebrow">Égalité</span>
                 <div className="eliminated-block__name">Personne n'est éliminé ce round</div>
@@ -58,7 +82,7 @@ export function RoundResult() {
                     <RoleEmblem role={eliminatedRole} className="role-reveal__emblem" />
                     <div>
                       <div className="role-reveal__eyebrow">Était {roleLabel(eliminatedRole)}</div>
-                      {eliminatedRole !== 'mrwhite' && (
+                      {eliminatedRole !== 'mrwhite' && eliminatedRole !== 'jester' && (
                         <div
                           className={`role-reveal__champion${eliminatedChampion ? '' : ' text-low'}`}
                           style={eliminatedChampion ? undefined : { fontSize: 'var(--text-sm)', textTransform: 'none' }}
@@ -72,6 +96,28 @@ export function RoundResult() {
               </>
             )}
           </div>
+
+          {chainEliminated && chainEliminatedRole && (
+            <div className="eliminated-block frame-cut frame-cut--lg" style={{ marginTop: 'var(--space-4)' }}>
+              <span className="eyebrow">💘 Mort·e de chagrin</span>
+              <Avatar seed={chainEliminated.avatarSeed} name={chainEliminated.name} size="lg" />
+              <div className="eliminated-block__name">{chainEliminated.name}</div>
+              <div className={`role-reveal role-reveal--${chainEliminatedRole} frame-cut`}>
+                <RoleEmblem role={chainEliminatedRole} className="role-reveal__emblem" />
+                <div>
+                  <div className="role-reveal__eyebrow">Était {roleLabel(chainEliminatedRole)}</div>
+                  {chainEliminatedRole !== 'mrwhite' && chainEliminatedRole !== 'jester' && (
+                    <div
+                      className={`role-reveal__champion${chainEliminatedChampion ? '' : ' text-low'}`}
+                      style={chainEliminatedChampion ? undefined : { fontSize: 'var(--text-sm)', textTransform: 'none' }}
+                    >
+                      {chainEliminatedChampion ?? 'Champion non révélé'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {rows.length > 0 && (
             <section aria-labelledby="breakdown-title">

@@ -2,7 +2,16 @@ import { useRoom } from '../socket/RoomProvider';
 import { Avatar } from '../components/Avatar';
 import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
-import { computeRoleCounts, isMrWhiteAvailable } from '../lib/roles';
+import {
+  computeRoleCounts,
+  isGhostAvailable,
+  isHunterAvailable,
+  isJesterAvailable,
+  isLoversAvailable,
+  isMrWhiteAvailable,
+  isProtectorAvailable,
+  isSpyAvailable,
+} from '../lib/roles';
 
 export function Lobby() {
   const { roomState, playerId, updateSettings, startGame } = useRoom();
@@ -13,8 +22,23 @@ export function Lobby() {
   const isHost = me?.isHost ?? false;
   const host = roomState.players.find((p) => p.isHost);
   const n = roomState.players.length;
-  const counts = computeRoleCounts(n, roomState.settings.mrWhiteEnabled);
+  const s = roomState.settings;
+  const counts = computeRoleCounts(n, {
+    mrWhite: s.mrWhiteEnabled,
+    spy: s.spyEnabled,
+    protector: s.protectorEnabled,
+    ghost: s.ghostEnabled,
+    jester: s.jesterEnabled,
+    hunter: s.hunterEnabled,
+    lovers: s.loversEnabled,
+  });
   const mrWhiteAvailable = isMrWhiteAvailable(n);
+  const spyAvailable = isSpyAvailable(n);
+  const protectorAvailable = isProtectorAvailable(n);
+  const ghostAvailable = isGhostAvailable(n);
+  const jesterAvailable = isJesterAvailable(n);
+  const hunterAvailable = isHunterAvailable(n);
+  const loversAvailable = isLoversAvailable(n);
   const canStart = isHost && n >= 3;
 
   function copyCode() {
@@ -116,6 +140,12 @@ export function Lobby() {
                   <span className="badge badge--civil">{counts.civils} Civils</span>
                   <span className="badge badge--undercover">{counts.undercover} Undercover</span>
                   {counts.mrWhite > 0 && <span className="badge badge--mrwhite">1 Mr White</span>}
+                  {counts.spy > 0 && <span className="badge badge--spy">1 Espion</span>}
+                  {counts.protector > 0 && <span className="badge badge--protector">1 Protecteur</span>}
+                  {counts.ghost > 0 && <span className="badge badge--ghost">1 Revenant</span>}
+                  {counts.jester > 0 && <span className="badge badge--jester">1 Bouffon</span>}
+                  {counts.hunter > 0 && <span className="badge badge--hunter">1 Chasseur</span>}
+                  {counts.lovers && <span className="badge badge--lover">💘 Amoureux</span>}
                 </div>
               </div>
 
@@ -133,6 +163,120 @@ export function Lobby() {
                     <span className="switch__label-title">Mr White</span>
                     <span className="switch__label-hint">
                       {mrWhiteAvailable ? 'Un joueur ne connaît aucun champion — il doit bluffer' : 'Indisponible à moins de 5 joueurs'}
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="setting-row">
+                <label className="switch" htmlFor="toggle-spy">
+                  <input
+                    type="checkbox"
+                    id="toggle-spy"
+                    checked={roomState.settings.spyEnabled}
+                    disabled={!isHost || !spyAvailable}
+                    onChange={(e) => updateSettings({ spyEnabled: e.target.checked })}
+                  />
+                  <span className="switch__track" />
+                  <span className="switch__label">
+                    <span className="switch__label-title">Espion</span>
+                    <span className="switch__label-hint">
+                      {spyAvailable ? 'Camp civils — apprend le camp d\'un autre joueur à la révélation' : 'Indisponible à moins de 4 joueurs'}
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="setting-row">
+                <label className="switch" htmlFor="toggle-protector">
+                  <input
+                    type="checkbox"
+                    id="toggle-protector"
+                    checked={roomState.settings.protectorEnabled}
+                    disabled={!isHost || !protectorAvailable}
+                    onChange={(e) => updateSettings({ protectorEnabled: e.target.checked })}
+                  />
+                  <span className="switch__track" />
+                  <span className="switch__label">
+                    <span className="switch__label-title">Protecteur</span>
+                    <span className="switch__label-hint">
+                      {protectorAvailable ? 'Camp civils — peut annuler une élimination, une fois par partie' : 'Indisponible à moins de 5 joueurs'}
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="setting-row">
+                <label className="switch" htmlFor="toggle-ghost">
+                  <input
+                    type="checkbox"
+                    id="toggle-ghost"
+                    checked={roomState.settings.ghostEnabled}
+                    disabled={!isHost || !ghostAvailable}
+                    onChange={(e) => updateSettings({ ghostEnabled: e.target.checked })}
+                  />
+                  <span className="switch__track" />
+                  <span className="switch__label">
+                    <span className="switch__label-title">Revenant</span>
+                    <span className="switch__label-hint">
+                      {ghostAvailable ? 'Camp civils — vote une dernière fois après son élimination' : 'Indisponible à moins de 5 joueurs'}
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="setting-row">
+                <label className="switch" htmlFor="toggle-hunter">
+                  <input
+                    type="checkbox"
+                    id="toggle-hunter"
+                    checked={roomState.settings.hunterEnabled}
+                    disabled={!isHost || !hunterAvailable}
+                    onChange={(e) => updateSettings({ hunterEnabled: e.target.checked })}
+                  />
+                  <span className="switch__track" />
+                  <span className="switch__label">
+                    <span className="switch__label-title">Chasseur</span>
+                    <span className="switch__label-hint">
+                      {hunterAvailable ? 'Camp civils — s\'il est éliminé, il tire sur un autre joueur' : 'Indisponible à moins de 4 joueurs'}
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="setting-row">
+                <label className="switch" htmlFor="toggle-jester">
+                  <input
+                    type="checkbox"
+                    id="toggle-jester"
+                    checked={roomState.settings.jesterEnabled}
+                    disabled={!isHost || !jesterAvailable}
+                    onChange={(e) => updateSettings({ jesterEnabled: e.target.checked })}
+                  />
+                  <span className="switch__track" />
+                  <span className="switch__label">
+                    <span className="switch__label-title">Bouffon</span>
+                    <span className="switch__label-hint">
+                      {jesterAvailable ? 'Camp solo — gagne seul s\'il est éliminé par un vote' : 'Indisponible à moins de 6 joueurs'}
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              <div className="setting-row">
+                <label className="switch" htmlFor="toggle-lovers">
+                  <input
+                    type="checkbox"
+                    id="toggle-lovers"
+                    checked={roomState.settings.loversEnabled}
+                    disabled={!isHost || !loversAvailable}
+                    onChange={(e) => updateSettings({ loversEnabled: e.target.checked })}
+                  />
+                  <span className="switch__track" />
+                  <span className="switch__label">
+                    <span className="switch__label-title">💘 Amoureux</span>
+                    <span className="switch__label-hint">
+                      {loversAvailable ? '2 joueurs liés en secret — si l\'un meurt, l\'autre le suit' : 'Indisponible à moins de 4 joueurs'}
                     </span>
                   </span>
                 </label>
@@ -167,7 +311,14 @@ export function Lobby() {
             </button>
             <span className="confirm-hint">
               {n} joueur{n > 1 ? 's' : ''} {canStart ? 'prêts' : '— minimum 3 pour lancer'} — répartition {counts.civils} Civils /{' '}
-              {counts.undercover} Undercover{counts.mrWhite > 0 ? ' / 1 Mr White' : ''}
+              {counts.undercover} Undercover
+              {counts.mrWhite > 0 ? ' / 1 Mr White' : ''}
+              {counts.spy > 0 ? ' / 1 Espion' : ''}
+              {counts.protector > 0 ? ' / 1 Protecteur' : ''}
+              {counts.ghost > 0 ? ' / 1 Revenant' : ''}
+              {counts.hunter > 0 ? ' / 1 Chasseur' : ''}
+              {counts.jester > 0 ? ' / 1 Bouffon' : ''}
+              {counts.lovers ? ' / 💘 Amoureux' : ''}
             </span>
           </>
         ) : (

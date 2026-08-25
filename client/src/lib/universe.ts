@@ -30,6 +30,15 @@ const COPY: Record<Universe, UniverseCopy> = {
     nameLabel: 'Ton pseudo de smasher',
     namePlaceholder: 'ex. FalconPunch_',
   },
+  pokemon: {
+    universe: 'pokemon',
+    name: 'PokéCover',
+    tagline:
+      "Un traître se cache dans l'équipe. Décrivez votre Pokémon sans le nommer, et démasquez les intrus avant la fin de la partie.",
+    unitLabel: 'Pokémon',
+    nameLabel: 'Ton pseudo de dresseur',
+    namePlaceholder: 'ex. SachaDuBourgPalette',
+  },
 };
 
 export function universeCopy(universe: Universe): UniverseCopy {
@@ -37,5 +46,5 @@ export function universeCopy(universe: Universe): UniverseCopy {
 }
 
 export function isUniverse(value: string | undefined): value is Universe {
-  return value === 'lol' || value === 'smash';
+  return value === 'lol' || value === 'smash' || value === 'pokemon';
 }

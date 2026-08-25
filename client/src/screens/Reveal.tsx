@@ -27,6 +27,14 @@ export function Reveal() {
   const role = myRole?.role;
   const champion = myRole?.champion;
   const unit = universeCopy(roomState.universe).unitLabel;
+  const loverName = myRole?.loverName;
+  const spyInsight = myRole?.spyInsight;
+  const spyTeamLabel: Record<string, string> = {
+    civils: 'du camp des Civils',
+    undercover: 'Undercover',
+    mrwhite: 'Mr White',
+    jester: 'le Bouffon',
+  };
 
   return (
     <div className="screen">
@@ -117,6 +125,81 @@ export function Reveal() {
                     te faire démasquer.
                   </p>
                 </>
+              )}
+              {role === 'spy' && (
+                <>
+                  <span className="role-face__eyebrow">Tu es l'Espion</span>
+                  <svg className="role-face__emblem" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                    <use href="#role-spy" />
+                  </svg>
+                  <div className="role-face__champion">{champion}</div>
+                  <p className="role-face__instruction">
+                    Décris {champion} sans jamais dire son nom, comme un Civil. Tu fais partie du camp des Civils.
+                  </p>
+                  {spyInsight && (
+                    <p className="role-face__instruction role-face__secret">
+                      Insight : <strong>{spyInsight.playerName}</strong> fait partie {spyTeamLabel[spyInsight.team] ?? spyInsight.team}.
+                    </p>
+                  )}
+                </>
+              )}
+              {role === 'protector' && (
+                <>
+                  <span className="role-face__eyebrow">Tu es le Protecteur</span>
+                  <svg className="role-face__emblem" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                    <use href="#role-protector" />
+                  </svg>
+                  <div className="role-face__champion">{champion}</div>
+                  <p className="role-face__instruction">
+                    Décris {champion} sans jamais dire son nom, comme un Civil. Une seule fois par partie, pendant le vote,
+                    tu peux protéger un joueur : s'il est la cible du vote majoritaire, personne n'est éliminé.
+                  </p>
+                </>
+              )}
+              {role === 'ghost' && (
+                <>
+                  <span className="role-face__eyebrow">Tu es le Revenant</span>
+                  <svg className="role-face__emblem" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                    <use href="#role-ghost" />
+                  </svg>
+                  <div className="role-face__champion">{champion}</div>
+                  <p className="role-face__instruction">
+                    Décris {champion} sans jamais dire son nom, comme un Civil. Si tu es éliminé, tu pourras encore voter une
+                    dernière fois au round suivant avant de sortir définitivement du jeu.
+                  </p>
+                </>
+              )}
+              {role === 'hunter' && (
+                <>
+                  <span className="role-face__eyebrow">Tu es le Chasseur</span>
+                  <svg className="role-face__emblem" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                    <use href="#role-hunter" />
+                  </svg>
+                  <div className="role-face__champion">{champion}</div>
+                  <p className="role-face__instruction">
+                    Décris {champion} sans jamais dire son nom, comme un Civil. Si tu es éliminé par un vote, tu pourras
+                    tirer sur un autre joueur, qui sera éliminé aussi.
+                  </p>
+                </>
+              )}
+              {role === 'jester' && (
+                <>
+                  <span className="role-face__eyebrow">Tu es le Bouffon</span>
+                  <svg className="role-face__emblem" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                    <use href="#role-jester" />
+                  </svg>
+                  <div className="role-face__champion">Fais parler de toi !</div>
+                  <p className="role-face__instruction">
+                    Tu ne connais aucun {unit} et tu ne fais partie d'aucun camp. Ton seul but : te faire éliminer par un
+                    vote direct pour gagner seul.
+                  </p>
+                </>
+              )}
+              {loverName && (
+                <p className="role-face__instruction role-face__secret">
+                  💘 Tu es Amoureux·se de <strong>{loverName}</strong>. Si l'un de vous est éliminé, l'autre meurt de
+                  chagrin le même round.
+                </p>
               )}
             </div>
           </div>

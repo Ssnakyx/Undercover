@@ -5,9 +5,13 @@
 // fichier testable unitairement sans faux serveur socket.
 
 import type { ChampionPair, Player, Room, RoundResultPayload, Winner } from '../types.js';
-import { assignRoles } from './roles.js';
+import { assignRoles, type RoleRequest } from './roles.js';
 import { computeInitialTurnOrder, recomputeTurnOrderAfterElimination } from './turnOrder.js';
 import { evaluateWinConditions, isCorrectMrWhiteGuess } from './winConditions.js';
+
+// Rôles considérés comme des variantes du camp civils pour les décomptes de victoire (voir
+// types.ts#Role) — spy/protector/ghost/hunter ne sont jamais des factions séparées.
+const CIVIL_ALIGNED_ROLES = new Set(['civil', 'spy', 'protector', 'ghost', 'hunter']);
 
 // ---------------------------------------------------------------------------
 // Constantes de conception non couvertes explicitement par le contrat (documentées
@@ -19,6 +23,7 @@ import { evaluateWinConditions, isCorrectMrWhiteGuess } from './winConditions.js
 // ---------------------------------------------------------------------------
 export const REVEAL_ACK_TIMEOUT_MS = 20_000;
 export const MRWHITE_GUESS_TIMEOUT_MS = 30_000;
+export const HUNTER_SHOOT_TIMEOUT_MS = 30_000;
 export const MIN_PLAYERS_TO_START = 3;
 
 export class GameEngineError extends Error {
@@ -46,23 +51,40 @@ export function alivePlayerIds(room: Room): string[] {
   return alivePlayers(room).map((p) => p.playerId);
 }
 
+/**
+ * Vivants + "Revenant" (ghost) éliminés au round précédent qui ont encore leur vote bonus
+ * disponible (voir CONTRACT.md, mécanique Revenant) — c'est l'ensemble utilisé pour la
+ * validation/complétude du vote, JAMAIS pour les décomptes de victoire (countAliveRoles reste
+ * strictement basé sur `alive`).
+ */
+export function voteEligiblePlayers(room: Room): Player[] {
+  return playersInJoinOrder(room).filter((p) => p.alive || p.ghostVoteAvailable);
+}
+
+export function voteEligiblePlayerIds(room: Room): string[] {
+  return voteEligiblePlayers(room).map((p) => p.playerId);
+}
+
 export interface AliveRoleCounts {
   civilsAlive: number;
   undercoverAlive: number;
   mrWhiteAlive: number;
+  jesterAlive: number;
 }
 
 export function countAliveRoles(room: Room): AliveRoleCounts {
   let civilsAlive = 0;
   let undercoverAlive = 0;
   let mrWhiteAlive = 0;
+  let jesterAlive = 0;
   for (const p of room.players.values()) {
     if (!p.alive) continue;
-    if (p.role === 'civil') civilsAlive++;
+    if (p.role && CIVIL_ALIGNED_ROLES.has(p.role)) civilsAlive++;
     else if (p.role === 'undercover') undercoverAlive++;
     else if (p.role === 'mrwhite') mrWhiteAlive++;
+    else if (p.role === 'jester') jesterAlive++;
   }
-  return { civilsAlive, undercoverAlive, mrWhiteAlive };
+  return { civilsAlive, undercoverAlive, mrWhiteAlive, jesterAlive };
 }
 
 function selectPair(pairsPool: ChampionPair[]): ChampionPair {
@@ -99,11 +121,19 @@ export function assignRolesAndEnterReveal(room: Room, options: StartGameOptions)
   }
 
   const pair = selectPair(options.pairsPool);
-  const mrWhiteRequested = playerIds.length >= 5 && room.settings.mrWhiteEnabled;
+  const requested: RoleRequest = {
+    mrWhite: room.settings.mrWhiteEnabled,
+    spy: room.settings.spyEnabled,
+    protector: room.settings.protectorEnabled,
+    ghost: room.settings.ghostEnabled,
+    jester: room.settings.jesterEnabled,
+    hunter: room.settings.hunterEnabled,
+    lovers: room.settings.loversEnabled,
+  };
 
   const roles = assignRoles({
     playerIds,
-    mrWhiteRequested,
+    requested,
     championA: pair.champA,
     championB: pair.champB,
     rng: options.rng,
@@ -117,6 +147,10 @@ export function assignRolesAndEnterReveal(room: Room, options: StartGameOptions)
     player.champion = assigned ? assigned.champion : null;
     player.alive = true;
     player.hasAckedReveal = false;
+    player.loverPlayerId = assigned?.loverPlayerId ?? null;
+    player.spyInsightPlayerId = assigned?.spyInsightPlayerId ?? null;
+    player.protectUsedThisGame = false;
+    player.ghostVoteAvailable = false;
   }
 
   room.currentPairId = pair.id;
@@ -128,6 +162,8 @@ export function assignRolesAndEnterReveal(room: Room, options: StartGameOptions)
   room.votes = [];
   room.lastRoundResult = null;
   room.mrWhiteGuessPlayerId = null;
+  room.hunterShootPlayerId = null;
+  room.protectorPendingTargetId = null;
   room.phaseDeadline = Date.now() + REVEAL_ACK_TIMEOUT_MS;
 }
 
@@ -176,6 +212,7 @@ export function startVoting(room: Room): void {
   }
   room.phase = 'voting';
   room.votes = [];
+  room.protectorPendingTargetId = null;
   // Pas de minuteur de vote (voir CONTRACT.md §3) : phaseDeadline reste null durant voting.
   room.phaseDeadline = null;
 }
@@ -184,13 +221,18 @@ export function startVoting(room: Room): void {
 // voting
 // ---------------------------------------------------------------------------
 
+/**
+ * Un joueur peut voter s'il est vivant, OU s'il est un "Revenant" (ghost) éliminé au round
+ * précédent qui a encore son vote bonus disponible (voir CONTRACT.md, mécanique Revenant). La
+ * CIBLE du vote doit en revanche toujours être un joueur vivant, sans exception.
+ */
 export function submitVote(room: Room, voterId: string, targetPlayerId: string): void {
   if (room.phase !== 'voting') {
     throw new GameEngineError('INVALID_PHASE', 'vote:submit uniquement valide en phase voting');
   }
   const voter = room.players.get(voterId);
-  if (!voter || !voter.alive) {
-    throw new GameEngineError('NOT_ALIVE', 'Seul un joueur vivant peut voter');
+  if (!voter || !(voter.alive || voter.ghostVoteAvailable)) {
+    throw new GameEngineError('NOT_ALIVE', 'Seul un joueur vivant (ou un Revenant avec un vote bonus) peut voter');
   }
   if (voterId === targetPlayerId) {
     throw new GameEngineError('VOTE_SELF_FORBIDDEN', 'Un joueur ne peut pas voter pour lui-même');
@@ -205,17 +247,48 @@ export function submitVote(room: Room, voterId: string, targetPlayerId: string):
   room.votes.push({ voterId, targetPlayerId });
 }
 
-/** true si tous les joueurs vivants ont voté (déclenche le dépouillement, cf. CONTRACT.md §3). */
+/** true si tous les votants éligibles (vivants + Revenants avec vote bonus) ont voté (déclenche
+ * le dépouillement, cf. CONTRACT.md §3). */
 export function haveAllAlivePlayersVoted(room: Room): boolean {
-  return alivePlayers(room).every((p) => room.votes.some((v) => v.voterId === p.playerId));
+  return voteEligiblePlayers(room).every((p) => room.votes.some((v) => v.voterId === p.playerId));
+}
+
+/**
+ * Le Protecteur ne peut agir qu'une fois par partie, pendant la phase de vote, en désignant un
+ * joueur vivant (autre que lui-même) à protéger d'une élimination ce round. Consommé dès la
+ * soumission (que ça "serve" ou non ce round-là) — design volontairement simple pour éviter
+ * tout calcul à rebours de la valeur de l'action.
+ */
+export function submitProtectorProtect(room: Room, playerId: string, targetPlayerId: string): void {
+  if (room.phase !== 'voting') {
+    throw new GameEngineError('INVALID_PHASE', 'protector:protect uniquement valide en phase voting');
+  }
+  const protector = room.players.get(playerId);
+  if (!protector || protector.role !== 'protector' || !protector.alive) {
+    throw new GameEngineError('NOT_PROTECTOR', "Seul le Protecteur vivant peut utiliser cette capacité");
+  }
+  if (protector.protectUsedThisGame) {
+    throw new GameEngineError('PROTECT_ALREADY_USED', 'Le Protecteur a déjà utilisé sa capacité cette partie');
+  }
+  if (playerId === targetPlayerId) {
+    throw new GameEngineError('PROTECT_SELF_FORBIDDEN', 'Le Protecteur ne peut pas se protéger lui-même');
+  }
+  const target = room.players.get(targetPlayerId);
+  if (!target || !target.alive) {
+    throw new GameEngineError('INVALID_PROTECT_TARGET', 'Cible de protection invalide (introuvable ou éliminée)');
+  }
+  protector.protectUsedThisGame = true;
+  room.protectorPendingTargetId = targetPlayerId;
 }
 
 export interface TallyResult {
   result: RoundResultPayload;
-  /** Vainqueur si la partie se termine immédiatement après ce dépouillement (hors mrwhite_guess). */
+  /** Vainqueur si la partie se termine immédiatement après ce dépouillement (hors mrwhite_guess/hunter_shoot). */
   winner: Winner | null;
   /** true si on doit entrer en phase mrwhite_guess (mr white éliminé). */
   enterMrWhiteGuess: boolean;
+  /** true si on doit entrer en phase hunter_shoot (Chasseur éliminé). */
+  enterHunterShoot: boolean;
 }
 
 /**
@@ -248,13 +321,21 @@ export function tallyVotesAndEliminate(room: Room): TallyResult {
   // "personne n'a voté" (tous à 0). Dans les deux cas : personne n'est éliminé ce round.
   const isTopTie = topIds.length > 1;
 
-  let eliminatedPlayerId: string | null = null;
+  let plurality: string | null = null;
   if (!isTopTie && maxVotes > 0) {
-    eliminatedPlayerId = topIds[0];
+    plurality = topIds[0];
   }
+
+  // Le Protecteur annule l'élimination de sa cible si elle correspond exactement à la
+  // pluralité — traité comme "personne n'est éliminé", sans jamais révéler qui a protégé.
+  const protectedThisRound = plurality !== null && room.protectorPendingTargetId === plurality;
+  const eliminatedPlayerId = protectedThisRound ? null : plurality;
 
   let eliminatedRole = null as RoundResultPayload['eliminatedRole'];
   let eliminatedChampion: string | null = null;
+  let chainEliminatedPlayerId: string | null = null;
+  let chainEliminatedRole: RoundResultPayload['eliminatedRole'] = null;
+  let chainEliminatedChampion: string | null = null;
 
   if (eliminatedPlayerId) {
     const eliminated = room.players.get(eliminatedPlayerId);
@@ -262,6 +343,43 @@ export function tallyVotesAndEliminate(room: Room): TallyResult {
       eliminated.alive = false;
       eliminatedRole = eliminated.role;
       eliminatedChampion = room.settings.revealChampionOnElimination ? eliminated.champion : null;
+
+      // "Amoureux" : mort de chagrin en chaîne, uniquement sur une élimination par vote direct
+      // (jamais de chaîne au-delà de ce second joueur — voir règle unificatrice CONTRACT.md).
+      if (eliminated.loverPlayerId) {
+        const lover = room.players.get(eliminated.loverPlayerId);
+        if (lover && lover.alive) {
+          lover.alive = false;
+          chainEliminatedPlayerId = lover.playerId;
+          chainEliminatedRole = lover.role;
+          chainEliminatedChampion = room.settings.revealChampionOnElimination ? lover.champion : null;
+        }
+      }
+
+      // Bouffon : victoire immédiate sur élimination par vote direct — court-circuite tout le
+      // reste (mrwhite_guess/hunter_shoot/win conditions standards ne sont jamais évalués).
+      if (eliminatedRole === 'jester') {
+        const result: RoundResultPayload = {
+          eliminatedPlayerId,
+          eliminatedRole,
+          eliminatedChampion,
+          voteCounts,
+          tie: false,
+          chainEliminatedPlayerId,
+          chainEliminatedRole,
+          chainEliminatedChampion,
+        };
+        room.lastRoundResult = result;
+        room.phase = 'round_result';
+        room.phaseDeadline = null;
+        room.protectorPendingTargetId = null;
+        room.turnOrder = recomputeTurnOrderAfterElimination(room.turnOrder, alivePlayerIds(room));
+        return { result, winner: 'jester', enterMrWhiteGuess: false, enterHunterShoot: false };
+      }
+
+      if (eliminatedRole === 'ghost') {
+        eliminated.ghostVoteAvailable = true;
+      }
     }
   }
 
@@ -270,21 +388,31 @@ export function tallyVotesAndEliminate(room: Room): TallyResult {
     eliminatedRole,
     eliminatedChampion,
     voteCounts,
-    tie: eliminatedPlayerId === null && maxVotes > 0,
+    tie: eliminatedPlayerId === null && !protectedThisRound && maxVotes > 0,
+    protectedThisRound,
+    chainEliminatedPlayerId,
+    chainEliminatedRole,
+    chainEliminatedChampion,
   };
 
   room.lastRoundResult = result;
   room.phase = 'round_result';
   room.phaseDeadline = null;
+  room.protectorPendingTargetId = null;
   room.turnOrder = recomputeTurnOrderAfterElimination(room.turnOrder, alivePlayerIds(room));
 
   if (eliminatedPlayerId && eliminatedRole === 'mrwhite') {
     room.mrWhiteGuessPlayerId = eliminatedPlayerId;
-    return { result, winner: null, enterMrWhiteGuess: true };
+    return { result, winner: null, enterMrWhiteGuess: true, enterHunterShoot: false };
+  }
+
+  if (eliminatedPlayerId && eliminatedRole === 'hunter') {
+    room.hunterShootPlayerId = eliminatedPlayerId;
+    return { result, winner: null, enterMrWhiteGuess: false, enterHunterShoot: true };
   }
 
   const winner = eliminatedPlayerId ? evaluateWinConditions(countAliveRoles(room)) : null;
-  return { result, winner, enterMrWhiteGuess: false };
+  return { result, winner, enterMrWhiteGuess: false, enterHunterShoot: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -343,6 +471,88 @@ export function resolveMrWhiteTimeout(room: Room): MrWhiteGuessResult {
 }
 
 // ---------------------------------------------------------------------------
+// hunter_shoot — calqué sur mrwhite_guess : le Chasseur qui vient d'être éliminé par un vote
+// direct a une fenêtre pour tirer sur un joueur vivant (ou passer), qui est alors éliminé aussi.
+// Ce tir n'a lui-même AUCUN déclencheur en chaîne (Amoureux/Bouffon/mrwhite_guess/nouveau
+// hunter_shoot), même si sa cible aurait normalement dû en produire un — bornage volontaire
+// documenté dans la règle unificatrice (CONTRACT.md).
+// ---------------------------------------------------------------------------
+
+export function enterHunterShoot(room: Room): void {
+  room.phase = 'hunter_shoot';
+  room.phaseDeadline = Date.now() + HUNTER_SHOOT_TIMEOUT_MS;
+}
+
+export interface HunterShootResult {
+  winner: Winner | null;
+}
+
+function resolveHunterShot(room: Room, targetPlayerId: string | null): HunterShootResult {
+  room.hunterShootPlayerId = null;
+
+  let eliminatedPlayerId: string | null = null;
+  let eliminatedRole: RoundResultPayload['eliminatedRole'] = null;
+  let eliminatedChampion: string | null = null;
+
+  if (targetPlayerId) {
+    const target = room.players.get(targetPlayerId);
+    if (target && target.alive) {
+      target.alive = false;
+      eliminatedPlayerId = target.playerId;
+      eliminatedRole = target.role;
+      eliminatedChampion = room.settings.revealChampionOnElimination ? target.champion : null;
+    }
+  }
+
+  const result: RoundResultPayload = {
+    eliminatedPlayerId,
+    eliminatedRole,
+    eliminatedChampion,
+    voteCounts: {},
+    tie: false,
+    hunterDeclined: eliminatedPlayerId === null,
+  };
+  room.lastRoundResult = result;
+  room.phase = 'round_result';
+  room.phaseDeadline = null;
+  room.turnOrder = recomputeTurnOrderAfterElimination(room.turnOrder, alivePlayerIds(room));
+
+  const winner = evaluateWinConditions(countAliveRoles(room));
+  return { winner };
+}
+
+/**
+ * Traite le tir du Chasseur (targetPlayerId `null` = il choisit de ne tirer sur personne).
+ * Réévalue les conditions de victoire section 4 avec la cible retirée le cas échéant.
+ */
+export function submitHunterShot(room: Room, playerId: string, targetPlayerId: string | null): HunterShootResult {
+  if (room.phase !== 'hunter_shoot') {
+    throw new GameEngineError('INVALID_PHASE', 'hunter:shoot uniquement valide en phase hunter_shoot');
+  }
+  if (room.hunterShootPlayerId !== playerId) {
+    throw new GameEngineError('NOT_HUNTER_SHOOTER', "Seul le Chasseur qui vient d'être éliminé peut tirer");
+  }
+  if (targetPlayerId !== null) {
+    if (targetPlayerId === playerId) {
+      throw new GameEngineError('HUNTER_SELF_FORBIDDEN', 'Le Chasseur ne peut pas se tirer dessus');
+    }
+    const target = room.players.get(targetPlayerId);
+    if (!target || !target.alive) {
+      throw new GameEngineError('INVALID_HUNTER_TARGET', 'Cible de tir invalide (introuvable ou éliminée)');
+    }
+  }
+  return resolveHunterShot(room, targetPlayerId);
+}
+
+/** Appelé par le timer serveur si le Chasseur n'a pas tiré à temps : équivaut à "passer". */
+export function resolveHunterShotTimeout(room: Room): HunterShootResult {
+  if (room.phase !== 'hunter_shoot') {
+    throw new GameEngineError('INVALID_PHASE', 'Timeout hunter_shoot hors phase hunter_shoot');
+  }
+  return resolveHunterShot(room, null);
+}
+
+// ---------------------------------------------------------------------------
 // round_result -> discussion | game_over
 // ---------------------------------------------------------------------------
 
@@ -357,14 +567,16 @@ export function enterGameOver(room: Room): void {
   room.phase = 'game_over';
   room.phaseDeadline = null;
   room.mrWhiteGuessPlayerId = null;
+  room.hunterShootPlayerId = null;
 }
 
-export function buildGameEndedReveal(room: Room): { playerId: string; name: string; role: import('../types.js').Role; champion: string | null }[] {
+export function buildGameEndedReveal(room: Room): { playerId: string; name: string; role: import('../types.js').Role; champion: string | null; loverPlayerId: string | null }[] {
   return playersInJoinOrder(room).map((p) => ({
     playerId: p.playerId,
     name: p.name,
     role: p.role ?? 'civil',
     champion: p.champion,
+    loverPlayerId: p.loverPlayerId,
   }));
 }
 
@@ -397,4 +609,5 @@ export function abortGame(room: Room): void {
   room.phase = 'aborted';
   room.phaseDeadline = null;
   room.mrWhiteGuessPlayerId = null;
+  room.hunterShootPlayerId = null;
 }

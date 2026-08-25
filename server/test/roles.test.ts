@@ -3,43 +3,123 @@ import {
   InvalidRoleDistributionError,
   assignRoles,
   computeRoleCounts,
+  type RoleRequest,
 } from '../src/game/roles.js';
 
-describe('computeRoleCounts — table de répartition (CONTRACT.md section 2)', () => {
-  it('N=3 -> 1 undercover, mr white indisponible même si demandé', () => {
-    expect(computeRoleCounts(3, false)).toEqual({ undercover: 1, mrWhite: 0, civils: 2 });
-    expect(computeRoleCounts(3, true)).toEqual({ undercover: 1, mrWhite: 0, civils: 2 });
-  });
+const NONE: RoleRequest = {
+  mrWhite: false,
+  spy: false,
+  protector: false,
+  ghost: false,
+  jester: false,
+  hunter: false,
+  lovers: false,
+};
 
-  it('N=4 -> 1 undercover, mr white indisponible même si demandé', () => {
-    expect(computeRoleCounts(4, false)).toEqual({ undercover: 1, mrWhite: 0, civils: 3 });
-    expect(computeRoleCounts(4, true)).toEqual({ undercover: 1, mrWhite: 0, civils: 3 });
+const ALL: RoleRequest = {
+  mrWhite: true,
+  spy: true,
+  protector: true,
+  ghost: true,
+  jester: true,
+  hunter: true,
+  lovers: true,
+};
+
+describe('computeRoleCounts — table de répartition (CONTRACT.md section 2)', () => {
+  it('N=3 -> 1 undercover, aucun rôle optionnel disponible même si tous demandés', () => {
+    expect(computeRoleCounts(3, NONE)).toEqual({
+      undercover: 1,
+      mrWhite: 0,
+      spy: 0,
+      protector: 0,
+      ghost: 0,
+      jester: 0,
+      hunter: 0,
+      civils: 2,
+      lovers: false,
+    });
+    expect(computeRoleCounts(3, ALL)).toEqual({
+      undercover: 1,
+      mrWhite: 0,
+      spy: 0,
+      protector: 0,
+      ghost: 0,
+      jester: 0,
+      hunter: 0,
+      civils: 2,
+      lovers: false,
+    });
   });
 
   it.each([5, 6, 7, 8])('N=%i -> 1 undercover, mr white disponible (défaut désactivé)', (n) => {
-    expect(computeRoleCounts(n, false)).toEqual({ undercover: 1, mrWhite: 0, civils: n - 1 });
-    expect(computeRoleCounts(n, true)).toEqual({ undercover: 1, mrWhite: 1, civils: n - 2 });
+    expect(computeRoleCounts(n, NONE)).toMatchObject({ undercover: 1, mrWhite: 0, civils: n - 1 });
+    expect(computeRoleCounts(n, { ...NONE, mrWhite: true })).toMatchObject({
+      undercover: 1,
+      mrWhite: 1,
+      civils: n - 2,
+    });
   });
 
   it.each([9, 10, 11, 12])('N=%i -> 2 undercover, mr white disponible (défaut désactivé)', (n) => {
-    expect(computeRoleCounts(n, false)).toEqual({ undercover: 2, mrWhite: 0, civils: n - 2 });
-    expect(computeRoleCounts(n, true)).toEqual({ undercover: 2, mrWhite: 1, civils: n - 3 });
+    expect(computeRoleCounts(n, NONE)).toMatchObject({ undercover: 2, mrWhite: 0, civils: n - 2 });
+    expect(computeRoleCounts(n, { ...NONE, mrWhite: true })).toMatchObject({
+      undercover: 2,
+      mrWhite: 1,
+      civils: n - 3,
+    });
   });
 
-  it('civils >= undercover + mrWhite + 1 pour toute taille N=3..12, activé ou non', () => {
+  it('N=4 : spy/hunter/lovers disponibles, protector/ghost/jester non (seuils 5/5/6)', () => {
+    const counts = computeRoleCounts(4, ALL);
+    expect(counts.spy).toBe(1);
+    expect(counts.hunter).toBe(1);
+    expect(counts.lovers).toBe(true);
+    expect(counts.protector).toBe(0);
+    expect(counts.ghost).toBe(0);
+    expect(counts.jester).toBe(0);
+  });
+
+  it('seuils ignorés silencieusement en-dessous du minimum, jamais d\'erreur', () => {
+    expect(computeRoleCounts(3, ALL).spy).toBe(0); // seuil 4
+    expect(computeRoleCounts(4, ALL).protector).toBe(0); // seuil 5
+    expect(computeRoleCounts(4, ALL).ghost).toBe(0); // seuil 5
+    expect(computeRoleCounts(5, ALL).jester).toBe(0); // seuil 6
+    expect(computeRoleCounts(3, ALL).lovers).toBe(false); // seuil 4
+  });
+
+  it('N=6 : garde-fou satisfait même avec mrWhite ET jester activés ensemble (cas limite exact)', () => {
+    const counts = computeRoleCounts(6, { ...NONE, mrWhite: true, jester: true });
+    expect(counts.undercover).toBe(1);
+    expect(counts.mrWhite).toBe(1);
+    expect(counts.jester).toBe(1);
+    // réservoir civils restant = 6 - 1 - 1 - 1 = 3, exactement l'invariant (undercover+mrWhite+1=3)
+    expect(counts.civils + counts.spy + counts.protector + counts.ghost + counts.hunter).toBe(3);
+  });
+
+  it('civils (agrégat, hors jester) >= undercover + mrWhite + 1 pour toute taille N=3..12, tout activé ou non', () => {
     for (let n = 3; n <= 12; n++) {
-      for (const mrWhiteRequested of [false, true]) {
-        const { undercover, mrWhite, civils } = computeRoleCounts(n, mrWhiteRequested);
-        expect(civils).toBeGreaterThanOrEqual(undercover + mrWhite + 1);
-        expect(undercover + mrWhite + civils).toBe(n);
-        expect(mrWhite).toBeLessThanOrEqual(1);
+      for (const requested of [NONE, ALL]) {
+        const counts = computeRoleCounts(n, requested);
+        const civilsAggregate = counts.civils + counts.spy + counts.protector + counts.ghost + counts.hunter;
+        expect(civilsAggregate).toBeGreaterThanOrEqual(counts.undercover + counts.mrWhite + 1);
+        expect(counts.undercover + counts.mrWhite + counts.jester + civilsAggregate).toBe(n);
+        expect(counts.mrWhite).toBeLessThanOrEqual(1);
       }
     }
   });
 
+  it('à N élevé (12), un pool de sous-rôles civils demandé au complet est toujours satisfait', () => {
+    const counts = computeRoleCounts(12, ALL);
+    expect(counts.spy).toBe(1);
+    expect(counts.protector).toBe(1);
+    expect(counts.ghost).toBe(1);
+    expect(counts.hunter).toBe(1);
+  });
+
   it('rejette un nombre de joueurs invalide (< 3)', () => {
-    expect(() => computeRoleCounts(2, false)).toThrow(InvalidRoleDistributionError);
-    expect(() => computeRoleCounts(0, false)).toThrow(InvalidRoleDistributionError);
+    expect(() => computeRoleCounts(2, NONE)).toThrow(InvalidRoleDistributionError);
+    expect(() => computeRoleCounts(0, NONE)).toThrow(InvalidRoleDistributionError);
   });
 });
 
@@ -49,12 +129,12 @@ function makePlayerIds(n: number): string[] {
 
 describe('assignRoles', () => {
   it.each([3, 4, 5, 6, 7, 8, 9, 10, 11, 12])(
-    'N=%i sans Mr White : distribue champA aux civils, champB aux undercover, aucun mrwhite',
+    'N=%i sans rôle optionnel : distribue champA aux civils, champB aux undercover, aucun mrwhite',
     (n) => {
       const playerIds = makePlayerIds(n);
       const roles = assignRoles({
         playerIds,
-        mrWhiteRequested: false,
+        requested: NONE,
         championA: 'Garen',
         championB: 'Darius',
       });
@@ -62,7 +142,7 @@ describe('assignRoles', () => {
       expect(roles).toHaveLength(n);
       expect(new Set(roles.map((r) => r.playerId))).toEqual(new Set(playerIds));
 
-      const counts = computeRoleCounts(n, false);
+      const counts = computeRoleCounts(n, NONE);
       const undercover = roles.filter((r) => r.role === 'undercover');
       const civils = roles.filter((r) => r.role === 'civil');
       const mrwhite = roles.filter((r) => r.role === 'mrwhite');
@@ -82,12 +162,12 @@ describe('assignRoles', () => {
       const playerIds = makePlayerIds(n);
       const roles = assignRoles({
         playerIds,
-        mrWhiteRequested: true,
+        requested: { ...NONE, mrWhite: true },
         championA: 'Garen',
         championB: 'Darius',
       });
 
-      const counts = computeRoleCounts(n, true);
+      const counts = computeRoleCounts(n, { ...NONE, mrWhite: true });
       const mrwhite = roles.filter((r) => r.role === 'mrwhite');
       const undercover = roles.filter((r) => r.role === 'undercover');
       const civils = roles.filter((r) => r.role === 'civil');
@@ -103,7 +183,7 @@ describe('assignRoles', () => {
     for (const n of [3, 4]) {
       const roles = assignRoles({
         playerIds: makePlayerIds(n),
-        mrWhiteRequested: true,
+        requested: { ...NONE, mrWhite: true },
         championA: 'Garen',
         championB: 'Darius',
       });
@@ -111,31 +191,80 @@ describe('assignRoles', () => {
     }
   });
 
-  it('utilise le rng injecté pour un résultat déterministe', () => {
-    const rng = (() => {
-      const seq = [0.9, 0.1, 0.5, 0.2, 0.8];
-      let i = 0;
-      return () => seq[i++ % seq.length];
-    })();
+  it('N=8 avec tous les rôles optionnels activés : jester + les 4 civils-variantes toutes présentes, aucun champion pour jester/mrwhite', () => {
     const roles = assignRoles({
-      playerIds: makePlayerIds(5),
-      mrWhiteRequested: true,
+      playerIds: makePlayerIds(8),
+      requested: ALL,
       championA: 'Garen',
       championB: 'Darius',
-      rng,
     });
-    // Même rng -> même résultat à chaque appel.
-    const rng2 = (() => {
-      const seq = [0.9, 0.1, 0.5, 0.2, 0.8];
+    expect(roles.filter((r) => r.role === 'jester')).toHaveLength(1);
+    expect(roles.filter((r) => r.role === 'spy')).toHaveLength(1);
+    expect(roles.filter((r) => r.role === 'protector')).toHaveLength(1);
+    expect(roles.filter((r) => r.role === 'ghost')).toHaveLength(1);
+    expect(roles.filter((r) => r.role === 'hunter')).toHaveLength(1);
+    for (const r of roles.filter((r) => r.role === 'jester' || r.role === 'mrwhite')) {
+      expect(r.champion).toBeNull();
+    }
+  });
+
+  it('Amoureux : exactement 2 joueurs reçoivent un loverPlayerId réciproque quand activé et disponible', () => {
+    const roles = assignRoles({
+      playerIds: makePlayerIds(6),
+      requested: { ...NONE, lovers: true },
+      championA: 'Garen',
+      championB: 'Darius',
+    });
+    const lovers = roles.filter((r) => r.loverPlayerId);
+    expect(lovers).toHaveLength(2);
+    expect(lovers[0].loverPlayerId).toBe(lovers[1].playerId);
+    expect(lovers[1].loverPlayerId).toBe(lovers[0].playerId);
+  });
+
+  it('Amoureux : aucun loverPlayerId posé si désactivé', () => {
+    const roles = assignRoles({
+      playerIds: makePlayerIds(6),
+      requested: NONE,
+      championA: 'Garen',
+      championB: 'Darius',
+    });
+    expect(roles.every((r) => !r.loverPlayerId)).toBe(true);
+  });
+
+  it('Espion : reçoit un spyInsightPlayerId pointant vers un autre joueur existant', () => {
+    const roles = assignRoles({
+      playerIds: makePlayerIds(6),
+      requested: { ...NONE, spy: true },
+      championA: 'Garen',
+      championB: 'Darius',
+    });
+    const spy = roles.find((r) => r.role === 'spy');
+    expect(spy).toBeDefined();
+    expect(spy!.spyInsightPlayerId).toBeTruthy();
+    expect(spy!.spyInsightPlayerId).not.toBe(spy!.playerId);
+    expect(roles.some((r) => r.playerId === spy!.spyInsightPlayerId)).toBe(true);
+  });
+
+  it('utilise le rng injecté pour un résultat déterministe (y compris loverPlayerId/spyInsightPlayerId)', () => {
+    const makeRng = () => {
+      const seq = [0.9, 0.1, 0.5, 0.2, 0.8, 0.3];
       let i = 0;
       return () => seq[i++ % seq.length];
-    })();
-    const roles2 = assignRoles({
-      playerIds: makePlayerIds(5),
-      mrWhiteRequested: true,
+    };
+    const requested: RoleRequest = { ...NONE, mrWhite: true, spy: true, lovers: true };
+    const roles = assignRoles({
+      playerIds: makePlayerIds(6),
+      requested,
       championA: 'Garen',
       championB: 'Darius',
-      rng: rng2,
+      rng: makeRng(),
+    });
+    const roles2 = assignRoles({
+      playerIds: makePlayerIds(6),
+      requested,
+      championA: 'Garen',
+      championB: 'Darius',
+      rng: makeRng(),
     });
     expect(roles).toEqual(roles2);
   });

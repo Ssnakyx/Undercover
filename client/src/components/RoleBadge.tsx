@@ -4,6 +4,11 @@ const ROLE_LABEL: Record<Role, string> = {
   civil: 'Civil',
   undercover: 'Undercover',
   mrwhite: 'Mr White',
+  spy: 'Espion',
+  protector: 'Protecteur',
+  ghost: 'Revenant',
+  jester: 'Bouffon',
+  hunter: 'Chasseur',
 };
 
 export function roleLabel(role: Role): string {

@@ -11,9 +11,17 @@ import {
 
 function addPlayer(
   room: Room,
-  opts: { joinOrder: number; role?: Player['role']; alive?: boolean }
+  opts: {
+    joinOrder: number;
+    role?: Player['role'];
+    alive?: boolean;
+    loverPlayerId?: string | null;
+    ghostVoteAvailable?: boolean;
+    protectUsedThisGame?: boolean;
+  }
 ): Player {
   const playerId = generatePlayerId();
+  const noChampionRoles: Player['role'][] = ['mrwhite', 'jester'];
   const player: Player = {
     playerId,
     sessionToken: generateSessionToken(),
@@ -24,11 +32,15 @@ function addPlayer(
     avatarSeed: computeAvatarSeed(playerId),
     socketId: `socket-${playerId}`,
     role: opts.role ?? 'civil',
-    champion: opts.role === 'mrwhite' ? null : 'Garen',
+    champion: noChampionRoles.includes(opts.role ?? 'civil') ? null : 'Garen',
     hasAckedReveal: true,
     joinOrder: opts.joinOrder,
     disconnectedAt: null,
     disconnectTimer: null,
+    loverPlayerId: opts.loverPlayerId ?? null,
+    spyInsightPlayerId: null,
+    protectUsedThisGame: opts.protectUsedThisGame ?? false,
+    ghostVoteAvailable: opts.ghostVoteAvailable ?? false,
   };
   room.players.set(playerId, player);
   return player;
@@ -321,5 +333,319 @@ describe('abortGame — départ volontaire de l\'hôte en cours de partie', () =
     room.phase = 'mrwhite_guess';
     engine.abortGame(room);
     expect(room.phase).toBe('aborted');
+  });
+});
+
+describe('Chasseur — hunter_shoot (calqué sur mrwhite_guess)', () => {
+  let room: Room;
+  let p0: Player, p1: Player, p2: Player, p3: Player, hunter: Player;
+
+  beforeEach(() => {
+    _resetRoomStoreForTests();
+    room = createRoom();
+    p0 = addPlayer(room, { joinOrder: 0, role: 'civil' });
+    p1 = addPlayer(room, { joinOrder: 1, role: 'civil' });
+    p2 = addPlayer(room, { joinOrder: 2, role: 'civil' });
+    p3 = addPlayer(room, { joinOrder: 3, role: 'undercover' });
+    hunter = addPlayer(room, { joinOrder: 4, role: 'hunter' });
+    room.phase = 'voting';
+    room.championA = 'Garen';
+  });
+
+  afterEach(() => {
+    _resetRoomStoreForTests();
+  });
+
+  it('déclenche enterHunterShoot si l\'éliminé est le Chasseur', () => {
+    engine.submitVote(room, p0.playerId, hunter.playerId);
+    engine.submitVote(room, p1.playerId, hunter.playerId);
+    engine.submitVote(room, p2.playerId, hunter.playerId);
+    engine.submitVote(room, p3.playerId, hunter.playerId);
+    engine.submitVote(room, hunter.playerId, p0.playerId);
+
+    const { enterHunterShoot, enterMrWhiteGuess, winner } = engine.tallyVotesAndEliminate(room);
+
+    expect(enterHunterShoot).toBe(true);
+    expect(enterMrWhiteGuess).toBe(false);
+    expect(winner).toBeNull();
+    expect(room.hunterShootPlayerId).toBe(hunter.playerId);
+    expect(hunter.alive).toBe(false);
+  });
+
+  it('submitHunterShot avec une cible : élimine la cible et réévalue les conditions de victoire', () => {
+    room.hunterShootPlayerId = hunter.playerId;
+    room.phase = 'hunter_shoot';
+    hunter.alive = false;
+
+    const { winner } = engine.submitHunterShot(room, hunter.playerId, p3.playerId);
+
+    expect(p3.alive).toBe(false);
+    expect(room.lastRoundResult?.eliminatedPlayerId).toBe(p3.playerId);
+    expect(room.lastRoundResult?.hunterDeclined).toBe(false);
+    expect(room.phase).toBe('round_result');
+    expect(room.hunterShootPlayerId).toBeNull();
+    expect(winner).toBe('civils'); // seul undercover éliminé, plus de mrwhite
+  });
+
+  it('submitHunterShot avec null (passe) : personne n\'est éliminé, hunterDeclined=true', () => {
+    room.hunterShootPlayerId = hunter.playerId;
+    room.phase = 'hunter_shoot';
+    hunter.alive = false;
+
+    const { winner } = engine.submitHunterShot(room, hunter.playerId, null);
+
+    expect(room.lastRoundResult?.eliminatedPlayerId).toBeNull();
+    expect(room.lastRoundResult?.hunterDeclined).toBe(true);
+    expect(p3.alive).toBe(true);
+    expect(winner).toBeNull();
+  });
+
+  it('refuse un tir d\'un autre joueur que le Chasseur désigné', () => {
+    room.hunterShootPlayerId = hunter.playerId;
+    room.phase = 'hunter_shoot';
+    expectEngineErrorCode(() => engine.submitHunterShot(room, p0.playerId, p3.playerId), 'NOT_HUNTER_SHOOTER');
+  });
+
+  it('refuse une cible déjà éliminée', () => {
+    room.hunterShootPlayerId = hunter.playerId;
+    room.phase = 'hunter_shoot';
+    p3.alive = false;
+    expectEngineErrorCode(() => engine.submitHunterShot(room, hunter.playerId, p3.playerId), 'INVALID_HUNTER_TARGET');
+  });
+
+  it('resolveHunterShotTimeout équivaut à passer', () => {
+    room.hunterShootPlayerId = hunter.playerId;
+    room.phase = 'hunter_shoot';
+    hunter.alive = false;
+
+    engine.resolveHunterShotTimeout(room);
+
+    expect(room.lastRoundResult?.hunterDeclined).toBe(true);
+    expect(room.phase).toBe('round_result');
+  });
+});
+
+describe('Protecteur — submitProtectorProtect / annulation d\'élimination', () => {
+  let room: Room;
+  let p0: Player, p1: Player, p2: Player, protector: Player;
+
+  beforeEach(() => {
+    _resetRoomStoreForTests();
+    room = createRoom();
+    p0 = addPlayer(room, { joinOrder: 0, role: 'civil' });
+    p1 = addPlayer(room, { joinOrder: 1, role: 'civil' });
+    p2 = addPlayer(room, { joinOrder: 2, role: 'undercover' });
+    protector = addPlayer(room, { joinOrder: 3, role: 'protector' });
+    room.phase = 'voting';
+    room.championA = 'Garen';
+  });
+
+  afterEach(() => {
+    _resetRoomStoreForTests();
+  });
+
+  it('annule l\'élimination si la cible protégée correspond à la pluralité du vote', () => {
+    engine.submitProtectorProtect(room, protector.playerId, p0.playerId);
+    engine.submitVote(room, p1.playerId, p0.playerId);
+    engine.submitVote(room, p2.playerId, p0.playerId);
+    engine.submitVote(room, protector.playerId, p1.playerId);
+
+    const { result, winner } = engine.tallyVotesAndEliminate(room);
+
+    expect(result.eliminatedPlayerId).toBeNull();
+    expect(result.protectedThisRound).toBe(true);
+    expect(result.tie).toBe(false);
+    expect(p0.alive).toBe(true);
+    expect(winner).toBeNull();
+  });
+
+  it('capacité à usage unique : consommée à la soumission même si elle ne "sert" pas ce round', () => {
+    engine.submitProtectorProtect(room, protector.playerId, p1.playerId); // protège p1, mais p0 sera voté
+    expect(protector.protectUsedThisGame).toBe(true);
+
+    expectEngineErrorCode(
+      () => engine.submitProtectorProtect(room, protector.playerId, p0.playerId),
+      'PROTECT_ALREADY_USED'
+    );
+  });
+
+  it('refuse l\'auto-protection', () => {
+    expectEngineErrorCode(
+      () => engine.submitProtectorProtect(room, protector.playerId, protector.playerId),
+      'PROTECT_SELF_FORBIDDEN'
+    );
+  });
+
+  it('reset à chaque nouvelle phase de vote (protectorPendingTargetId)', () => {
+    engine.submitProtectorProtect(room, protector.playerId, p0.playerId);
+    expect(room.protectorPendingTargetId).toBe(p0.playerId);
+    room.phase = 'discussion';
+    engine.startVoting(room);
+    expect(room.protectorPendingTargetId).toBeNull();
+  });
+});
+
+describe('Revenant — vote bonus un round après élimination par vote direct', () => {
+  let room: Room;
+  let p0: Player, p1: Player, p2: Player, ghost: Player;
+
+  beforeEach(() => {
+    _resetRoomStoreForTests();
+    room = createRoom();
+    p0 = addPlayer(room, { joinOrder: 0, role: 'civil' });
+    p1 = addPlayer(room, { joinOrder: 1, role: 'civil' });
+    p2 = addPlayer(room, { joinOrder: 2, role: 'undercover' });
+    ghost = addPlayer(room, { joinOrder: 3, role: 'ghost' });
+    room.phase = 'voting';
+    room.championA = 'Garen';
+  });
+
+  afterEach(() => {
+    _resetRoomStoreForTests();
+  });
+
+  it('gagne ghostVoteAvailable après une élimination par vote direct', () => {
+    engine.submitVote(room, p0.playerId, ghost.playerId);
+    engine.submitVote(room, p1.playerId, ghost.playerId);
+    engine.submitVote(room, p2.playerId, ghost.playerId);
+    engine.submitVote(room, ghost.playerId, p0.playerId);
+
+    engine.tallyVotesAndEliminate(room);
+
+    expect(ghost.alive).toBe(false);
+    expect(ghost.ghostVoteAvailable).toBe(true);
+  });
+
+  it('peut voter au round suivant malgré alive=false, compte pour la complétude du vote', () => {
+    ghost.alive = false;
+    ghost.ghostVoteAvailable = true;
+
+    expect(engine.haveAllAlivePlayersVoted(room)).toBe(false);
+    engine.submitVote(room, p0.playerId, p1.playerId);
+    engine.submitVote(room, p1.playerId, p0.playerId);
+    engine.submitVote(room, p2.playerId, p0.playerId);
+    expect(engine.haveAllAlivePlayersVoted(room)).toBe(false); // le Revenant n'a pas encore voté
+    engine.submitVote(room, ghost.playerId, p0.playerId);
+    expect(engine.haveAllAlivePlayersVoted(room)).toBe(true);
+  });
+
+  it('la cible du vote doit rester un joueur vivant (même pour un Revenant)', () => {
+    ghost.alive = false;
+    ghost.ghostVoteAvailable = true;
+    expectEngineErrorCode(() => engine.submitVote(room, p0.playerId, ghost.playerId), 'INVALID_VOTE_TARGET');
+  });
+
+  it('ne bénéficie PAS du vote bonus si éliminé par départ (hors flux de vote direct)', () => {
+    // Simule le comportement attendu de applyMidGameDeparture (handlers.ts) : un départ ne pose
+    // jamais ghostVoteAvailable, contrairement à tallyVotesAndEliminate.
+    ghost.alive = false;
+    expect(ghost.ghostVoteAvailable).toBe(false);
+  });
+});
+
+describe('Amoureux — mort de chagrin en chaîne, uniquement sur élimination par vote direct', () => {
+  let room: Room;
+  let loverA: Player, loverB: Player, p2: Player, p3: Player;
+
+  beforeEach(() => {
+    _resetRoomStoreForTests();
+    room = createRoom();
+    loverA = addPlayer(room, { joinOrder: 0, role: 'civil' });
+    loverB = addPlayer(room, { joinOrder: 1, role: 'civil' });
+    loverA.loverPlayerId = loverB.playerId;
+    loverB.loverPlayerId = loverA.playerId;
+    p2 = addPlayer(room, { joinOrder: 2, role: 'civil' });
+    p3 = addPlayer(room, { joinOrder: 3, role: 'undercover' });
+    room.phase = 'voting';
+    room.championA = 'Garen';
+  });
+
+  afterEach(() => {
+    _resetRoomStoreForTests();
+  });
+
+  it('le partenaire meurt aussi le même round si l\'autre est éliminé par vote direct', () => {
+    engine.submitVote(room, p2.playerId, loverA.playerId);
+    engine.submitVote(room, p3.playerId, loverA.playerId);
+    engine.submitVote(room, loverB.playerId, loverA.playerId);
+    engine.submitVote(room, loverA.playerId, p2.playerId);
+
+    const { result } = engine.tallyVotesAndEliminate(room);
+
+    expect(loverA.alive).toBe(false);
+    expect(loverB.alive).toBe(false);
+    expect(result.eliminatedPlayerId).toBe(loverA.playerId);
+    expect(result.chainEliminatedPlayerId).toBe(loverB.playerId);
+  });
+
+  it('pas de chaîne au-delà : le partenaire déjà mort n\'entraîne aucune autre chaîne', () => {
+    loverB.alive = false; // déjà mort avant ce round (ex: round précédent)
+    engine.submitVote(room, p2.playerId, loverA.playerId);
+    engine.submitVote(room, p3.playerId, loverA.playerId);
+    engine.submitVote(room, loverA.playerId, p2.playerId);
+
+    const { result } = engine.tallyVotesAndEliminate(room);
+
+    expect(result.eliminatedPlayerId).toBe(loverA.playerId);
+    expect(result.chainEliminatedPlayerId).toBeNull();
+  });
+});
+
+describe('Bouffon — victoire immédiate sur élimination par vote direct uniquement', () => {
+  let room: Room;
+  let p0: Player, p1: Player, p2: Player, jester: Player;
+
+  beforeEach(() => {
+    _resetRoomStoreForTests();
+    room = createRoom();
+    p0 = addPlayer(room, { joinOrder: 0, role: 'civil' });
+    p1 = addPlayer(room, { joinOrder: 1, role: 'civil' });
+    p2 = addPlayer(room, { joinOrder: 2, role: 'undercover' });
+    jester = addPlayer(room, { joinOrder: 3, role: 'jester' });
+    room.phase = 'voting';
+    room.championA = 'Garen';
+  });
+
+  afterEach(() => {
+    _resetRoomStoreForTests();
+  });
+
+  it('gagne immédiatement s\'il est éliminé par la pluralité du vote', () => {
+    engine.submitVote(room, p0.playerId, jester.playerId);
+    engine.submitVote(room, p1.playerId, jester.playerId);
+    engine.submitVote(room, p2.playerId, jester.playerId);
+    engine.submitVote(room, jester.playerId, p0.playerId);
+
+    const { winner, enterMrWhiteGuess, enterHunterShoot } = engine.tallyVotesAndEliminate(room);
+
+    expect(winner).toBe('jester');
+    expect(enterMrWhiteGuess).toBe(false);
+    expect(enterHunterShoot).toBe(false);
+    expect(room.phase).toBe('round_result');
+  });
+
+  it('ne gagne PAS s\'il meurt en chaîne (Amoureux) plutôt que par vote direct', () => {
+    const lover = addPlayer(room, { joinOrder: 4, role: 'civil' });
+    jester.loverPlayerId = lover.playerId;
+    lover.loverPlayerId = jester.playerId;
+
+    engine.submitVote(room, p0.playerId, lover.playerId);
+    engine.submitVote(room, p1.playerId, lover.playerId);
+    engine.submitVote(room, p2.playerId, lover.playerId);
+    engine.submitVote(room, jester.playerId, p0.playerId);
+
+    const { result, winner } = engine.tallyVotesAndEliminate(room);
+
+    expect(result.eliminatedPlayerId).toBe(lover.playerId);
+    expect(result.chainEliminatedPlayerId).toBe(jester.playerId);
+    expect(jester.alive).toBe(false);
+    expect(winner).toBeNull(); // undercover encore vivant : partie continue, pas de victoire Bouffon
+  });
+
+  it('n\'est jamais compté comme civil ni undercover dans countAliveRoles', () => {
+    const counts = engine.countAliveRoles(room);
+    expect(counts.jesterAlive).toBe(1);
+    expect(counts.civilsAlive).toBe(2); // p0, p1
+    expect(counts.undercoverAlive).toBe(1); // p2
   });
 });

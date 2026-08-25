@@ -76,6 +76,9 @@
 @media (min-width: 480px) {
   .menu-grid { grid-template-columns: 1fr 1fr; }
 }
+@media (min-width: 720px) {
+  .menu-grid { grid-template-columns: 1fr 1fr 1fr; }
+}
 .menu-card {
   display: flex;
   flex-direction: column;
@@ -152,9 +155,39 @@
   border-color: var(--color-role-mrwhite);
   box-shadow: var(--glow-mrwhite);
 }
+.role-face--spy {
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(79, 184, 201, 0.18), transparent 65%), var(--color-surface);
+  border-color: var(--color-role-spy);
+  box-shadow: var(--glow-spy);
+}
+.role-face--protector {
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(107, 184, 106, 0.18), transparent 65%), var(--color-surface);
+  border-color: var(--color-role-protector);
+  box-shadow: var(--glow-protector);
+}
+.role-face--ghost {
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(163, 171, 194, 0.18), transparent 65%), var(--color-surface);
+  border-color: var(--color-role-ghost);
+  box-shadow: var(--glow-ghost);
+}
+.role-face--jester {
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(207, 111, 174, 0.18), transparent 65%), var(--color-surface);
+  border-color: var(--color-role-jester);
+  box-shadow: var(--glow-jester);
+}
+.role-face--hunter {
+  background: radial-gradient(ellipse 260px 220px at 50% 20%, rgba(217, 138, 79, 0.18), transparent 65%), var(--color-surface);
+  border-color: var(--color-role-hunter);
+  box-shadow: var(--glow-hunter);
+}
 .role-face--civil .role-face__eyebrow, .role-face--civil .role-face__emblem { color: var(--color-role-civil); }
 .role-face--undercover .role-face__eyebrow, .role-face--undercover .role-face__emblem { color: var(--color-role-undercover); }
 .role-face--mrwhite .role-face__eyebrow, .role-face--mrwhite .role-face__emblem { color: var(--color-role-mrwhite); }
+.role-face--spy .role-face__eyebrow, .role-face--spy .role-face__emblem { color: var(--color-role-spy); }
+.role-face--protector .role-face__eyebrow, .role-face--protector .role-face__emblem { color: var(--color-role-protector); }
+.role-face--ghost .role-face__eyebrow, .role-face--ghost .role-face__emblem { color: var(--color-role-ghost); }
+.role-face--jester .role-face__eyebrow, .role-face--jester .role-face__emblem { color: var(--color-role-jester); }
+.role-face--hunter .role-face__eyebrow, .role-face--hunter .role-face__emblem { color: var(--color-role-hunter); }
 .role-face__eyebrow { font-size: var(--text-sm); letter-spacing: var(--tracking-widest); font-weight: 800; }
 .role-face__emblem { width: 128px; height: 128px; margin: var(--space-5) 0; }
 .role-face__champion {
@@ -211,7 +244,7 @@
 .vote-progress__dot--filled { background: var(--color-gold-500); border-color: var(--color-gold-500); }
 .vote-progress__label { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-text-mid); }
 .vote-row {
-  display: flex; align-items: center; gap: var(--space-4);
+  display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
   padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border);
 }
 .vote-row:last-child { border-bottom: none; }
@@ -239,6 +272,8 @@
 .vote-btn:active { transform: scale(0.96); }
 .vote-btn--selected { background: var(--color-gold-500); color: var(--color-text-on-gold); border-color: var(--color-gold-300); }
 .vote-btn:disabled { opacity: 0.35; pointer-events: none; }
+.vote-btn--protect { color: var(--color-steel-300); border-color: var(--color-steel-500); min-width: 96px; }
+.vote-btn--protect.vote-btn--selected { background: var(--color-steel-500); color: var(--color-text-high); border-color: var(--color-steel-300); }
 .vote-row--self .vote-row__name { color: var(--color-text-mid); }
 .confirm-banner {
   display: none;
@@ -276,6 +311,16 @@
 .role-reveal--undercover .role-reveal__emblem, .role-reveal--undercover .role-reveal__eyebrow { color: var(--color-role-undercover); }
 .role-reveal--mrwhite { border-color: var(--color-role-mrwhite); box-shadow: var(--glow-mrwhite); }
 .role-reveal--mrwhite .role-reveal__emblem, .role-reveal--mrwhite .role-reveal__eyebrow { color: var(--color-role-mrwhite); }
+.role-reveal--spy { border-color: var(--color-role-spy); box-shadow: var(--glow-spy); }
+.role-reveal--spy .role-reveal__emblem, .role-reveal--spy .role-reveal__eyebrow { color: var(--color-role-spy); }
+.role-reveal--protector { border-color: var(--color-role-protector); box-shadow: var(--glow-protector); }
+.role-reveal--protector .role-reveal__emblem, .role-reveal--protector .role-reveal__eyebrow { color: var(--color-role-protector); }
+.role-reveal--ghost { border-color: var(--color-role-ghost); box-shadow: var(--glow-ghost); }
+.role-reveal--ghost .role-reveal__emblem, .role-reveal--ghost .role-reveal__eyebrow { color: var(--color-role-ghost); }
+.role-reveal--jester { border-color: var(--color-role-jester); box-shadow: var(--glow-jester); }
+.role-reveal--jester .role-reveal__emblem, .role-reveal--jester .role-reveal__eyebrow { color: var(--color-role-jester); }
+.role-reveal--hunter { border-color: var(--color-role-hunter); box-shadow: var(--glow-hunter); }
+.role-reveal--hunter .role-reveal__emblem, .role-reveal--hunter .role-reveal__eyebrow { color: var(--color-role-hunter); }
 .vote-list__row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border); }
 .vote-list__row:last-child { border-bottom: none; }
 .vote-list__name { flex: none; width: 7.5rem; font-size: var(--text-sm); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -301,10 +346,12 @@
 .winner-banner--civil { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(79, 143, 203, 0.22), transparent 70%), var(--color-surface); border-color: var(--color-role-civil); box-shadow: var(--glow-civil); }
 .winner-banner--undercover { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(221, 107, 92, 0.22), transparent 70%), var(--color-surface); border-color: var(--color-role-undercover); box-shadow: var(--glow-undercover); }
 .winner-banner--mrwhite { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(154, 139, 196, 0.22), transparent 70%), var(--color-surface); border-color: var(--color-role-mrwhite); box-shadow: var(--glow-mrwhite); }
+.winner-banner--jester { background: radial-gradient(ellipse 320px 260px at 50% 0%, rgba(207, 111, 174, 0.22), transparent 70%), var(--color-surface); border-color: var(--color-role-jester); box-shadow: var(--glow-jester); }
 .winner-banner__burst { position: absolute; top: -40px; width: 260px; height: 260px; opacity: 0.35; }
 .winner-banner--civil .winner-banner__burst, .winner-banner--civil .winner-banner__eyebrow, .winner-banner--civil .winner-banner__emblem { color: var(--color-role-civil); }
 .winner-banner--undercover .winner-banner__burst, .winner-banner--undercover .winner-banner__eyebrow, .winner-banner--undercover .winner-banner__emblem { color: var(--color-role-undercover); }
 .winner-banner--mrwhite .winner-banner__burst, .winner-banner--mrwhite .winner-banner__eyebrow, .winner-banner--mrwhite .winner-banner__emblem { color: var(--color-role-mrwhite); }
+.winner-banner--jester .winner-banner__burst, .winner-banner--jester .winner-banner__eyebrow, .winner-banner--jester .winner-banner__emblem { color: var(--color-role-jester); }
 .winner-banner__eyebrow { position: relative; font-weight: 800; }
 .winner-banner__title {
   position: relative;
@@ -328,3 +375,4 @@
 .reveal-chip__name { font-weight: 700; font-size: var(--text-sm); }
 .reveal-chip__champion { font-family: var(--font-display); font-size: var(--text-base); letter-spacing: var(--tracking-wide); margin-top: 2px; text-transform: uppercase; }
 .reveal-chip--mrwhite .reveal-chip__champion { color: var(--color-role-mrwhite); font-style: italic; font-family: var(--font-body); font-size: var(--text-xs); text-transform: none; }
+.reveal-chip__lover { margin-top: var(--space-1); font-size: var(--text-xs); color: var(--color-role-lover); }

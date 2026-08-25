@@ -73,6 +73,16 @@ export function MainMenu() {
               <div className="menu-card__title font-display">SmashCover</div>
               <div className="menu-card__sub">Super Smash Bros Ultimate</div>
             </Link>
+
+            <Link to="/play/pokemon" className="menu-card frame-cut">
+              <svg className="menu-card__icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="2" />
+                <path d="M4 20 L36 20" stroke="currentColor" strokeWidth="2" />
+                <circle cx="20" cy="20" r="5" fill="var(--color-surface)" stroke="currentColor" strokeWidth="2" />
+              </svg>
+              <div className="menu-card__title font-display">PokéCover</div>
+              <div className="menu-card__sub">Pokémon</div>
+            </Link>
           </div>
 
           <p className="footnote">Aucun compte requis — un pseudo suffit. Jouable à 3–12, sur mobile comme sur ordinateur.</p>

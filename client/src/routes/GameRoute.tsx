@@ -7,6 +7,7 @@ import { Discussion } from '../screens/Discussion';
 import { Voting } from '../screens/Voting';
 import { RoundResult } from '../screens/RoundResult';
 import { MrWhiteGuess } from '../screens/MrWhiteGuess';
+import { HunterShoot } from '../screens/HunterShoot';
 import { GameOver } from '../screens/GameOver';
 import { GameAborted } from '../screens/GameAborted';
 import { ChatBox } from '../components/ChatBox';
@@ -71,6 +72,8 @@ function PhaseScreen({ phase }: { phase: string }) {
       return <RoundResult />;
     case 'mrwhite_guess':
       return <MrWhiteGuess />;
+    case 'hunter_shoot':
+      return <HunterShoot />;
     case 'game_over':
       return <GameOver />;
     case 'aborted':

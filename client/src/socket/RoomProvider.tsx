@@ -47,7 +47,9 @@ interface RoomContextValue {
   ackReveal: () => void;
   startVoting: () => void;
   submitVote: (targetPlayerId: string) => void;
+  protectorProtect: (targetPlayerId: string) => void;
   submitGuess: (championGuess: string) => void;
+  hunterShoot: (targetPlayerId: string | null) => void;
   continueRound: () => void;
   restartGame: () => void;
   leaveRoom: () => void;
@@ -211,8 +213,14 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const submitVote = useCallback((targetPlayerId: string) => {
     socket.emit('vote:submit', { targetPlayerId });
   }, []);
+  const protectorProtect = useCallback((targetPlayerId: string) => {
+    socket.emit('protector:protect', { targetPlayerId });
+  }, []);
   const submitGuess = useCallback((championGuess: string) => {
     socket.emit('mrwhite:guess', { championGuess });
+  }, []);
+  const hunterShoot = useCallback((targetPlayerId: string | null) => {
+    socket.emit('hunter:shoot', { targetPlayerId });
   }, []);
   const continueRound = useCallback(() => {
     socket.emit('round:continue', {});
@@ -259,7 +267,9 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     ackReveal,
     startVoting,
     submitVote,
+    protectorProtect,
     submitGuess,
+    hunterShoot,
     continueRound,
     restartGame,
     leaveRoom,

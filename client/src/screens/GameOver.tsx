@@ -6,7 +6,7 @@ import { RoleBadge } from '../components/RoleBadge';
 import { universeCopy } from '../lib/universe';
 import type { Winner } from '../types';
 
-const WINNER_COPY: Record<Winner, { eyebrow: string; title: string; sub: string; role: 'civil' | 'undercover' | 'mrwhite' }> = {
+const WINNER_COPY: Record<Winner, { eyebrow: string; title: string; sub: string; role: 'civil' | 'undercover' | 'mrwhite' | 'jester' }> = {
   civils: {
     eyebrow: 'Victoire',
     title: 'Les Civils l’emportent',
@@ -24,6 +24,12 @@ const WINNER_COPY: Record<Winner, { eyebrow: string; title: string; sub: string;
     title: 'Mr White s’évade',
     sub: 'Il s’en sort — par la ruse d’une devinette juste ou par la survie, seul face aux civils.',
     role: 'mrwhite',
+  },
+  jester: {
+    eyebrow: 'Victoire',
+    title: 'Le Bouffon a berné tout le monde',
+    sub: 'Il voulait se faire éliminer par un vote — et il a réussi. Il gagne seul.',
+    role: 'jester',
   },
 };
 
@@ -76,12 +82,19 @@ export function GameOver() {
             <div className="reveal-grid">
               {lastGameEnded.reveal.map((p) => {
                 const player = roomState.players.find((pl) => pl.playerId === p.playerId);
+                const lover = p.loverPlayerId
+                  ? lastGameEnded.reveal.find((r) => r.playerId === p.loverPlayerId)
+                  : null;
                 return (
-                  <div className={`reveal-chip frame-cut${p.role === 'mrwhite' ? ' reveal-chip--mrwhite' : ''}`} key={p.playerId}>
+                  <div
+                    className={`reveal-chip frame-cut${p.role === 'mrwhite' || p.role === 'jester' ? ' reveal-chip--mrwhite' : ''}`}
+                    key={p.playerId}
+                  >
                     <Avatar seed={player?.avatarSeed ?? p.playerId} name={p.name} />
                     <div className="reveal-chip__name">{p.name}</div>
                     <RoleBadge role={p.role} />
                     <div className="reveal-chip__champion">{p.champion ?? `Bluffait — aucun ${unit}`}</div>
+                    {lover && <div className="reveal-chip__lover">💘 lié à {lover.name}</div>}
                   </div>
                 );
               })}

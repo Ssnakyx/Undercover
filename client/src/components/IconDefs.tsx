@@ -60,6 +60,58 @@ export function IconDefs() {
           />
           <circle cx="20" cy="29" r="1.6" fill="currentColor" />
         </symbol>
+        <symbol id="role-spy" viewBox="0 0 40 40">
+          <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" fill="none" stroke="currentColor" strokeWidth="2" />
+          <path d="M8 20 C13 12, 27 12, 32 20 C27 28, 13 28, 8 20 Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+          <circle cx="20" cy="20" r="4" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          <circle cx="20" cy="20" r="1.4" fill="currentColor" />
+        </symbol>
+        <symbol id="role-protector" viewBox="0 0 40 40">
+          <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" fill="none" stroke="currentColor" strokeWidth="2" />
+          <path
+            d="M20 9 L28 12.5 V21 C28 27 24.5 30.5 20 32 C15.5 30.5 12 27 12 21 V12.5 Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+          <path d="M16.5 20.5 L19 23 L24 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </symbol>
+        <symbol id="role-ghost" viewBox="0 0 40 40">
+          <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" fill="none" stroke="currentColor" strokeWidth="2" />
+          <path
+            d="M13 29 V19 a7 7 0 0 1 14 0 V29 l-2.3 -2.3 L22.3 29 L20 26.7 L17.7 29 L15.3 26.7 Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+          <circle cx="17" cy="18.5" r="1.2" fill="currentColor" />
+          <circle cx="23" cy="18.5" r="1.2" fill="currentColor" />
+        </symbol>
+        <symbol id="role-jester" viewBox="0 0 40 40">
+          <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" fill="none" stroke="currentColor" strokeWidth="2" />
+          <path
+            d="M12 26 L14 13 L20 20 L26 13 L28 26 Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+          <circle cx="14" cy="11" r="1.4" fill="currentColor" />
+          <circle cx="26" cy="11" r="1.4" fill="currentColor" />
+          <circle cx="20" cy="17.5" r="1.2" fill="currentColor" />
+          <path d="M15 29 Q20 32 25 29" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </symbol>
+        <symbol id="role-hunter" viewBox="0 0 40 40">
+          <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" fill="none" stroke="currentColor" strokeWidth="2" />
+          <circle cx="20" cy="20" r="8" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          <circle cx="20" cy="20" r="1.6" fill="currentColor" />
+          <line x1="20" y1="8" x2="20" y2="13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <line x1="20" y1="27" x2="20" y2="32" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <line x1="8" y1="20" x2="13" y2="20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <line x1="27" y1="20" x2="32" y2="20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </symbol>
       </defs>
     </svg>
   );

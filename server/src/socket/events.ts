@@ -6,7 +6,9 @@ import type {
   ChatMessage,
   ChatSendPayload,
   GameEndedPayload,
+  HunterShootPayload,
   MrWhiteGuessPayload,
+  ProtectorProtectPayload,
   ErrorPayload,
   RoomCreateAck,
   RoomCreatePayload,
@@ -30,7 +32,9 @@ export interface ClientToServerEvents {
   'reveal:ack': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'round:startVoting': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'vote:submit': (payload: VoteSubmitPayload, ack?: (res: AckResponse) => void) => void;
+  'protector:protect': (payload: ProtectorProtectPayload, ack?: (res: AckResponse) => void) => void;
   'mrwhite:guess': (payload: MrWhiteGuessPayload, ack?: (res: AckResponse) => void) => void;
+  'hunter:shoot': (payload: HunterShootPayload, ack?: (res: AckResponse) => void) => void;
   'round:continue': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'game:restart': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'player:leave': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;

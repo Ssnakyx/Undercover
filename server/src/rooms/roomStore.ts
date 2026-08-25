@@ -18,6 +18,12 @@ export function defaultRoomSettings(): RoomSettings {
   return {
     mrWhiteEnabled: false,
     revealChampionOnElimination: false,
+    spyEnabled: false,
+    loversEnabled: false,
+    protectorEnabled: false,
+    ghostEnabled: false,
+    jesterEnabled: false,
+    hunterEnabled: false,
   };
 }
 
@@ -58,6 +64,8 @@ export function createRoom(universe: Universe = 'lol'): Room {
     votes: [],
     lastRoundResult: null,
     mrWhiteGuessPlayerId: null,
+    hunterShootPlayerId: null,
+    protectorPendingTargetId: null,
     phaseDeadline: null,
     phaseTimer: null,
     emptyRoomTimer: null,

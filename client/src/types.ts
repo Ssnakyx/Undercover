@@ -1,15 +1,23 @@
 // Types partagés — dupliqués fidèlement depuis docs/CONTRACT.md section 2 et 6
 // (miroir de server/src/types.ts). Pas de package partagé : voir CONTRACT.md §1.
 
-export type Role = 'civil' | 'undercover' | 'mrwhite';
+// civil/undercover/mrwhite : rôles historiques. spy/protector/ghost/hunter sont des variantes
+// du camp civils, jester est une faction solo à part (voir server/src/types.ts pour le détail).
+export type Role = 'civil' | 'undercover' | 'mrwhite' | 'spy' | 'protector' | 'ghost' | 'jester' | 'hunter';
 
-// Univers de contenu choisi au menu principal — même moteur de jeu, deux pools de paires
-// indépendants. Aucun asset visuel officiel dans les deux cas (CONTRACT.md §0).
-export type Universe = 'lol' | 'smash';
+// Univers de contenu choisi au menu principal — même moteur de jeu, trois pools de paires
+// indépendants. Aucun asset visuel officiel dans les trois cas (CONTRACT.md §0).
+export type Universe = 'lol' | 'smash' | 'pokemon';
 
 export interface RoomSettings {
   mrWhiteEnabled: boolean;
   revealChampionOnElimination: boolean;
+  spyEnabled: boolean;
+  loversEnabled: boolean;
+  protectorEnabled: boolean;
+  ghostEnabled: boolean;
+  jesterEnabled: boolean;
+  hunterEnabled: boolean;
 }
 
 export type GamePhase =
@@ -19,6 +27,7 @@ export type GamePhase =
   | 'voting'
   | 'round_result'
   | 'mrwhite_guess'
+  | 'hunter_shoot'
   | 'game_over'
   | 'aborted'; // hôte a quitté explicitement une partie en cours (voir CONTRACT.md §5)
 
@@ -94,6 +103,14 @@ export interface MrWhiteGuessPayload {
   championGuess: string;
 }
 
+export interface HunterShootPayload {
+  targetPlayerId: string | null; // null = le Chasseur choisit de ne tirer sur personne
+}
+
+export interface ProtectorProtectPayload {
+  targetPlayerId: string;
+}
+
 export interface AckResponse {
   ok: boolean;
   error?: { code: string; message: string };
@@ -104,6 +121,8 @@ export interface AckResponse {
 export interface RolePrivatePayload {
   role: Role;
   champion: string | null;
+  loverName?: string | null;
+  spyInsight?: { playerName: string; team: 'civils' | 'undercover' | 'mrwhite' | 'jester' };
 }
 
 export interface RoundResultPayload {
@@ -112,13 +131,18 @@ export interface RoundResultPayload {
   eliminatedChampion: string | null;
   voteCounts: Record<string, number>;
   tie: boolean;
+  protectedThisRound?: boolean;
+  chainEliminatedPlayerId?: string | null;
+  chainEliminatedRole?: Role | null;
+  chainEliminatedChampion?: string | null;
+  hunterDeclined?: boolean;
 }
 
-export type Winner = 'civils' | 'undercover' | 'mrwhite';
+export type Winner = 'civils' | 'undercover' | 'mrwhite' | 'jester';
 
 export interface GameEndedPayload {
   winner: Winner;
-  reveal: { playerId: string; name: string; role: Role; champion: string | null }[];
+  reveal: { playerId: string; name: string; role: Role; champion: string | null; loverPlayerId?: string | null }[];
 }
 
 export interface ErrorPayload {
@@ -145,7 +169,9 @@ export interface ClientToServerEvents {
   'reveal:ack': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'round:startVoting': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'vote:submit': (payload: VoteSubmitPayload, ack?: (res: AckResponse) => void) => void;
+  'protector:protect': (payload: ProtectorProtectPayload, ack?: (res: AckResponse) => void) => void;
   'mrwhite:guess': (payload: MrWhiteGuessPayload, ack?: (res: AckResponse) => void) => void;
+  'hunter:shoot': (payload: HunterShootPayload, ack?: (res: AckResponse) => void) => void;
   'round:continue': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'game:restart': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'player:leave': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;

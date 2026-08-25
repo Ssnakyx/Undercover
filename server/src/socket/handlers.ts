@@ -40,6 +40,15 @@ import {
 } from '../rooms/reconnection.js';
 import * as engine from '../game/engine.js';
 import { GameEngineError } from '../game/engine.js';
+import {
+  GHOST_MIN_PLAYERS,
+  HUNTER_MIN_PLAYERS,
+  JESTER_MIN_PLAYERS,
+  LOVERS_MIN_PLAYERS,
+  MR_WHITE_MIN_PLAYERS,
+  PROTECTOR_MIN_PLAYERS,
+  SPY_MIN_PLAYERS,
+} from '../game/roles.js';
 import { getAllPairs } from '../content/pairsStore.js';
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -81,14 +90,38 @@ function broadcastRoomState(io: IoServer, room: Room): void {
   io.to(room.roomCode).emit('room:state', toPublicState(room));
 }
 
-function sendRolePrivate(io: IoServer, player: Player): void {
+// Rôles considérés comme des variantes du camp civils pour l'insight de l'Espion (voir
+// game/engine.ts#CIVIL_ALIGNED_ROLES) — dupliqué ici car handlers.ts ne dépend pas des
+// internes du moteur, seulement de types.js.
+const CIVIL_ALIGNED_ROLES = new Set(['civil', 'spy', 'protector', 'ghost', 'hunter']);
+
+function sendRolePrivate(io: IoServer, room: Room, player: Player): void {
   if (!player.socketId || !player.role) return;
-  io.to(player.socketId).emit('role:private', { role: player.role, champion: player.champion });
+  const payload: Parameters<ServerToClientEvents['role:private']>[0] = {
+    role: player.role,
+    champion: player.champion,
+  };
+  if (player.loverPlayerId) {
+    const lover = room.players.get(player.loverPlayerId);
+    if (lover) payload.loverName = lover.name;
+  }
+  if (player.role === 'spy' && player.spyInsightPlayerId) {
+    const target = room.players.get(player.spyInsightPlayerId);
+    if (target && target.role) {
+      const team = CIVIL_ALIGNED_ROLES.has(target.role)
+        ? 'civils'
+        : target.role === 'jester'
+          ? 'jester'
+          : (target.role as 'undercover' | 'mrwhite');
+      payload.spyInsight = { playerName: target.name, team };
+    }
+  }
+  io.to(player.socketId).emit('role:private', payload);
 }
 
 function sendRolePrivateToAllConnected(io: IoServer, room: Room): void {
   for (const player of room.players.values()) {
-    sendRolePrivate(io, player);
+    sendRolePrivate(io, room, player);
   }
 }
 
@@ -127,15 +160,19 @@ function scheduleMrWhiteGuessTimeout(io: IoServer, room: Room): void {
   scheduleRoomTimer(room, engine.MRWHITE_GUESS_TIMEOUT_MS, () => onMrWhiteGuessTimeout(io, room));
 }
 
+function scheduleHunterShootTimeout(io: IoServer, room: Room): void {
+  scheduleRoomTimer(room, engine.HUNTER_SHOOT_TIMEOUT_MS, () => onHunterShootTimeout(io, room));
+}
+
 function onRevealTimeout(io: IoServer, room: Room): void {
   if (room.phase !== 'reveal') return;
   engine.enterDiscussion(room);
   broadcastRoomState(io, room);
 }
 
-/** Dépouille les votes et enchaîne (mrwhite_guess ou fin de partie éventuelle). */
+/** Dépouille les votes et enchaîne (mrwhite_guess, hunter_shoot ou fin de partie éventuelle). */
 function finishVoting(io: IoServer, room: Room): void {
-  const { result, winner, enterMrWhiteGuess } = engine.tallyVotesAndEliminate(room);
+  const { result, winner, enterMrWhiteGuess, enterHunterShoot } = engine.tallyVotesAndEliminate(room);
   clearRoomTimer(room);
   io.to(room.roomCode).emit('round:result', result);
   broadcastRoomState(io, room);
@@ -144,6 +181,13 @@ function finishVoting(io: IoServer, room: Room): void {
     engine.enterMrWhiteGuess(room);
     broadcastRoomState(io, room);
     scheduleMrWhiteGuessTimeout(io, room);
+    return;
+  }
+
+  if (enterHunterShoot) {
+    engine.enterHunterShoot(room);
+    broadcastRoomState(io, room);
+    scheduleHunterShootTimeout(io, room);
     return;
   }
 
@@ -156,6 +200,14 @@ function finishVoting(io: IoServer, room: Room): void {
 function onMrWhiteGuessTimeout(io: IoServer, room: Room): void {
   if (room.phase !== 'mrwhite_guess') return;
   const { winner } = engine.resolveMrWhiteTimeout(room);
+  broadcastRoomState(io, room);
+  if (winner) finishGame(io, room, winner);
+}
+
+function onHunterShootTimeout(io: IoServer, room: Room): void {
+  if (room.phase !== 'hunter_shoot') return;
+  const { winner } = engine.resolveHunterShotTimeout(room);
+  if (room.lastRoundResult) io.to(room.roomCode).emit('round:result', room.lastRoundResult);
   broadcastRoomState(io, room);
   if (winner) finishGame(io, room, winner);
 }
@@ -179,6 +231,11 @@ function applyMidGameDeparture(io: IoServer, room: Room, playerId: string): void
   const player = room.players.get(playerId);
   if (!player) return;
 
+  // Forfait immédiat du vote bonus "Revenant" si ce joueur partait avec un vote en attente —
+  // no-op si déjà false. Départs et déconnexions ne déclenchent jamais les réactions spéciales
+  // post-élimination (Amoureux/Bouffon/Chasseur), voir CONTRACT.md, règle unificatrice.
+  player.ghostVoteAvailable = false;
+
   const revealPayload: RoundResultPayload = {
     eliminatedPlayerId: playerId,
     eliminatedRole: player.role ?? 'civil', // rôle toujours assigné hors phase lobby
@@ -190,6 +247,17 @@ function applyMidGameDeparture(io: IoServer, room: Room, playerId: string): void
 
   if (room.phase === 'mrwhite_guess' && room.mrWhiteGuessPlayerId === playerId) {
     const res = engine.resolveMrWhiteTimeout(room);
+    if (res.winner) {
+      finishGame(io, room, res.winner);
+      return;
+    }
+    clearRoomTimer(room);
+    broadcastRoomState(io, room);
+    return;
+  }
+
+  if (room.phase === 'hunter_shoot' && room.hunterShootPlayerId === playerId) {
+    const res = engine.resolveHunterShotTimeout(room);
     if (res.winner) {
       finishGame(io, room, res.winner);
       return;
@@ -310,7 +378,7 @@ export function registerSocketHandlers(io: IoServer): void {
         ack({ ok: false, error: { code: 'INVALID_NAME', message: 'Nom du host invalide' } });
         return;
       }
-      if (payload?.universe !== 'lol' && payload?.universe !== 'smash') {
+      if (payload?.universe !== 'lol' && payload?.universe !== 'smash' && payload?.universe !== 'pokemon') {
         ack({ ok: false, error: { code: 'INVALID_UNIVERSE', message: 'Univers invalide' } });
         return;
       }
@@ -332,6 +400,10 @@ export function registerSocketHandlers(io: IoServer): void {
         joinOrder: 0,
         disconnectedAt: null,
         disconnectTimer: null,
+        loverPlayerId: null,
+        spyInsightPlayerId: null,
+        protectUsedThisGame: false,
+        ghostVoteAvailable: false,
       };
       room.players.set(playerId, player);
       socket.join(room.roomCode);
@@ -380,6 +452,10 @@ export function registerSocketHandlers(io: IoServer): void {
         joinOrder: room.players.size,
         disconnectedAt: null,
         disconnectTimer: null,
+        loverPlayerId: null,
+        spyInsightPlayerId: null,
+        protectUsedThisGame: false,
+        ghostVoteAvailable: false,
       };
       room.players.set(playerId, player);
       socket.join(room.roomCode);
@@ -413,7 +489,7 @@ export function registerSocketHandlers(io: IoServer): void {
       broadcastRoomState(io, room as Room);
       sendChatHistory(io, socket.id, room as Room);
       if (result.shouldResendRolePrivate) {
-        sendRolePrivate(io, result.player);
+        sendRolePrivate(io, room as Room, result.player);
       }
     });
 
@@ -427,18 +503,39 @@ export function registerSocketHandlers(io: IoServer): void {
         return;
       }
       const next = { ...room.settings, ...(payload?.settings ?? {}) };
+      const n = room.players.size;
 
-      if (typeof next.mrWhiteEnabled !== 'boolean') {
-        fail(socket, ack, 'INVALID_SETTINGS', 'mrWhiteEnabled doit être un booléen');
-        return;
+      const boolFields: (keyof typeof next)[] = [
+        'mrWhiteEnabled',
+        'revealChampionOnElimination',
+        'spyEnabled',
+        'loversEnabled',
+        'protectorEnabled',
+        'ghostEnabled',
+        'jesterEnabled',
+        'hunterEnabled',
+      ];
+      for (const field of boolFields) {
+        if (typeof next[field] !== 'boolean') {
+          fail(socket, ack, 'INVALID_SETTINGS', `${field} doit être un booléen`);
+          return;
+        }
       }
-      if (next.mrWhiteEnabled && room.players.size < 5) {
-        fail(socket, ack, 'INVALID_SETTINGS', 'Mr White nécessite au moins 5 joueurs');
-        return;
-      }
-      if (typeof next.revealChampionOnElimination !== 'boolean') {
-        fail(socket, ack, 'INVALID_SETTINGS', 'revealChampionOnElimination doit être un booléen');
-        return;
+
+      const thresholds: [keyof typeof next, number, string][] = [
+        ['mrWhiteEnabled', MR_WHITE_MIN_PLAYERS, 'Mr White'],
+        ['spyEnabled', SPY_MIN_PLAYERS, "L'Espion"],
+        ['protectorEnabled', PROTECTOR_MIN_PLAYERS, 'Le Protecteur'],
+        ['ghostEnabled', GHOST_MIN_PLAYERS, 'Le Revenant'],
+        ['jesterEnabled', JESTER_MIN_PLAYERS, 'Le Bouffon'],
+        ['hunterEnabled', HUNTER_MIN_PLAYERS, 'Le Chasseur'],
+        ['loversEnabled', LOVERS_MIN_PLAYERS, 'Les Amoureux'],
+      ];
+      for (const [field, min, label] of thresholds) {
+        if (next[field] && n < min) {
+          fail(socket, ack, 'INVALID_SETTINGS', `${label} nécessite au moins ${min} joueurs`);
+          return;
+        }
       }
 
       room.settings = next;
@@ -516,6 +613,19 @@ export function registerSocketHandlers(io: IoServer): void {
       }
     });
 
+    socket.on('protector:protect', (payload, ack) => {
+      const ctx = requireCtx(socket, ack);
+      if (!ctx) return;
+      const { room, player } = ctx;
+      try {
+        engine.submitProtectorProtect(room, player.playerId, (payload?.targetPlayerId ?? '').toString());
+        ok(ack);
+        broadcastRoomState(io, room);
+      } catch (err) {
+        reportEngineError(socket, ack, err, 'PROTECT_FAILED');
+      }
+    });
+
     socket.on('mrwhite:guess', (payload, ack) => {
       const ctx = requireCtx(socket, ack);
       if (!ctx) return;
@@ -534,6 +644,28 @@ export function registerSocketHandlers(io: IoServer): void {
         }
       } catch (err) {
         reportEngineError(socket, ack, err, 'GUESS_FAILED');
+      }
+    });
+
+    socket.on('hunter:shoot', (payload, ack) => {
+      const ctx = requireCtx(socket, ack);
+      if (!ctx) return;
+      const { room, player } = ctx;
+      try {
+        const targetPlayerId =
+          payload?.targetPlayerId === null || payload?.targetPlayerId === undefined
+            ? null
+            : payload.targetPlayerId.toString();
+        const res = engine.submitHunterShot(room, player.playerId, targetPlayerId);
+        clearRoomTimer(room);
+        ok(ack);
+        if (room.lastRoundResult) io.to(room.roomCode).emit('round:result', room.lastRoundResult);
+        broadcastRoomState(io, room);
+        if (res.winner) {
+          finishGame(io, room, res.winner);
+        }
+      } catch (err) {
+        reportEngineError(socket, ack, err, 'SHOOT_FAILED');
       }
     });
 

@@ -6,8 +6,9 @@ import { HostQuitButton } from '../components/HostQuitButton';
 import { HostRestartButton } from '../components/HostRestartButton';
 
 export function Voting() {
-  const { roomState, playerId, submitVote } = useRoom();
+  const { roomState, playerId, myRole, submitVote, protectorProtect } = useRoom();
   const [localTarget, setLocalTarget] = useState<string | null>(null);
+  const [protectTarget, setProtectTarget] = useState<string | null>(null);
 
   if (!roomState) return null;
 
@@ -16,11 +17,18 @@ export function Voting() {
   const isHost = me?.isHost ?? false;
   const hasVoted = playerId !== null && roomState.votedPlayerIds.includes(playerId);
   const locked = hasVoted || localTarget !== null;
+  const isProtector = myRole?.role === 'protector';
 
   function castVote(targetId: string) {
     if (locked) return;
     setLocalTarget(targetId);
     submitVote(targetId);
+  }
+
+  function protect(targetId: string) {
+    if (protectTarget) return;
+    setProtectTarget(targetId);
+    protectorProtect(targetId);
   }
 
   return (
@@ -45,6 +53,19 @@ export function Voting() {
               <div className="vote-banner__sub">Vote secret, aucun minuteur — la cible ne sera connue qu'au dépouillement</div>
             </div>
           </div>
+
+          {isProtector && (
+            <div className="vote-banner frame-cut frame-cut--sm" style={{ marginTop: 'var(--space-4)' }}>
+              <div className="vote-banner__text">
+                <div className="eyebrow">Capacité — Protecteur</div>
+                <div className="vote-banner__sub">
+                  {protectTarget
+                    ? 'Protection envoyée pour ce round — capacité désormais utilisée pour toute la partie.'
+                    : "Une seule fois par partie : protège un joueur. S'il est la cible du vote majoritaire, personne n'est éliminé."}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className={`confirm-banner${locked ? ' is-visible' : ''}`}>
             <svg viewBox="0 0 24 24" fill="none">
@@ -113,6 +134,16 @@ export function Voting() {
                       >
                         {selected ? 'Voté' : 'Voter'}
                       </button>
+                      {isProtector && (
+                        <button
+                          className={`vote-btn vote-btn--protect${protectTarget === p.playerId ? ' vote-btn--selected' : ''}`}
+                          type="button"
+                          disabled={protectTarget !== null}
+                          onClick={() => protect(p.playerId)}
+                        >
+                          {protectTarget === p.playerId ? 'Protégé' : 'Protéger'}
+                        </button>
+                      )}
                     </div>
                   );
                 })}

@@ -35,6 +35,10 @@ function addPlayer(room: Room, opts: { isHost?: boolean; connected?: boolean; jo
     joinOrder: opts.joinOrder,
     disconnectedAt: null,
     disconnectTimer: null,
+    loverPlayerId: null,
+    spyInsightPlayerId: null,
+    protectUsedThisGame: false,
+    ghostVoteAvailable: false,
   };
   room.players.set(playerId, player);
   return player;
@@ -93,11 +97,28 @@ describe('reconnection', () => {
       let result = attemptRejoin(room, { playerId: player.playerId, sessionToken: player.sessionToken }, 's1');
       expect(result.ok && result.shouldResendRolePrivate).toBe(false);
 
-      for (const phase of ['reveal', 'discussion', 'voting', 'round_result', 'mrwhite_guess', 'game_over'] as const) {
+      for (const phase of ['reveal', 'discussion', 'voting', 'round_result', 'mrwhite_guess', 'hunter_shoot', 'game_over'] as const) {
         room.phase = phase;
         result = attemptRejoin(room, { playerId: player.playerId, sessionToken: player.sessionToken }, 's2');
         expect(result.ok && result.shouldResendRolePrivate).toBe(true);
       }
+    });
+
+    it('les champs de mécanique de rôle (loverPlayerId, spyInsightPlayerId, protectUsedThisGame, ghostVoteAvailable) survivent au rejoin inchangés', () => {
+      const room = createRoom();
+      const player = addPlayer(room, { joinOrder: 0, connected: false });
+      player.loverPlayerId = 'someone';
+      player.spyInsightPlayerId = 'someone-else';
+      player.protectUsedThisGame = true;
+      player.ghostVoteAvailable = true;
+
+      const result = attemptRejoin(room, { playerId: player.playerId, sessionToken: player.sessionToken }, 'new-socket');
+
+      expect(result.ok).toBe(true);
+      expect(player.loverPlayerId).toBe('someone');
+      expect(player.spyInsightPlayerId).toBe('someone-else');
+      expect(player.protectUsedThisGame).toBe(true);
+      expect(player.ghostVoteAvailable).toBe(true);
     });
 
     it('annule le timer de déconnexion en cours lors du rejoin', () => {

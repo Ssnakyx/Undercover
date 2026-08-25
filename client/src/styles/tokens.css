@@ -52,6 +52,18 @@
   --color-role-undercover-dim: #4a2018;
   --color-role-mrwhite: #9a8bc4;            /* 6.44:1 sur bg */
   --color-role-mrwhite-dim: #2f2a48;
+  --color-role-spy: #4fb8c9;
+  --color-role-spy-dim: #1c3a40;
+  --color-role-protector: #6bb86a;
+  --color-role-protector-dim: #253a24;
+  --color-role-ghost: #a3abc2;
+  --color-role-ghost-dim: #33384a;
+  --color-role-jester: #cf6fae;
+  --color-role-jester-dim: #442a3c;
+  --color-role-hunter: #d98a4f;
+  --color-role-hunter-dim: #402c18;
+  --color-role-lover: #e08fb0;
+  --color-role-lover-dim: #4a2c3a;
 
   /* -- États -- */
   --color-success: #4f9e72;                 /* 6.07:1 sur bg */
@@ -112,6 +124,11 @@
   --glow-civil: 0 0 0 1px rgba(79, 143, 203, 0.45), 0 0 20px -4px rgba(79, 143, 203, 0.45);
   --glow-undercover: 0 0 0 1px rgba(221, 107, 92, 0.45), 0 0 20px -4px rgba(221, 107, 92, 0.45);
   --glow-mrwhite: 0 0 0 1px rgba(154, 139, 196, 0.45), 0 0 20px -4px rgba(154, 139, 196, 0.45);
+  --glow-spy: 0 0 0 1px rgba(79, 184, 201, 0.45), 0 0 20px -4px rgba(79, 184, 201, 0.45);
+  --glow-protector: 0 0 0 1px rgba(107, 184, 106, 0.45), 0 0 20px -4px rgba(107, 184, 106, 0.45);
+  --glow-ghost: 0 0 0 1px rgba(163, 171, 194, 0.45), 0 0 20px -4px rgba(163, 171, 194, 0.45);
+  --glow-jester: 0 0 0 1px rgba(207, 111, 174, 0.45), 0 0 20px -4px rgba(207, 111, 174, 0.45);
+  --glow-hunter: 0 0 0 1px rgba(217, 138, 79, 0.45), 0 0 20px -4px rgba(217, 138, 79, 0.45);
 
   /* -- Mouvement -- */
   --duration-fast: 120ms;
@@ -651,6 +668,12 @@ h1, h2, h3, h4 {
 .badge--civil { border-color: var(--color-role-civil); color: var(--color-role-civil); }
 .badge--undercover { border-color: var(--color-role-undercover); color: var(--color-role-undercover); }
 .badge--mrwhite { border-color: var(--color-role-mrwhite); color: var(--color-role-mrwhite); }
+.badge--spy { border-color: var(--color-role-spy); color: var(--color-role-spy); }
+.badge--protector { border-color: var(--color-role-protector); color: var(--color-role-protector); }
+.badge--ghost { border-color: var(--color-role-ghost); color: var(--color-role-ghost); }
+.badge--jester { border-color: var(--color-role-jester); color: var(--color-role-jester); }
+.badge--hunter { border-color: var(--color-role-hunter); color: var(--color-role-hunter); }
+.badge--lover { border-color: var(--color-role-lover); color: var(--color-role-lover); }
 .badge--host { border-color: var(--color-gold-500); color: var(--color-gold-300); }
 .badge--muted { color: var(--color-text-low); border-color: var(--color-border); }
 

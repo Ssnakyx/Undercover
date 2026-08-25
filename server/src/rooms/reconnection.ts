@@ -29,6 +29,7 @@ const PHASES_WITH_ROLE = new Set([
   'voting',
   'round_result',
   'mrwhite_guess',
+  'hunter_shoot',
   'game_over',
 ]);
 

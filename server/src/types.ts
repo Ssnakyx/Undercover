@@ -6,12 +6,25 @@
 // Section 2 — modèle de rôles
 // ---------------------------------------------------------------------------
 
-export type Role = 'civil' | 'undercover' | 'mrwhite';
+/**
+ * civil/undercover/mrwhite : rôles historiques. spy/protector/ghost/hunter sont des variantes
+ * du camp civils (comptées comme civils dans les décomptes de victoire, voir
+ * game/engine.ts#countAliveRoles) avec une mécanique additionnelle. jester est une faction
+ * solo à part, exclue de tous les décomptes de victoire existants — elle gagne uniquement en
+ * étant éliminée par un vote direct (voir game/engine.ts#tallyVotesAndEliminate).
+ * 'lover' n'est PAS un rôle : c'est un tag orthogonal (Player.loverPlayerId) posé sur 2
+ * joueurs de rôle quelconque après l'assignation des rôles.
+ */
+export type Role = 'civil' | 'undercover' | 'mrwhite' | 'spy' | 'protector' | 'ghost' | 'jester' | 'hunter';
 
 export interface PlayerRole {
   playerId: string;
   role: Role;
   champion: string | null; // null uniquement pour mrwhite
+  /** Réciproque : posé sur les 2 joueurs "Amoureux" tirés au sort, sinon absent/null. */
+  loverPlayerId?: string | null;
+  /** Uniquement rempli sur l'entrée du joueur "Espion" : la cible de son insight de révélation. */
+  spyInsightPlayerId?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -19,11 +32,12 @@ export interface PlayerRole {
 // ---------------------------------------------------------------------------
 
 /**
- * Univers de contenu choisi au menu principal — même moteur de jeu, deux pools de paires
+ * Univers de contenu choisi au menu principal — même moteur de jeu, trois pools de paires
  * indépendants (voir content/pairsStore.ts). 'lol' = League of Legends, 'smash' = Super
- * Smash Bros Ultimate. Aucun asset visuel officiel dans les deux cas (CONTRACT.md §0).
+ * Smash Bros Ultimate, 'pokemon' = Pokémon. Aucun asset visuel officiel dans les trois cas
+ * (CONTRACT.md §0).
  */
-export type Universe = 'lol' | 'smash';
+export type Universe = 'lol' | 'smash' | 'pokemon';
 
 export interface ChampionPair {
   id: string;
@@ -36,6 +50,12 @@ export interface ChampionPair {
 export interface RoomSettings {
   mrWhiteEnabled: boolean;
   revealChampionOnElimination: boolean;
+  spyEnabled: boolean;
+  loversEnabled: boolean;
+  protectorEnabled: boolean;
+  ghostEnabled: boolean;
+  jesterEnabled: boolean;
+  hunterEnabled: boolean;
 }
 
 export type GamePhase =
@@ -45,6 +65,7 @@ export type GamePhase =
   | 'voting'
   | 'round_result'
   | 'mrwhite_guess'
+  | 'hunter_shoot'
   | 'game_over'
   | 'aborted'; // hôte a quitté explicitement une partie en cours (voir CONTRACT.md §5)
 
@@ -66,7 +87,7 @@ export interface RoomStatePublic {
   round: number;
   turnOrder: string[]; // playerIds, ordre d'affichage indicatif (phase discussion)
   votedPlayerIds: string[]; // qui a voté (pas pour qui), phase voting
-  phaseDeadline: number | null; // epoch ms, pour le compte à rebours client (reveal / mrwhite_guess uniquement)
+  phaseDeadline: number | null; // epoch ms, pour le compte à rebours client (reveal / mrwhite_guess / hunter_shoot uniquement)
 }
 
 // ---- Client -> Serveur (payloads) ----
@@ -120,6 +141,14 @@ export interface MrWhiteGuessPayload {
   championGuess: string;
 }
 
+export interface HunterShootPayload {
+  targetPlayerId: string | null; // null = le Chasseur choisit de ne tirer sur personne
+}
+
+export interface ProtectorProtectPayload {
+  targetPlayerId: string;
+}
+
 export interface AckResponse {
   ok: boolean;
   error?: { code: string; message: string };
@@ -130,6 +159,10 @@ export interface AckResponse {
 export interface RolePrivatePayload {
   role: Role;
   champion: string | null;
+  /** Nom courant du partenaire "Amoureux", si settings.loversEnabled et ce joueur en fait partie. */
+  loverName?: string | null;
+  /** Uniquement pour le rôle "Espion" : camp d'un autre joueur tiré au sort à la révélation. */
+  spyInsight?: { playerName: string; team: 'civils' | 'undercover' | 'mrwhite' | 'jester' };
 }
 
 export interface RoundResultPayload {
@@ -138,13 +171,21 @@ export interface RoundResultPayload {
   eliminatedChampion: string | null; // selon settings.revealChampionOnElimination, sinon null
   voteCounts: Record<string, number>;
   tie: boolean;
+  /** true si le Protecteur a annulé l'élimination de la cible de la pluralité (jamais qui). */
+  protectedThisRound?: boolean;
+  /** "Amoureux" : mort de chagrin le même round que eliminatedPlayerId, jamais de chaîne au-delà. */
+  chainEliminatedPlayerId?: string | null;
+  chainEliminatedRole?: Role | null;
+  chainEliminatedChampion?: string | null;
+  /** true si ce round_result représente le tir du Chasseur et qu'il a choisi de ne tirer sur personne. */
+  hunterDeclined?: boolean;
 }
 
-export type Winner = 'civils' | 'undercover' | 'mrwhite';
+export type Winner = 'civils' | 'undercover' | 'mrwhite' | 'jester';
 
 export interface GameEndedPayload {
   winner: Winner;
-  reveal: { playerId: string; name: string; role: Role; champion: string | null }[];
+  reveal: { playerId: string; name: string; role: Role; champion: string | null; loverPlayerId?: string | null }[];
 }
 
 export interface ErrorPayload {
@@ -181,6 +222,10 @@ export interface Player {
   joinOrder: number;
   disconnectedAt: number | null; // epoch ms, pour le timer 3 minutes
   disconnectTimer: NodeJS.Timeout | null;
+  loverPlayerId: string | null; // "Amoureux" : réciproque, null si non applicable
+  spyInsightPlayerId: string | null; // "Espion" uniquement : cible de son insight
+  protectUsedThisGame: boolean; // "Protecteur" : capacité à usage unique par partie
+  ghostVoteAvailable: boolean; // "Revenant" : true pendant exactement un round après son élimination par vote direct
 }
 
 export interface VoteRecord {
@@ -200,6 +245,8 @@ export interface Room {
   votes: VoteRecord[];
   lastRoundResult: RoundResultPayload | null;
   mrWhiteGuessPlayerId: string | null; // qui a le droit de deviner
+  hunterShootPlayerId: string | null; // qui a le droit de tirer (phase hunter_shoot)
+  protectorPendingTargetId: string | null; // cible protégée ce round de vote, reset à chaque startVoting
   phaseDeadline: number | null;
   phaseTimer: NodeJS.Timeout | null;
   emptyRoomTimer: NodeJS.Timeout | null;
