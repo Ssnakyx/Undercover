@@ -76,6 +76,7 @@ function toPublicPlayer(player: Player): PublicPlayer {
     connected: player.connected,
     alive: player.alive,
     avatarSeed: player.avatarSeed,
+    score: player.score,
   };
 }
 
@@ -252,6 +253,7 @@ function onHunterShootTimeout(io: IoServer, room: Room): void {
 }
 
 function finishGame(io: IoServer, room: Room, winner: Winner): void {
+  engine.awardScoreForWinner(room, winner);
   engine.enterGameOver(room);
   clearRoomTimer(room);
   const reveal = engine.buildGameEndedReveal(room);
@@ -449,6 +451,7 @@ export function registerSocketHandlers(io: IoServer): void {
         spyInsightPlayerId: null,
         protectUsedThisGame: false,
         ghostVoteAvailable: false,
+        score: 0,
       };
       room.players.set(playerId, player);
       socket.join(room.roomCode);
@@ -501,6 +504,7 @@ export function registerSocketHandlers(io: IoServer): void {
         spyInsightPlayerId: null,
         protectUsedThisGame: false,
         ghostVoteAvailable: false,
+        score: 0,
       };
       room.players.set(playerId, player);
       socket.join(room.roomCode);
@@ -561,6 +565,7 @@ export function registerSocketHandlers(io: IoServer): void {
         spyInsightPlayerId: null,
         protectUsedThisGame: false,
         ghostVoteAvailable: false,
+        score: 0,
       };
       room.spectators.set(playerId, spectator);
       socket.join(room.roomCode);

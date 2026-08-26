@@ -39,6 +39,7 @@ function addPlayer(room: Room, opts: { isHost?: boolean; connected?: boolean; jo
     spyInsightPlayerId: null,
     protectUsedThisGame: false,
     ghostVoteAvailable: false,
+    score: 0,
   };
   room.players.set(playerId, player);
   return player;

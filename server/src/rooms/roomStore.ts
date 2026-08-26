@@ -146,12 +146,6 @@ export function cancelEmptyRoomExpiration(room: Room): void {
   }
 }
 
-/** Toutes les rooms actives du process — utilisé pour diffuser les changements d'état global
- * partagé (ex: liste de paires §7) à toutes les rooms, pas seulement à celle d'origine. */
-export function getAllRooms(): Room[] {
-  return [...rooms.values()];
-}
-
 /** Utilitaire de test uniquement : vide le store global de rooms. */
 export function _resetRoomStoreForTests(): void {
   for (const room of rooms.values()) {

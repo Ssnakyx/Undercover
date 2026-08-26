@@ -79,6 +79,9 @@ export interface PublicPlayer {
   connected: boolean;
   alive: boolean;
   avatarSeed: string; // déterministe (hash du playerId), pour silhouette/couleur custom
+  /** Score cumulé de la room (voir §5ter) : +1 par partie où son camp l'a emporté, jamais
+   * réinitialisé par game:restart — persiste tant que la room existe. */
+  score: number;
 }
 
 /** Spectateur : rejoint une partie déjà en cours en lecture seule, promu joueur complet au
@@ -262,6 +265,7 @@ export interface Player {
   spyInsightPlayerId: string | null; // "Espion" uniquement : cible de son insight
   protectUsedThisGame: boolean; // "Protecteur" : capacité à usage unique par partie
   ghostVoteAvailable: boolean; // "Revenant" : true pendant exactement un round après son élimination par vote direct
+  score: number; // score cumulé de la room (voir §5ter), jamais réinitialisé par game:restart
 }
 
 export interface VoteRecord {

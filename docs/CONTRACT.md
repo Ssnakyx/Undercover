@@ -309,6 +309,32 @@ garantie de reconnexion pour un rôle qui n'a jamais eu de siège) :
   fonctions du moteur cherchent toujours le joueur dans `room.players`, où un spectateur ne
   figure jamais), donc réutiliser `Voting`/`Reveal`/etc. serait trompeur.
 
+### 5ter. Score cumulé ("mode Soirée")
+
+Chaque joueur porte un `score: number` (voir `PublicPlayer` §6), pensé pour enchaîner plusieurs
+parties dans la même room (`game:restart`) et savoir qui devine le mieux sur la soirée — sans
+introduire de persistance long terme (toujours l'état en mémoire de §1) :
+
+- **Initialisation** : `score = 0` à la création du siège (`room:create`/`room:join`, et
+  `room:joinSpectator` pour un futur promu — voir §5bis).
+- **Jamais réinitialisé par `game:restart`** : contrairement à `role`/`champion`/`alive`/etc.
+  (voir §3, `assignRolesAndEnterReveal`), le score survit à toute la suite de parties tant que la
+  room existe. Créer une nouvelle room repart de zéro — décision volontairement minimaliste,
+  aucun événement `game:resetScores` n'existe.
+- **Attribution** : à la toute fin de chaque partie (juste avant `game:ended`/`enterGameOver`),
+  chaque joueur dont le rôle appartenait au camp vainqueur (`Winner`, voir §4) marque **+1
+  point**, qu'il ait survécu ou non jusqu'au bout de cette partie-là. `civils` désigne le même
+  agrégat que `countAliveRoles` (civil/spy/protector/ghost/hunter) ; `undercover`/`mrwhite`/
+  `jester` désignent directement ce rôle. Un seul passage, aucun bonus supplémentaire (une
+  bonne devinette de Mr White ne rapporte pas plus qu'une survie — les deux se traduisent par
+  `winner: 'mrwhite'`).
+- **Visibilité** : `score` fait partie de `PublicPlayer`, donc public comme le reste de cette
+  interface (§6) — rien de secret à cacher, contrairement à `role`/`champion`. Affiché côté
+  client sur l'écran `game_over` (classement trié), seul endroit pertinent en pratique : la
+  room ne repasse jamais par la phase `lobby` une fois `game:start` déclenché (`game:restart`
+  ramène directement en `reveal`, voir §3), donc un badge de score dans le Lobby ne serait
+  jamais vu avec un score non nul.
+
 ---
 
 ## 6. Événements Socket.io (contrat exact)
@@ -354,6 +380,7 @@ interface PublicPlayer {
   connected: boolean;
   alive: boolean;
   avatarSeed: string; // déterministe (hash du playerId), pour silhouette/couleur custom
+  score: number;       // cumulé sur toute la room, jamais reset par game:restart — voir §5ter
 }
 
 // Spectateur (voir §5bis) — jamais dans `players`, jamais de role/champion (n'en a pas).

@@ -46,6 +46,9 @@ export interface PublicPlayer {
   connected: boolean;
   alive: boolean;
   avatarSeed: string;
+  /** Score cumulé de la room : +1 par partie où son camp l'a emporté, jamais réinitialisé par
+   * game:restart — persiste tant que la room existe (mode Soirée, voir CONTRACT.md §5ter). */
+  score: number;
 }
 
 /** Spectateur : rejoint une partie déjà en cours en lecture seule, promu joueur complet au

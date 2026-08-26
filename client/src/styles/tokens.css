@@ -784,6 +784,7 @@ h1, h2, h3, h4 {
 .badge--lover { border-color: var(--color-role-lover); color: var(--color-role-lover); }
 .badge--host { border-color: var(--color-gold-500); color: var(--color-gold-300); }
 .badge--muted { color: var(--color-text-low); border-color: var(--color-border); }
+.badge--score { border-color: var(--color-gold-500); color: var(--color-gold-300); flex-shrink: 0; }
 
 /* --------------------------------------------------------------------------
    11. LISTE DE JOUEURS

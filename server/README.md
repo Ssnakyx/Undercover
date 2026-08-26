@@ -157,6 +157,12 @@ documentée ici plutôt qu'improvisée silencieusement :
     `chat:history` à `room:create`/`room:join`/`room:rejoin`, pour qu'une reconnexion ne perde
     pas tout le contexte récent — pas d'archivage long terme au-delà de ce tampon, cohérent avec
     le reste du modèle "état en mémoire" de la room (§1).
+12. **Score cumulé "mode Soirée"** (`Player.score`, voir `docs/CONTRACT.md` §5ter) : pensé pour
+    enchaîner plusieurs parties dans la même room via `game:restart` sans perdre le fil de qui
+    devine le mieux. +1 point par partie pour chaque joueur dont le rôle appartenait au camp
+    vainqueur (`engine.awardScoreForWinner`, appelé juste avant `enterGameOver`), qu'il ait
+    survécu ou non. Jamais réinitialisé par `game:restart` (contrairement à `role`/`champion`/
+    `alive`) — seule une nouvelle room repart de zéro, aucun événement `game:resetScores`.
 
 ## Sécurité (rappel des invariants vérifiés)
 

@@ -18,6 +18,7 @@ function addPlayer(
     loverPlayerId?: string | null;
     ghostVoteAvailable?: boolean;
     protectUsedThisGame?: boolean;
+    score?: number;
   }
 ): Player {
   const playerId = generatePlayerId();
@@ -41,6 +42,7 @@ function addPlayer(
     spyInsightPlayerId: null,
     protectUsedThisGame: opts.protectUsedThisGame ?? false,
     ghostVoteAvailable: opts.ghostVoteAvailable ?? false,
+    score: opts.score ?? 0,
   };
   room.players.set(playerId, player);
   return player;
@@ -647,5 +649,64 @@ describe('Bouffon — victoire immédiate sur élimination par vote direct uniqu
     expect(counts.jesterAlive).toBe(1);
     expect(counts.civilsAlive).toBe(2); // p0, p1
     expect(counts.undercoverAlive).toBe(1); // p2
+  });
+});
+
+describe('awardScoreForWinner — score cumulé "mode Soirée" (CONTRACT.md §5ter)', () => {
+  let room: Room;
+
+  beforeEach(() => {
+    _resetRoomStoreForTests();
+    room = createRoom();
+  });
+
+  it('victoire des civils : +1 à civil/spy/protector/ghost/hunter, rien aux undercover/mrwhite/jester', () => {
+    const civil = addPlayer(room, { joinOrder: 0, role: 'civil', score: 3 });
+    const hunter = addPlayer(room, { joinOrder: 1, role: 'hunter' });
+    const undercover = addPlayer(room, { joinOrder: 2, role: 'undercover' });
+    const mrwhite = addPlayer(room, { joinOrder: 3, role: 'mrwhite' });
+    const jester = addPlayer(room, { joinOrder: 4, role: 'jester' });
+
+    engine.awardScoreForWinner(room, 'civils');
+
+    expect(civil.score).toBe(4);
+    expect(hunter.score).toBe(1);
+    expect(undercover.score).toBe(0);
+    expect(mrwhite.score).toBe(0);
+    expect(jester.score).toBe(0);
+  });
+
+  it('victoire undercover : seuls les undercover marquent, même déjà éliminés', () => {
+    const civil = addPlayer(room, { joinOrder: 0, role: 'civil' });
+    const undercoverAlive = addPlayer(room, { joinOrder: 1, role: 'undercover' });
+    const undercoverDead = addPlayer(room, { joinOrder: 2, role: 'undercover', alive: false });
+
+    engine.awardScoreForWinner(room, 'undercover');
+
+    expect(civil.score).toBe(0);
+    expect(undercoverAlive.score).toBe(1);
+    expect(undercoverDead.score).toBe(1); // camp vainqueur = tous les undercover de la partie, vivants ou non
+  });
+
+  it('victoire du Bouffon : seul le Bouffon marque', () => {
+    const civil = addPlayer(room, { joinOrder: 0, role: 'civil' });
+    const undercover = addPlayer(room, { joinOrder: 1, role: 'undercover' });
+    const jester = addPlayer(room, { joinOrder: 2, role: 'jester', alive: false });
+
+    engine.awardScoreForWinner(room, 'jester');
+
+    expect(civil.score).toBe(0);
+    expect(undercover.score).toBe(0);
+    expect(jester.score).toBe(1);
+  });
+
+  it('victoire Mr White : seul Mr White marque', () => {
+    const civil = addPlayer(room, { joinOrder: 0, role: 'civil' });
+    const mrwhite = addPlayer(room, { joinOrder: 1, role: 'mrwhite', alive: false });
+
+    engine.awardScoreForWinner(room, 'mrwhite');
+
+    expect(civil.score).toBe(0);
+    expect(mrwhite.score).toBe(1);
   });
 });

@@ -61,10 +61,6 @@ export function voteEligiblePlayers(room: Room): Player[] {
   return playersInJoinOrder(room).filter((p) => p.alive || p.ghostVoteAvailable);
 }
 
-export function voteEligiblePlayerIds(room: Room): string[] {
-  return voteEligiblePlayers(room).map((p) => p.playerId);
-}
-
 export interface AliveRoleCounts {
   civilsAlive: number;
   undercoverAlive: number;
@@ -568,6 +564,22 @@ export function enterGameOver(room: Room): void {
   room.phaseDeadline = null;
   room.mrWhiteGuessPlayerId = null;
   room.hunterShootPlayerId = null;
+}
+
+/**
+ * Score cumulé "mode Soirée" (voir CONTRACT.md §5ter) : à la toute fin d'une partie, +1 point
+ * pour chaque joueur dont le rôle appartenait au camp vainqueur — qu'il ait survécu ou non
+ * jusqu'au bout. `civils` regroupe le même agrégat que countAliveRoles (civil/spy/protector/
+ * ghost/hunter). Jamais réinitialisé par game:restart : le score vit tant que dure la room.
+ */
+export function awardScoreForWinner(room: Room, winner: Winner): void {
+  for (const player of room.players.values()) {
+    const onWinningTeam =
+      winner === 'civils'
+        ? !!player.role && CIVIL_ALIGNED_ROLES.has(player.role)
+        : player.role === winner;
+    if (onWinningTeam) player.score += 1;
+  }
 }
 
 export function buildGameEndedReveal(room: Room): { playerId: string; name: string; role: import('../types.js').Role; champion: string | null; loverPlayerId: string | null }[] {

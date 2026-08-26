@@ -88,7 +88,37 @@ export function GameOver() {
         </div>
 
         <div className="container">
-          <section aria-labelledby="reveal-title">
+          <section aria-labelledby="leaderboard-title">
+            <div className="section-title">
+              <h2 id="leaderboard-title" className="font-display">
+                Classement de la soirée
+              </h2>
+              <span className="text-low font-mono" style={{ fontSize: 'var(--text-xs)' }}>
+                score cumulé dans cette room
+              </span>
+            </div>
+            <div className="panel" style={{ padding: '0 var(--space-5)' }}>
+              {[...roomState.players]
+                .sort((a, b) => b.score - a.score)
+                .map((p, i) => (
+                  <div key={p.playerId} className="player-row">
+                    <Avatar seed={p.avatarSeed} name={p.name} host={p.isHost} />
+                    <div>
+                      <div className="player-row__name">
+                        {i === 0 && p.score > 0 ? '👑 ' : ''}
+                        {p.name}
+                      </div>
+                      <div className="player-row__meta">{p.playerId === playerId ? 'Toi' : ''}</div>
+                    </div>
+                    <span className="badge badge--score" style={{ marginLeft: 'auto' }}>
+                      {p.score} pt{p.score > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </section>
+
+          <section aria-labelledby="reveal-title" className="mt-6">
             <div className="section-title">
               <h2 id="reveal-title" className="font-display">
                 Révélation complète
