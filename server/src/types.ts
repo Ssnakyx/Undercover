@@ -32,19 +32,22 @@ export interface PlayerRole {
 // ---------------------------------------------------------------------------
 
 /**
- * Univers de contenu choisi au menu principal — même moteur de jeu, trois pools de paires
- * indépendants (voir content/pairsStore.ts). 'lol' = League of Legends, 'smash' = Super
- * Smash Bros Ultimate, 'pokemon' = Pokémon. Aucun asset visuel officiel dans les trois cas
- * (CONTRACT.md §0).
+ * Univers de contenu choisi au menu principal — même moteur de jeu, un pool de paires
+ * indépendant par univers (voir content/pairsStore.ts). 'lol' = League of Legends, 'smash' =
+ * Super Smash Bros Ultimate, 'pokemon' = Pokémon, 'games' = titres de jeux vidéo.
  */
-export type Universe = 'lol' | 'smash' | 'pokemon';
+export type Universe = 'lol' | 'smash' | 'pokemon' | 'games';
+
+export type PairDifficulty = 'easy' | 'medium' | 'hard';
+export type PairDifficultyFilter = PairDifficulty | 'all';
 
 export interface ChampionPair {
   id: string;
   champA: string;
   champB: string;
   theme: string; // ex: "Tanks brutaux", "Duo assassins mêlée"
-  lanes?: string[]; // ex: ["Top"], optionnel
+  /** Absent sur les paires personnalisées (univers maison). */
+  difficulty?: PairDifficulty;
 }
 
 export interface RoomSettings {
@@ -59,6 +62,16 @@ export interface RoomSettings {
   /** "Univers maison" (voir §7bis) : si true et room.customPairs non vide, game:start/restart
    * tire dans room.customPairs au lieu du pool fixe de l'univers. */
   customPairsEnabled: boolean;
+  /** 0 = automatique (table §2), sinon nombre d'Undercover imposé (borné côté serveur pour
+   * garder les civils majoritaires, voir game/roles.ts#maxUndercoverFor). */
+  undercoverCount: number;
+  /** Durée de la discussion en secondes (0 = pas de minuteur). À expiration, le vote démarre
+   * automatiquement. */
+  discussionSeconds: number;
+  /** true : le résultat de chaque vote montre qui a voté pour qui. */
+  publicVotes: boolean;
+  /** Filtre de difficulté appliqué au pool de l'univers (ignoré pour les paires maison). */
+  difficulty: PairDifficultyFilter;
 }
 
 export type GamePhase =
@@ -102,13 +115,25 @@ export interface RoomStatePublic {
   round: number;
   turnOrder: string[]; // playerIds, ordre d'affichage indicatif (phase discussion)
   votedPlayerIds: string[]; // qui a voté (pas pour qui), phase voting
-  phaseDeadline: number | null; // epoch ms, pour le compte à rebours client (reveal / mrwhite_guess / hunter_shoot uniquement)
+  phaseDeadline: number | null; // epoch ms, pour le compte à rebours client (reveal / discussion minutée / mrwhite_guess / hunter_shoot)
+  /** Joueurs éliminés qui peuvent encore voter ce round (Revenant) — publics : leur rôle a déjà
+   * été révélé à l'élimination. */
+  ghostVoterIds: string[];
+  /** Qui doit deviner (phase mrwhite_guess) / tirer (phase hunter_shoot), null sinon. */
+  mrWhiteGuessPlayerId: string | null;
+  hunterShootPlayerId: string | null;
+  /** Phase 'aborted' : nom de l'hôte parti qui a interrompu la partie. */
+  abortedByName: string | null;
   /** "Univers maison" : paires ajoutées par l'hôte pour cette room, visibles de tous en lobby
    * (rien de secret dans le contenu d'un pool, voir §7). Vide hors usage de la fonctionnalité. */
   customPairs: ChampionPair[];
 }
 
 // ---- Client -> Serveur (payloads) ----
+
+export interface PlayerKickPayload {
+  targetPlayerId: string;
+}
 
 export interface RoomCreatePayload {
   hostName: string;
@@ -198,6 +223,8 @@ export interface AckResponse {
 export interface RolePrivatePayload {
   role: Role;
   champion: string | null;
+  /** Image du personnage (URL), null si inconnue (paire maison, univers 'games', Mr White). */
+  championImage?: string | null;
   /** Nom courant du partenaire "Amoureux", si settings.loversEnabled et ce joueur en fait partie. */
   loverName?: string | null;
   /** Uniquement pour le rôle "Espion" : camp d'un autre joueur tiré au sort à la révélation. */
@@ -208,6 +235,7 @@ export interface RoundResultPayload {
   eliminatedPlayerId: string | null; // null si égalité = personne éliminé
   eliminatedRole: Role | null;
   eliminatedChampion: string | null; // selon settings.revealChampionOnElimination, sinon null
+  eliminatedChampionImage?: string | null;
   voteCounts: Record<string, number>;
   tie: boolean;
   /** true si le Protecteur a annulé l'élimination de la cible de la pluralité (jamais qui). */
@@ -216,6 +244,11 @@ export interface RoundResultPayload {
   chainEliminatedPlayerId?: string | null;
   chainEliminatedRole?: Role | null;
   chainEliminatedChampion?: string | null;
+  chainEliminatedChampionImage?: string | null;
+  /** true si ce round_result est le tir du Chasseur (pas un vote). */
+  hunterShot?: boolean;
+  /** Détail qui-a-voté-pour-qui, uniquement si settings.publicVotes. */
+  votes?: { voterId: string; targetPlayerId: string }[];
   /** true si ce round_result représente le tir du Chasseur et qu'il a choisi de ne tirer sur personne. */
   hunterDeclined?: boolean;
 }
@@ -224,7 +257,27 @@ export type Winner = 'civils' | 'undercover' | 'mrwhite' | 'jester';
 
 export interface GameEndedPayload {
   winner: Winner;
-  reveal: { playerId: string; name: string; role: Role; champion: string | null; loverPlayerId?: string | null }[];
+  reveal: {
+    playerId: string;
+    name: string;
+    role: Role;
+    champion: string | null;
+    championImage?: string | null;
+    loverPlayerId?: string | null;
+  }[];
+  /** La paire de la partie, pour l'écran de fin. */
+  pair?: { civil: string; undercover: string; civilImage: string | null; undercoverImage: string | null; theme: string };
+}
+
+/** Un joueur a quitté (ou n'est pas revenu à temps) en pleine partie : son rôle est révélé.
+ * Événement distinct de round:result pour ne jamais écraser l'écran de résultat en cours. */
+export interface PlayerLeftPayload {
+  playerId: string;
+  name: string;
+  role: Role | null;
+  champion: string | null;
+  championImage?: string | null;
+  kicked?: boolean;
 }
 
 export interface ErrorPayload {
@@ -301,5 +354,11 @@ export interface Room {
   currentPairId: string | null; // paire tirée pour la partie en cours
   championA: string | null;
   championB: string | null;
+  pairTheme: string | null;
+  /** Dernières paires tirées dans cette room, pour éviter de retomber dessus trop vite. */
+  recentPairIds: string[];
+  /** Compteur monotone pour joinOrder (room.players.size donnait des doublons après un départ). */
+  nextJoinOrder: number;
+  abortedByName: string | null;
   chatMessages: ChatMessage[]; // tampon borné (voir CHAT_HISTORY_LIMIT), pas d'archivage long terme
 }

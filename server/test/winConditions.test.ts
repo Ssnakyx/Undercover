@@ -60,7 +60,8 @@ describe('normalizeChampionGuess / isCorrectMrWhiteGuess', () => {
   });
 
   it('insensible aux accents', () => {
-    expect(isCorrectMrWhiteGuess('kaisa', "Kai'Sa")).toBe(false); // apostrophe compte comme caractère différent
+    expect(isCorrectMrWhiteGuess('kaisa', "Kai'Sa")).toBe(true); // ponctuation ignorée
+    expect(isCorrectMrWhiteGuess('electhor', 'Électhor')).toBe(true);
     expect(normalizeChampionGuess('Kled')).toBe('kled');
     expect(isCorrectMrWhiteGuess('Ashe', 'Ashe')).toBe(true);
   });
@@ -72,5 +73,19 @@ describe('normalizeChampionGuess / isCorrectMrWhiteGuess', () => {
 
   it('rejette une mauvaise devinette', () => {
     expect(isCorrectMrWhiteGuess('Darius', 'Garen')).toBe(false);
+    expect(isCorrectMrWhiteGuess('', 'Garen')).toBe(false);
+  });
+
+  it('accepte les alias (ex. nom anglais)', () => {
+    expect(isCorrectMrWhiteGuess('Jigglypuff', 'Rondoudou', ['Jigglypuff'])).toBe(true);
+    expect(isCorrectMrWhiteGuess('Jigglypuff', 'Rondoudou')).toBe(false);
+  });
+
+  it('tolère une petite faute de frappe sur les noms longs, jamais sur les noms courts', () => {
+    expect(isCorrectMrWhiteGuess('Tyranocyf', 'Tyranocif')).toBe(true); // 1 faute, 9 lettres
+    expect(isCorrectMrWhiteGuess('Heimerdingre', 'Heimerdinger')).toBe(true); // 2 fautes, 12 lettres
+    expect(isCorrectMrWhiteGuess('Mew', 'Mewtwo')).toBe(false);
+    expect(isCorrectMrWhiteGuess('Vy', 'Vi')).toBe(false); // nom court : orthographe exacte
+    expect(isCorrectMrWhiteGuess('Luigi', 'Mario')).toBe(false);
   });
 });

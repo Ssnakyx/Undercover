@@ -24,6 +24,8 @@ export interface RoleRequest {
   jester: boolean;
   hunter: boolean;
   lovers: boolean;
+  /** 0/absent = table automatique, sinon nombre d'Undercover voulu (borné, voir maxUndercoverFor). */
+  undercoverCount?: number;
 }
 
 export class InvalidRoleDistributionError extends Error {
@@ -60,6 +62,19 @@ export const LOVERS_MIN_PLAYERS = 4;
  * droite de l'invariant (elle ne "grandit" jamais par attrition comme undercover/mrWhite, donc
  * n'a pas besoin d'être dominée par les civils de la même façon).
  */
+/** Nombre d'Undercover par défaut (table §2). */
+export function autoUndercoverCount(n: number): number {
+  return n <= 8 ? 1 : 2;
+}
+
+/**
+ * Plus grand nombre d'Undercover qui respecte l'invariant de sécurité ci-dessous (réservoir
+ * civils >= undercover + mrWhite + 1) pour N joueurs, Mr White et Bouffon compris. Toujours >= 1.
+ */
+export function maxUndercoverFor(n: number, mrWhite: number, jester: number): number {
+  return Math.max(1, Math.floor((n - 2 * mrWhite - jester - 1) / 2));
+}
+
 export function computeRoleCounts(n: number, requested: RoleRequest): RoleDistributionCounts {
   if (!Number.isInteger(n) || n < 3) {
     throw new InvalidRoleDistributionError(
@@ -67,9 +82,12 @@ export function computeRoleCounts(n: number, requested: RoleRequest): RoleDistri
     );
   }
 
-  const undercover = n <= 8 ? 1 : 2;
   const mrWhite = requested.mrWhite && n >= MR_WHITE_MIN_PLAYERS ? 1 : 0;
   const jester = requested.jester && n >= JESTER_MIN_PLAYERS ? 1 : 0;
+  // Nombre imposé par l'hôte : borné silencieusement plutôt que refusé (même philosophie que
+  // les rôles optionnels sous leur seuil).
+  const wanted = requested.undercoverCount && requested.undercoverCount > 0 ? Math.floor(requested.undercoverCount) : 0;
+  const undercover = wanted > 0 ? Math.min(wanted, maxUndercoverFor(n, mrWhite, jester)) : autoUndercoverCount(n);
 
   const civilsPoolTotal = n - undercover - mrWhite - jester;
   if (civilsPoolTotal < undercover + mrWhite + 1) {
@@ -128,8 +146,8 @@ export function shuffle<T>(items: readonly T[], rng: () => number = Math.random)
  * aucun champion -> mrwhite/jester (le Bouffon n'a pas de champion à décrire, il ne fait que
  * viser l'élimination).
  *
- * loverPlayerId/spyInsightPlayerId sont calculés à même le shuffle déjà tiré (aucun appel rng
- * supplémentaire), pour préserver le déterminisme testable via `rng` injecté.
+ * loverPlayerId/spyInsightPlayerId utilisent le même `rng` injecté (tirages supplémentaires),
+ * le résultat reste donc déterministe en test.
  */
 export function assignRoles(options: AssignRolesOptions): PlayerRole[] {
   const { playerIds, requested, championA, championB } = options;
@@ -159,8 +177,12 @@ export function assignRoles(options: AssignRolesOptions): PlayerRole[] {
   pushRole(counts.hunter, 'hunter' as Role, championA);
   pushRole(counts.civils, 'civil', championA);
 
+  // Amoureux et cible de l'Espion : tirés par un SECOND mélange indépendant. Les prendre dans
+  // `shuffled` (comme avant) revenait à toujours lier le 1er Undercover (shuffled[0]) et à
+  // toujours montrer un civil à l'Espion, puisque les rôles sont distribués dans l'ordre fixe
+  // undercover -> mrwhite -> jester -> spy -> ... -> civil.
   if (counts.lovers && n >= 2) {
-    const [aId, bId] = shuffled;
+    const [aId, bId] = shuffle(playerIds, rng);
     const aEntry = roles.find((r) => r.playerId === aId);
     const bEntry = roles.find((r) => r.playerId === bId);
     if (aEntry) aEntry.loverPlayerId = bId;
@@ -169,9 +191,8 @@ export function assignRoles(options: AssignRolesOptions): PlayerRole[] {
 
   const spyEntry = roles.find((r) => r.role === 'spy');
   if (spyEntry) {
-    const spyIndex = shuffled.indexOf(spyEntry.playerId);
-    const targetIndex = (spyIndex + 1) % n;
-    spyEntry.spyInsightPlayerId = shuffled[targetIndex];
+    const others = playerIds.filter((id) => id !== spyEntry.playerId);
+    spyEntry.spyInsightPlayerId = others[Math.floor(rng() * others.length)] ?? null;
   }
 
   return roles;

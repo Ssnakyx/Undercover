@@ -537,6 +537,18 @@ describe('Revenant — vote bonus un round après élimination par vote direct',
     expectEngineErrorCode(() => engine.submitVote(room, p0.playerId, ghost.playerId), 'INVALID_VOTE_TARGET');
   });
 
+  it('le vote bonus ne vaut que pour UN round : retiré au dépouillement suivant', () => {
+    ghost.alive = false;
+    ghost.ghostVoteAvailable = true;
+    engine.submitVote(room, p0.playerId, p1.playerId);
+    engine.submitVote(room, p1.playerId, p2.playerId);
+    engine.submitVote(room, p2.playerId, p0.playerId);
+    engine.submitVote(room, ghost.playerId, p2.playerId); // p2 éliminé (2 voix)
+    engine.tallyVotesAndEliminate(room);
+    expect(ghost.ghostVoteAvailable).toBe(false);
+    expect(engine.voteEligiblePlayers(room).map((p) => p.playerId)).not.toContain(ghost.playerId);
+  });
+
   it('ne bénéficie PAS du vote bonus si éliminé par départ (hors flux de vote direct)', () => {
     // Simule le comportement attendu de applyMidGameDeparture (handlers.ts) : un départ ne pose
     // jamais ghostVoteAvailable, contrairement à tallyVotesAndEliminate.
@@ -708,5 +720,115 @@ describe('awardScoreForWinner — score cumulé "mode Soirée" (CONTRACT.md §5t
 
     expect(civil.score).toBe(0);
     expect(mrwhite.score).toBe(1);
+  });
+});
+
+describe('selectPair — anti-répétition et inversion civils/undercover', () => {
+  const pool = [
+    { id: 'a', champA: 'A1', champB: 'A2', theme: '' },
+    { id: 'b', champA: 'B1', champB: 'B2', theme: '' },
+  ];
+
+  it('évite les paires récentes tant que le pool le permet', () => {
+    for (let i = 0; i < 20; i++) {
+      expect(engine.selectPair(pool, ['a']).id).toBe('b');
+    }
+  });
+
+  it('retombe sur tout le pool si toutes les paires sont récentes', () => {
+    expect(['a', 'b']).toContain(engine.selectPair(pool, ['a', 'b']).id);
+  });
+
+  it('inverse la paire une fois sur deux', () => {
+    const seq = [0, 0.9];
+    let i = 0;
+    const swapped = engine.selectPair(pool, [], () => seq[i++]);
+    expect(swapped).toMatchObject({ id: 'a', champA: 'A2', champB: 'A1' });
+    i = 0;
+    const seqKeep = [0, 0.1];
+    const kept = engine.selectPair(pool, [], () => seqKeep[i++]);
+    expect(kept).toMatchObject({ id: 'a', champA: 'A1', champB: 'A2' });
+  });
+});
+
+describe('pruneDepartedPlayers / returnToLobby', () => {
+  let room: Room;
+
+  beforeEach(() => {
+    _resetRoomStoreForTests();
+    room = createRoom();
+  });
+
+  afterEach(() => {
+    _resetRoomStoreForTests();
+  });
+
+  it('retire les joueurs partis pour de bon, garde ceux en délai de grâce', () => {
+    const stays = addPlayer(room, { joinOrder: 0 });
+    const left = addPlayer(room, { joinOrder: 1 });
+    const grace = addPlayer(room, { joinOrder: 2 });
+    left.connected = false;
+    grace.connected = false;
+    grace.disconnectTimer = setTimeout(() => {}, 1000);
+    expect(engine.pruneDepartedPlayers(room)).toEqual([left.playerId]);
+    expect([...room.players.keys()]).toEqual([stays.playerId, grace.playerId]);
+    clearTimeout(grace.disconnectTimer);
+  });
+
+  it('remet la room en lobby, réinitialise les rôles mais garde les scores', () => {
+    const p = addPlayer(room, { joinOrder: 0, role: 'undercover', alive: false, score: 3 });
+    room.phase = 'game_over';
+    room.round = 4;
+    room.championA = 'Garen';
+    engine.returnToLobby(room);
+    expect(room.phase).toBe('lobby');
+    expect(room.round).toBe(0);
+    expect(room.championA).toBeNull();
+    expect(p).toMatchObject({ role: null, champion: null, alive: true, score: 3 });
+  });
+});
+
+describe('enterDiscussion — minuteur optionnel', () => {
+  let room: Room;
+
+  beforeEach(() => {
+    _resetRoomStoreForTests();
+    room = createRoom();
+    addPlayer(room, { joinOrder: 0 });
+    addPlayer(room, { joinOrder: 1 });
+    addPlayer(room, { joinOrder: 2, role: 'undercover' });
+  });
+
+  it('pas de deadline sans minuteur', () => {
+    engine.enterDiscussion(room);
+    expect(room.phaseDeadline).toBeNull();
+  });
+
+  it('pose une deadline quand discussionSeconds > 0', () => {
+    room.settings.discussionSeconds = 90;
+    const before = Date.now();
+    engine.enterDiscussion(room);
+    expect(room.phaseDeadline).toBeGreaterThanOrEqual(before + 90_000);
+  });
+});
+
+describe('tallyVotesAndEliminate — votes publics', () => {
+  it('expose le détail des votes uniquement si settings.publicVotes', () => {
+    _resetRoomStoreForTests();
+    const room = createRoom();
+    const a = addPlayer(room, { joinOrder: 0 });
+    const b = addPlayer(room, { joinOrder: 1 });
+    const c = addPlayer(room, { joinOrder: 2, role: 'undercover' });
+    addPlayer(room, { joinOrder: 3 });
+    room.phase = 'voting';
+    engine.submitVote(room, a.playerId, c.playerId);
+    expect(engine.tallyVotesAndEliminate(room).result.votes).toBeUndefined();
+
+    room.phase = 'voting';
+    room.votes = [];
+    room.settings.publicVotes = true;
+    engine.submitVote(room, b.playerId, a.playerId);
+    expect(engine.tallyVotesAndEliminate(room).result.votes).toEqual([{ voterId: b.playerId, targetPlayerId: a.playerId }]);
+    _resetRoomStoreForTests();
   });
 });

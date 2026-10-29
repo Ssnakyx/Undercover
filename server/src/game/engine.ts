@@ -4,7 +4,8 @@
 // `room:state` résultant et programme les timers de phase avec `setTimeout`). Ça garde ce
 // fichier testable unitairement sans faux serveur socket.
 
-import type { ChampionPair, Player, Room, RoundResultPayload, Winner } from '../types.js';
+import type { ChampionPair, GameEndedPayload, Player, Room, RoundResultPayload, Winner } from '../types.js';
+import { characterAliases, characterImage } from '../content/characterImages.js';
 import { assignRoles, type RoleRequest } from './roles.js';
 import { computeInitialTurnOrder, recomputeTurnOrderAfterElimination } from './turnOrder.js';
 import { evaluateWinConditions, isCorrectMrWhiteGuess } from './winConditions.js';
@@ -21,7 +22,7 @@ const CIVIL_ALIGNED_ROLES = new Set(['civil', 'spy', 'protector', 'ghost', 'hunt
 //     constantes serveur fixes plutôt que d'ajouter des champs à RoomSettings, pour ne
 //     pas dévier du contrat section 6 (interface exacte).
 // ---------------------------------------------------------------------------
-export const REVEAL_ACK_TIMEOUT_MS = 20_000;
+export const REVEAL_ACK_TIMEOUT_MS = 30_000;
 export const MRWHITE_GUESS_TIMEOUT_MS = 30_000;
 export const HUNTER_SHOOT_TIMEOUT_MS = 30_000;
 export const MIN_PLAYERS_TO_START = 3;
@@ -83,11 +84,32 @@ export function countAliveRoles(room: Room): AliveRoleCounts {
   return { civilsAlive, undercoverAlive, mrWhiteAlive, jesterAlive };
 }
 
-function selectPair(pairsPool: ChampionPair[]): ChampionPair {
+/** Nombre de paires récentes qu'une room évite de retirer (borné par la taille du pool). */
+export const RECENT_PAIRS_MEMORY = 15;
+
+/**
+ * Tire une paire en évitant les dernières tirées dans la room (si le pool le permet), puis
+ * inverse aléatoirement civils/undercover : sans ça, le même personnage d'une paire était
+ * toujours celui de la majorité, ce que les habitués finissaient par retenir.
+ */
+export function selectPair(pairsPool: ChampionPair[], recentPairIds: readonly string[] = [], rng: () => number = Math.random): ChampionPair {
   if (pairsPool.length === 0) {
     throw new GameEngineError('NO_PAIRS_AVAILABLE', 'Aucune paire de champions disponible pour cet univers');
   }
-  return pairsPool[Math.floor(Math.random() * pairsPool.length)];
+  const recent = new Set(recentPairIds);
+  const fresh = pairsPool.filter((p) => !recent.has(p.id));
+  const pool = fresh.length > 0 ? fresh : pairsPool;
+  const pair = pool[Math.floor(rng() * pool.length)];
+  return rng() < 0.5 ? pair : { ...pair, champA: pair.champB, champB: pair.champA };
+}
+
+function rememberPair(room: Room, pairId: string, poolSize: number): void {
+  const memory = Math.min(RECENT_PAIRS_MEMORY, poolSize - 1);
+  if (memory <= 0) {
+    room.recentPairIds = [];
+    return;
+  }
+  room.recentPairIds = [...room.recentPairIds.filter((id) => id !== pairId), pairId].slice(-memory);
 }
 
 // ---------------------------------------------------------------------------
@@ -116,8 +138,10 @@ export function assignRolesAndEnterReveal(room: Room, options: StartGameOptions)
     throw new GameEngineError('TOO_MANY_PLAYERS', 'La room dépasse la limite de 12 joueurs');
   }
 
-  const pair = selectPair(options.pairsPool);
+  const pair = selectPair(options.pairsPool, room.recentPairIds, options.rng);
+  rememberPair(room, pair.id, options.pairsPool.length);
   const requested: RoleRequest = {
+    undercoverCount: room.settings.undercoverCount,
     mrWhite: room.settings.mrWhiteEnabled,
     spy: room.settings.spyEnabled,
     protector: room.settings.protectorEnabled,
@@ -152,6 +176,7 @@ export function assignRolesAndEnterReveal(room: Room, options: StartGameOptions)
   room.currentPairId = pair.id;
   room.championA = pair.champA;
   room.championB = pair.champB;
+  room.pairTheme = pair.theme;
   room.phase = 'reveal';
   room.round = 0;
   room.turnOrder = [];
@@ -194,7 +219,9 @@ export function enterDiscussion(room: Room, options: { rng?: () => number } = {}
       ? computeInitialTurnOrder(alive, options.rng)
       : recomputeTurnOrderAfterElimination(room.turnOrder, alive);
   room.phase = 'discussion';
-  room.phaseDeadline = null;
+  // Minuteur optionnel (settings.discussionSeconds) : le serveur programme le passage au vote
+  // automatique à cette échéance (voir socket/handlers.ts#scheduleDiscussionTimeout).
+  room.phaseDeadline = room.settings.discussionSeconds > 0 ? Date.now() + room.settings.discussionSeconds * 1000 : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -277,6 +304,10 @@ export function submitProtectorProtect(room: Room, playerId: string, targetPlaye
   room.protectorPendingTargetId = targetPlayerId;
 }
 
+function publicVotes(room: Room): RoundResultPayload['votes'] {
+  return room.settings.publicVotes ? room.votes.map((v) => ({ voterId: v.voterId, targetPlayerId: v.targetPlayerId })) : undefined;
+}
+
 export interface TallyResult {
   result: RoundResultPayload;
   /** Vainqueur si la partie se termine immédiatement après ce dépouillement (hors mrwhite_guess/hunter_shoot). */
@@ -294,6 +325,13 @@ export interface TallyResult {
 export function tallyVotesAndEliminate(room: Room): TallyResult {
   if (room.phase !== 'voting') {
     throw new GameEngineError('INVALID_PHASE', 'Dépouillement uniquement valide en phase voting');
+  }
+
+  // Revenant : son vote bonus ne vaut que pour le round qui suit son élimination. Il vient
+  // d'être utilisé (ou pas) — on le retire avant de traiter les nouvelles éliminations. Sans ça
+  // il votait jusqu'à la fin de la partie.
+  for (const p of room.players.values()) {
+    if (!p.alive) p.ghostVoteAvailable = false;
   }
 
   const voteCounts: Record<string, number> = {};
@@ -359,11 +397,14 @@ export function tallyVotesAndEliminate(room: Room): TallyResult {
           eliminatedPlayerId,
           eliminatedRole,
           eliminatedChampion,
+          eliminatedChampionImage: characterImage(room.universe, eliminatedChampion),
           voteCounts,
           tie: false,
           chainEliminatedPlayerId,
           chainEliminatedRole,
           chainEliminatedChampion,
+          chainEliminatedChampionImage: characterImage(room.universe, chainEliminatedChampion),
+          votes: publicVotes(room),
         };
         room.lastRoundResult = result;
         room.phase = 'round_result';
@@ -383,12 +424,15 @@ export function tallyVotesAndEliminate(room: Room): TallyResult {
     eliminatedPlayerId,
     eliminatedRole,
     eliminatedChampion,
+    eliminatedChampionImage: characterImage(room.universe, eliminatedChampion),
     voteCounts,
     tie: eliminatedPlayerId === null && !protectedThisRound && maxVotes > 0,
     protectedThisRound,
     chainEliminatedPlayerId,
     chainEliminatedRole,
     chainEliminatedChampion,
+    chainEliminatedChampionImage: characterImage(room.universe, chainEliminatedChampion),
+    votes: publicVotes(room),
   };
 
   room.lastRoundResult = result;
@@ -443,7 +487,7 @@ export function submitMrWhiteGuess(room: Room, playerId: string, championGuess: 
 
   room.mrWhiteGuessPlayerId = null;
 
-  if (isCorrectMrWhiteGuess(championGuess, room.championA)) {
+  if (isCorrectMrWhiteGuess(championGuess, room.championA, characterAliases(room.universe, room.championA))) {
     room.phaseDeadline = null;
     return { correct: true, winner: 'mrwhite' };
   }
@@ -504,8 +548,10 @@ function resolveHunterShot(room: Room, targetPlayerId: string | null): HunterSho
     eliminatedPlayerId,
     eliminatedRole,
     eliminatedChampion,
+    eliminatedChampionImage: characterImage(room.universe, eliminatedChampion),
     voteCounts: {},
     tie: false,
+    hunterShot: true,
     hunterDeclined: eliminatedPlayerId === null,
   };
   room.lastRoundResult = result;
@@ -582,14 +628,28 @@ export function awardScoreForWinner(room: Room, winner: Winner): void {
   }
 }
 
-export function buildGameEndedReveal(room: Room): { playerId: string; name: string; role: import('../types.js').Role; champion: string | null; loverPlayerId: string | null }[] {
-  return playersInJoinOrder(room).map((p) => ({
-    playerId: p.playerId,
-    name: p.name,
-    role: p.role ?? 'civil',
-    champion: p.champion,
-    loverPlayerId: p.loverPlayerId,
-  }));
+export function buildGameEndedReveal(room: Room): GameEndedPayload['reveal'] {
+  return playersInJoinOrder(room)
+    .filter((p) => p.role !== null)
+    .map((p) => ({
+      playerId: p.playerId,
+      name: p.name,
+      role: p.role ?? 'civil',
+      champion: p.champion,
+      championImage: characterImage(room.universe, p.champion),
+      loverPlayerId: p.loverPlayerId,
+    }));
+}
+
+export function buildGameEndedPair(room: Room): GameEndedPayload['pair'] {
+  if (!room.championA || !room.championB) return undefined;
+  return {
+    civil: room.championA,
+    undercover: room.championB,
+    civilImage: characterImage(room.universe, room.championA),
+    undercoverImage: characterImage(room.universe, room.championB),
+    theme: room.pairTheme ?? '',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -622,4 +682,55 @@ export function abortGame(room: Room): void {
   room.phaseDeadline = null;
   room.mrWhiteGuessPlayerId = null;
   room.hunterShootPlayerId = null;
+}
+
+// ---------------------------------------------------------------------------
+// Retour au salon / nettoyage des sièges abandonnés
+// ---------------------------------------------------------------------------
+
+/**
+ * Retire les joueurs partis pour de bon : déconnectés SANS délai de grâce en cours (départ
+ * explicite via player:leave, exclusion, ou grâce de 3 min déjà expirée). Appelé avant chaque
+ * nouvelle partie : sinon un joueur parti recevait un rôle au "Rejouer" et le vote attendait
+ * indéfiniment son bulletin. Les joueurs encore dans leur délai de grâce sont gardés.
+ */
+export function pruneDepartedPlayers(room: Room): string[] {
+  const removed: string[] = [];
+  for (const p of [...room.players.values()]) {
+    if (!p.connected && !p.disconnectTimer) {
+      room.players.delete(p.playerId);
+      removed.push(p.playerId);
+    }
+  }
+  return removed;
+}
+
+/**
+ * Ramène la room au lobby (depuis game_over ou aborted) : l'hôte peut changer les réglages,
+ * de nouveaux joueurs peuvent rejoindre. Les scores de la soirée sont conservés.
+ */
+export function returnToLobby(room: Room): void {
+  for (const p of room.players.values()) {
+    p.role = null;
+    p.champion = null;
+    p.alive = true;
+    p.hasAckedReveal = false;
+    p.loverPlayerId = null;
+    p.spyInsightPlayerId = null;
+    p.protectUsedThisGame = false;
+    p.ghostVoteAvailable = false;
+  }
+  room.phase = 'lobby';
+  room.round = 0;
+  room.turnOrder = [];
+  room.votes = [];
+  room.lastRoundResult = null;
+  room.mrWhiteGuessPlayerId = null;
+  room.hunterShootPlayerId = null;
+  room.protectorPendingTargetId = null;
+  room.phaseDeadline = null;
+  room.currentPairId = null;
+  room.championA = null;
+  room.championB = null;
+  room.pairTheme = null;
 }
