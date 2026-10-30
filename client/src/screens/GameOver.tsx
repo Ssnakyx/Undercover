@@ -1,42 +1,29 @@
+import type { CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRoom } from '../socket/RoomProvider';
 import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
+import { CharacterArt } from '../components/CharacterArt';
 import { RoleBadge } from '../components/RoleBadge';
-import { ThemeToggle } from '../components/ThemeToggle';
 import { universeCopy } from '../lib/universe';
-import type { Winner } from '../types';
+import type { Role, Winner } from '../types';
 
-const WINNER_COPY: Record<Winner, { eyebrow: string; title: string; sub: string; role: 'civil' | 'undercover' | 'mrwhite' | 'jester' }> = {
-  civils: {
-    eyebrow: 'Victoire',
-    title: 'Les Civils l’emportent',
-    sub: 'Tous les Undercover et Mr White ont été démasqués avant la fin de la partie.',
-    role: 'civil',
-  },
-  undercover: {
-    eyebrow: 'Victoire',
-    title: 'Les Undercover l’emportent',
-    sub: 'Ils ont survécu en nombre égal ou supérieur aux civils.',
-    role: 'undercover',
-  },
-  mrwhite: {
-    eyebrow: 'Victoire',
-    title: 'Mr White s’évade',
-    sub: 'Il s’en sort — par la ruse d’une devinette juste ou par la survie, seul face aux civils.',
-    role: 'mrwhite',
-  },
-  jester: {
-    eyebrow: 'Victoire',
-    title: 'Le Bouffon a berné tout le monde',
-    sub: 'Il voulait se faire éliminer par un vote — et il a réussi. Il gagne seul.',
-    role: 'jester',
-  },
+const WINNER_COPY: Record<Winner, { title: string; sub: string; tone: string }> = {
+  civils: { title: 'Les Civils gagnent', sub: 'Tous les intrus ont été démasqués.', tone: 'var(--role-civil)' },
+  undercover: { title: 'Les Undercover gagnent', sub: 'Ils sont désormais aussi nombreux que les Civils.', tone: 'var(--role-undercover)' },
+  mrwhite: { title: 'Mr White s’en sort', sub: 'Par une devinette juste… ou en survivant jusqu’au bout.', tone: 'var(--role-mrwhite)' },
+  jester: { title: 'Le Bouffon a gagné', sub: 'Il voulait se faire éliminer. Mission accomplie.', tone: 'var(--role-jester)' },
 };
 
+const CIVIL_SIDE: Role[] = ['civil', 'spy', 'protector', 'ghost', 'hunter'];
+
+function isWinner(role: Role, winner: Winner): boolean {
+  return winner === 'civils' ? CIVIL_SIDE.includes(role) : role === winner;
+}
+
 export function GameOver() {
-  const { roomState, playerId, lastGameEnded, restartGame, leaveRoom } = useRoom();
+  const { roomState, playerId, lastGameEnded, restartGame, backToLobby, leaveRoom } = useRoom();
   const navigate = useNavigate();
 
   if (!roomState || !lastGameEnded) return null;
@@ -45,129 +32,138 @@ export function GameOver() {
   const isHost = me?.isHost ?? false;
   const copy = WINNER_COPY[lastGameEnded.winner];
   const unit = universeCopy(roomState.universe).unitLabel;
+  const myReveal = lastGameEnded.reveal.find((r) => r.playerId === playerId);
+  const iWon = myReveal ? isWinner(myReveal.role, lastGameEnded.winner) : false;
+  const pair = lastGameEnded.pair;
+  const leaderboard = [...roomState.players].sort((a, b) => b.score - a.score);
 
-  // La partie est déjà terminée ici : contrairement à HostQuitButton (qui coupe une partie en
-  // cours pour tout le monde), quitter depuis game_over n'affecte que soi — pas de confirmation
-  // nécessaire, tous les joueurs (host inclus) peuvent revenir au menu librement.
+  // Quitter depuis game_over n'affecte que soi — la partie est déjà terminée.
   function backToMenu() {
     leaveRoom();
-    navigate('/', { replace: true, viewTransition: true });
+    navigate('/', { replace: true });
   }
 
   return (
-    <div className="screen theme-paper">
-      <AppBar
-        title="Fin de partie"
-        right={
-          <>
-            <ThemeToggle />
-            <span className="badge badge--muted">Round {roomState.round}</span>
-          </>
-        }
-      />
+    <div className="screen" data-universe={roomState.universe}>
+      <AppBar title="Fin de partie" right={<span className="badge badge--accent">{roomState.round} rounds</span>} />
 
       <main className="main">
-        <div className={`winner-banner winner-banner--${copy.role} frame-cut frame-cut--lg`}>
-          <svg className="winner-banner__burst" viewBox="0 0 200 200" fill="none" aria-hidden="true">
-            <g stroke="currentColor" strokeWidth="1">
-              <line x1="100" y1="100" x2="100" y2="10" />
-              <line x1="100" y1="100" x2="152" y2="20" />
-              <line x1="100" y1="100" x2="180" y2="60" />
-              <line x1="100" y1="100" x2="190" y2="120" />
-              <line x1="100" y1="100" x2="48" y2="20" />
-              <line x1="100" y1="100" x2="20" y2="60" />
-              <line x1="100" y1="100" x2="10" y2="120" />
-            </g>
-          </svg>
-          <span className="eyebrow winner-banner__eyebrow">{copy.eyebrow}</span>
-          <h1 className="winner-banner__title font-display">{copy.title}</h1>
-          <p className="winner-banner__sub">{copy.sub}</p>
-          <svg className="winner-banner__emblem" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-            <use href={`#role-${copy.role}`} />
-          </svg>
-        </div>
+        <div className="container stack">
+          <div className="hud-frame victory" style={{ '--tone': copy.tone } as CSSProperties}>
+            <div className="victory__label">{myReveal ? (iWon ? 'VICTOIRE' : 'DÉFAITE') : 'GAME OVER'}</div>
+            <h1 className="victory__title">{copy.title}</h1>
+            <p className="victory__sub">{copy.sub}</p>
+          </div>
 
-        <div className="container">
-          <section aria-labelledby="leaderboard-title">
-            <div className="section-title">
-              <h2 id="leaderboard-title" className="font-display">
-                Classement de la soirée
+          {pair && (
+            <section className="panel">
+              <div className="section__head">
+                <h2 className="section__title">La paire</h2>
+                <span className="section__count">{pair.theme}</span>
+              </div>
+              <div className="versus">
+                <div className="versus__side" style={{ '--tone': 'var(--role-civil)' } as CSSProperties}>
+                  <CharacterArt className="versus__art" name={pair.civil} image={pair.civilImage} universe={roomState.universe} />
+                  <span className="versus__name">{pair.civil}</span>
+                  <span className="badge badge--civil">Civils</span>
+                </div>
+                <span className="versus__vs">VS</span>
+                <div className="versus__side" style={{ '--tone': 'var(--role-undercover)' } as CSSProperties}>
+                  <CharacterArt className="versus__art" name={pair.undercover} image={pair.undercoverImage} universe={roomState.universe} />
+                  <span className="versus__name">{pair.undercover}</span>
+                  <span className="badge badge--undercover">Undercover</span>
+                </div>
+              </div>
+            </section>
+          )}
+
+          <section aria-labelledby="reveal-title">
+            <div className="section__head">
+              <h2 id="reveal-title" className="section__title">
+                Qui était qui
               </h2>
-              <span className="text-low font-mono" style={{ fontSize: 'var(--text-xs)' }}>
-                score cumulé dans cette room
-              </span>
+              <span className="section__count">{lastGameEnded.reveal.length} joueurs</span>
             </div>
-            <div className="panel" style={{ padding: '0 var(--space-5)' }}>
-              {[...roomState.players]
-                .sort((a, b) => b.score - a.score)
-                .map((p, i) => (
-                  <div key={p.playerId} className="player-row">
-                    <Avatar seed={p.avatarSeed} name={p.name} host={p.isHost} />
-                    <div>
-                      <div className="player-row__name">
-                        {i === 0 && p.score > 0 ? '👑 ' : ''}
-                        {p.name}
-                      </div>
-                      <div className="player-row__meta">{p.playerId === playerId ? 'Toi' : ''}</div>
-                    </div>
-                    <span className="badge badge--score" style={{ marginLeft: 'auto' }}>
-                      {p.score} pt{p.score > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                ))}
-            </div>
-          </section>
-
-          <section aria-labelledby="reveal-title" className="mt-6">
-            <div className="section-title">
-              <h2 id="reveal-title" className="font-display">
-                Révélation complète
-              </h2>
-              <span className="text-low font-mono" style={{ fontSize: 'var(--text-xs)' }}>
-                {lastGameEnded.reveal.length} joueurs
-              </span>
-            </div>
-
             <div className="reveal-grid">
-              {lastGameEnded.reveal.map((p) => {
+              {lastGameEnded.reveal.map((p, i) => {
                 const player = roomState.players.find((pl) => pl.playerId === p.playerId);
-                const lover = p.loverPlayerId
-                  ? lastGameEnded.reveal.find((r) => r.playerId === p.loverPlayerId)
-                  : null;
+                const lover = p.loverPlayerId ? lastGameEnded.reveal.find((r) => r.playerId === p.loverPlayerId) : null;
                 return (
                   <div
-                    className={`reveal-chip frame-cut${p.role === 'mrwhite' || p.role === 'jester' ? ' reveal-chip--mrwhite' : ''}`}
+                    className={`reveal-tile${isWinner(p.role, lastGameEnded.winner) ? ' reveal-tile--winner' : ''}`}
                     key={p.playerId}
+                    style={{ '--tone': `var(--role-${p.role})`, animationDelay: `${i * 50}ms` } as CSSProperties}
                   >
-                    <Avatar seed={player?.avatarSeed ?? p.playerId} name={p.name} />
-                    <div className="reveal-chip__name">{p.name}</div>
-                    <RoleBadge role={p.role} />
-                    <div className="reveal-chip__champion">{p.champion ?? `Bluffait — aucun ${unit}`}</div>
-                    {lover && <div className="reveal-chip__lover">💘 lié à {lover.name}</div>}
+                    {p.champion ? (
+                      <CharacterArt className="reveal-tile__art" name={p.champion} image={p.championImage} universe={roomState.universe} />
+                    ) : (
+                      <div className="reveal-tile__art char-art" style={{ display: 'grid', placeItems: 'center' }}>
+                        <Avatar seed={player?.avatarSeed ?? p.playerId} name={p.name} size="lg" />
+                      </div>
+                    )}
+                    <div className="reveal-tile__body">
+                      <span className="reveal-tile__player">
+                        {p.name}
+                        {p.playerId === playerId && <span className="text-low small"> (toi)</span>}
+                      </span>
+                      <RoleBadge role={p.role} />
+                      <span className="reveal-tile__word">{p.champion ?? `Aucun ${unit}`}</span>
+                      {lover && <span className="reveal-tile__word">💘 lié à {lover.name}</span>}
+                    </div>
                   </div>
                 );
               })}
             </div>
           </section>
+
+          <section aria-labelledby="leaderboard-title">
+            <div className="section__head">
+              <h2 id="leaderboard-title" className="section__title">
+                Classement de la soirée
+              </h2>
+            </div>
+            <div className="leaderboard">
+              {leaderboard.map((p, i) => (
+                <div key={p.playerId} className={`leader-row${i === 0 && p.score > 0 ? ' leader-row--first' : ''}`}>
+                  <span className="leader-row__rank">{i === 0 && p.score > 0 ? '👑' : i + 1}</span>
+                  <Avatar seed={p.avatarSeed} name={p.name} size="sm" />
+                  <span className="leader-row__name">
+                    {p.name}
+                    {p.playerId === playerId && <span className="text-low small"> (toi)</span>}
+                  </span>
+                  <span className="leader-row__score">{p.score} pt{p.score > 1 ? 's' : ''}</span>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
       </main>
 
-      <ActionBar>
+      <ActionBar hint={isHost ? 'Rejouer garde les réglages. Le salon permet de les changer et d’accueillir de nouveaux joueurs.' : undefined}>
         {isHost ? (
           <>
             <button className="btn btn-primary" type="button" onClick={restartGame}>
-              Rejouer
+              ▶ Rejouer
             </button>
-            <span className="confirm-hint">Nouvelle partie, mêmes joueurs et réglages — seul l'hôte peut relancer</span>
+            <div className="action-bar__row">
+              <button className="btn btn-secondary btn-sm" type="button" onClick={backToLobby}>
+                Retour au salon
+              </button>
+              <button className="btn btn-ghost btn-sm" type="button" onClick={backToMenu}>
+                Quitter
+              </button>
+            </div>
           </>
         ) : (
-          <button className="btn btn-secondary" type="button" disabled>
-            En attente de l'hôte…
-          </button>
+          <div className="action-bar__row">
+            <button className="btn btn-secondary" type="button" disabled>
+              En attente de l'hôte…
+            </button>
+            <button className="btn btn-ghost" type="button" style={{ flex: '0 0 auto', width: 'auto' }} onClick={backToMenu}>
+              Quitter
+            </button>
+          </div>
         )}
-        <button className="btn btn-secondary" type="button" onClick={backToMenu}>
-          Retour au menu
-        </button>
       </ActionBar>
     </div>
   );

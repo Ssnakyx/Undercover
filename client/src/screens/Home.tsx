@@ -1,21 +1,25 @@
-import { useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react';
+import { useRef, useState, type CSSProperties, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useRoom } from '../socket/RoomProvider';
 import { isUniverse, universeCopy } from '../lib/universe';
 import { loadPseudo, savePseudo } from '../lib/session';
-import { ThemeToggle } from '../components/ThemeToggle';
+import { AppBar } from '../components/AppBar';
 
 const CODE_LENGTH = 5;
+const PSEUDO_MAX_LENGTH = 18;
 
-// Un lien d'invitation (voir Lobby "Copier le lien") pointe vers /play/:universe?code=XXXXX :
-// préremplit le code et bascule directement sur l'onglet "Rejoindre" pour l'invité.
-function codeFromSearchParams(params: URLSearchParams): string[] {
-  const raw = (params.get('code') ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const cells = Array(CODE_LENGTH).fill('');
-  for (let i = 0; i < CODE_LENGTH; i++) cells[i] = raw[i] ?? '';
-  return cells;
+/** Extrait un code de room d'une saisie libre : code nu, lien d'invitation complet, espaces... */
+function extractCode(raw: string): string {
+  const fromLink = raw.match(/[?&]code=([A-Za-z0-9]+)/)?.[1] ?? raw.match(/\/room\/([A-Za-z0-9]+)/)?.[1];
+  return (fromLink ?? raw).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LENGTH);
 }
 
+function toCells(code: string): string[] {
+  return Array.from({ length: CODE_LENGTH }, (_, i) => code[i] ?? '');
+}
+
+// Un lien d'invitation (voir Lobby "Partager") pointe vers /play/:universe?code=XXXXX : préremplit
+// le code et bascule directement sur l'onglet "Rejoindre".
 export function Home() {
   const { createRoom, joinRoom, joinAsSpectator } = useRoom();
   const navigate = useNavigate();
@@ -24,23 +28,10 @@ export function Home() {
   const invitedCode = searchParams.get('code');
 
   const [mode, setMode] = useState<'create' | 'join'>(invitedCode ? 'join' : 'create');
-
-  // Pseudo mémorisé dans localStorage (lib/session.ts) — un seul champ partagé entre "Créer" et
-  // "Rejoindre" : c'est le même pseudo quel que soit le mode, pas besoin de le retaper.
   const [pseudo, setPseudo] = useState(() => loadPseudo());
-  function updatePseudo(value: string) {
-    setPseudo(value);
-    savePseudo(value);
-  }
-
-  const [createError, setCreateError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-
-  const [codeCells, setCodeCells] = useState<string[]>(() => codeFromSearchParams(searchParams));
-  const [joinError, setJoinError] = useState<string | null>(null);
-  const [joinErrorCode, setJoinErrorCode] = useState<string | null>(null);
-  const [joining, setJoining] = useState(false);
-  const [spectating, setSpectating] = useState(false);
+  const [busy, setBusy] = useState<'create' | 'join' | 'spectate' | null>(null);
+  const [error, setError] = useState<{ message: string; code: string | null } | null>(null);
+  const [codeCells, setCodeCells] = useState<string[]>(() => toCells(extractCode(invitedCode ?? '')));
   const cellRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   if (!isUniverse(universeParam)) {
@@ -48,139 +39,143 @@ export function Home() {
   }
   const universe = universeParam;
   const copy = universeCopy(universe);
+  const code = codeCells.join('');
+  const pseudoOk = pseudo.trim().length > 0;
+
+  function updatePseudo(value: string) {
+    setPseudo(value);
+    savePseudo(value);
+  }
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
-    if (!pseudo.trim()) return;
-    setCreating(true);
-    setCreateError(null);
+    if (!pseudoOk) return;
+    setBusy('create');
+    setError(null);
     const res = await createRoom(pseudo.trim(), universe);
-    setCreating(false);
-    if (res.ok && res.roomCode) {
-      navigate(`/room/${res.roomCode}`, { viewTransition: true });
-    } else {
-      setCreateError(res.error?.message ?? 'Impossible de créer la partie.');
-    }
-  }
-
-  function handleCellChange(index: number, value: string) {
-    const char = value.slice(-1).toUpperCase();
-    setCodeCells((prev) => {
-      const next = [...prev];
-      next[index] = char;
-      return next;
-    });
-    if (char && index < CODE_LENGTH - 1) {
-      cellRefs.current[index + 1]?.focus();
-    }
-  }
-
-  function handleCellKeyDown(index: number, e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Backspace' && !codeCells[index] && index > 0) {
-      cellRefs.current[index - 1]?.focus();
-    }
+    setBusy(null);
+    if (res.ok && res.roomCode) navigate(`/room/${res.roomCode}`, { viewTransition: true });
+    else setError({ message: res.error?.message ?? 'Impossible de créer la partie.', code: res.error?.code ?? null });
   }
 
   async function handleJoin(e: FormEvent) {
     e.preventDefault();
-    const code = codeCells.join('');
-    if (code.length !== CODE_LENGTH || !pseudo.trim()) return;
-    setJoining(true);
-    setJoinError(null);
-    setJoinErrorCode(null);
+    if (code.length !== CODE_LENGTH || !pseudoOk) return;
+    setBusy('join');
+    setError(null);
     const res = await joinRoom(code, pseudo.trim());
-    setJoining(false);
-    if (res.ok) {
-      navigate(`/room/${code}`, { viewTransition: true });
-    } else {
-      setJoinError(res.error?.message ?? 'Impossible de rejoindre cette partie.');
-      setJoinErrorCode(res.error?.code ?? null);
-    }
+    setBusy(null);
+    if (res.ok) navigate(`/room/${code}`, { viewTransition: true });
+    else setError({ message: res.error?.message ?? 'Impossible de rejoindre cette partie.', code: res.error?.code ?? null });
   }
 
-  // Partie déjà lancée (GAME_IN_PROGRESS) : proposer de regarder plutôt qu'un simple échec —
-  // le spectateur rejoindra automatiquement en tant que joueur à la prochaine partie.
+  // Partie déjà lancée : proposer de regarder — le spectateur devient joueur à la partie suivante.
   async function handleSpectate() {
-    const code = codeCells.join('');
-    if (code.length !== CODE_LENGTH || !pseudo.trim()) return;
-    setSpectating(true);
+    if (code.length !== CODE_LENGTH || !pseudoOk) return;
+    setBusy('spectate');
     const res = await joinAsSpectator(code, pseudo.trim());
-    setSpectating(false);
-    if (res.ok) {
-      navigate(`/room/${code}`, { viewTransition: true });
-    } else {
-      setJoinError(res.error?.message ?? 'Impossible de regarder cette partie.');
-      setJoinErrorCode(res.error?.code ?? null);
-    }
+    setBusy(null);
+    if (res.ok) navigate(`/room/${code}`, { viewTransition: true });
+    else setError({ message: res.error?.message ?? 'Impossible de regarder cette partie.', code: res.error?.code ?? null });
   }
+
+  function setCode(next: string, focusIndex?: number) {
+    setCodeCells(toCells(next));
+    if (focusIndex !== undefined) cellRefs.current[Math.min(focusIndex, CODE_LENGTH - 1)]?.focus();
+  }
+
+  function handleCellChange(index: number, value: string) {
+    const clean = extractCode(value);
+    if (clean.length > 1) {
+      // Saisie multiple (autocomplétion, collage sans événement paste) : remplit à partir d'ici.
+      const next = (code.slice(0, index) + clean).slice(0, CODE_LENGTH);
+      setCode(next, next.length);
+      return;
+    }
+    const cells = [...codeCells];
+    cells[index] = clean;
+    setCodeCells(cells);
+    if (clean && index < CODE_LENGTH - 1) cellRefs.current[index + 1]?.focus();
+  }
+
+  function handleCellKeyDown(index: number, e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Backspace' && !codeCells[index] && index > 0) cellRefs.current[index - 1]?.focus();
+    if (e.key === 'ArrowLeft' && index > 0) cellRefs.current[index - 1]?.focus();
+    if (e.key === 'ArrowRight' && index < CODE_LENGTH - 1) cellRefs.current[index + 1]?.focus();
+  }
+
+  // Coller un code ou un lien d'invitation complet dans n'importe quelle case remplit tout.
+  function handlePaste(e: ClipboardEvent<HTMLInputElement>) {
+    const pasted = extractCode(e.clipboardData.getData('text'));
+    if (!pasted) return;
+    e.preventDefault();
+    setCode(pasted, pasted.length);
+  }
+
+  const pseudoField = (id: string) => (
+    <div className="field">
+      <label className="field__label" htmlFor={id}>
+        {copy.nameLabel}
+      </label>
+      <input
+        className="input"
+        id={id}
+        type="text"
+        maxLength={PSEUDO_MAX_LENGTH}
+        placeholder={copy.namePlaceholder}
+        autoComplete="nickname"
+        value={pseudo}
+        onChange={(e) => updatePseudo(e.target.value)}
+      />
+      <span className="field__hint">Visible par tous. Mémorisé sur cet appareil.</span>
+    </div>
+  );
 
   return (
-    <div className="screen theme-paper fade-in-up">
-      <div className="theme-toggle-float">
-        <ThemeToggle />
-      </div>
+    <div className="screen" data-universe={universe}>
+      <AppBar
+        title={copy.name}
+        right={
+          <Link to="/" className="btn btn-ghost btn-sm" viewTransition>
+            ← Univers
+          </Link>
+        }
+      />
       <main className="main">
-        <div className="container">
-          <div className="hero">
-            <svg className="hero__crest" viewBox="0 0 200 200" aria-hidden="true">
-              <use href="#hex-lattice" />
-            </svg>
-            <h1 className="hero__title font-display">{copy.name}</h1>
-            <p className="hero__tagline">{copy.tagline}</p>
+        <div className="container stack" style={{ '--gap': '20px' } as CSSProperties}>
+          <div className="logo" style={{ paddingTop: 4 }}>
+            <div className="eyebrow">{copy.franchise}</div>
+            <h1 className="logo__title" style={{ fontSize: 'clamp(2.2rem, 10vw, 3.4rem)' }}>
+              {copy.name}
+            </h1>
+            <p className="logo__tagline">{copy.tagline}</p>
           </div>
 
-          <div className="segmented" role="tablist" aria-label="Mode de connexion">
-            <button
-              type="button"
-              className="segmented__btn"
-              role="tab"
-              aria-selected={mode === 'create'}
-              onClick={() => setMode('create')}
-            >
-              Créer une partie
+          <div className="segmented" role="tablist" aria-label="Créer ou rejoindre">
+            <button type="button" className="segmented__btn" role="tab" aria-selected={mode === 'create'} onClick={() => setMode('create')}>
+              Créer
             </button>
-            <button
-              type="button"
-              className="segmented__btn"
-              role="tab"
-              aria-selected={mode === 'join'}
-              onClick={() => setMode('join')}
-            >
+            <button type="button" className="segmented__btn" role="tab" aria-selected={mode === 'join'} onClick={() => setMode('join')}>
               Rejoindre
             </button>
           </div>
 
-          <div className="panels">
+          <div className="hud-frame">
             {mode === 'create' ? (
-              <form className="stack" style={{ '--stack-gap': 'var(--space-5)' } as CSSProperties} onSubmit={handleCreate}>
-                <div className="field">
-                  <label className="field__label" htmlFor="create-name">
-                    {copy.nameLabel}
-                  </label>
-                  <input
-                    className="input"
-                    id="create-name"
-                    type="text"
-                    maxLength={18}
-                    placeholder={copy.namePlaceholder}
-                    autoComplete="name"
-                    value={pseudo}
-                    onChange={(e) => updatePseudo(e.target.value)}
-                  />
-                  <span className="field__hint">Visible par tous les joueurs de la room. 18 caractères max. Mémorisé sur cet appareil.</span>
-                  {createError && <span className="field__hint field__hint--error">{createError}</span>}
-                </div>
-                <button className="btn btn-primary" type="submit" disabled={creating || !pseudo.trim()}>
-                  {creating ? 'Création…' : 'Créer la partie'}
+              <form className="stack" onSubmit={handleCreate}>
+                {pseudoField('create-name')}
+                {error && <p className="field__error">{error.message}</p>}
+                <button className="btn btn-primary" type="submit" disabled={busy !== null || !pseudoOk}>
+                  {busy === 'create' ? 'Création…' : '▶ Créer la partie'}
                 </button>
               </form>
             ) : (
-              <form className="stack" style={{ '--stack-gap': 'var(--space-5)' } as CSSProperties} onSubmit={handleJoin}>
+              <form className="stack" onSubmit={handleJoin}>
                 <div className="field">
                   <label className="field__label" htmlFor="code-0">
                     Code de la room
                   </label>
-                  <div className="code-input-group" role="group" aria-label="Code à 5 caractères">
+                  <div className="code-cells" role="group" aria-label="Code à 5 caractères">
                     {codeCells.map((char, i) => (
                       <input
                         key={i}
@@ -188,64 +183,36 @@ export function Home() {
                           cellRefs.current[i] = el;
                         }}
                         id={i === 0 ? 'code-0' : undefined}
-                        className="code-input-group__cell"
-                        maxLength={1}
+                        className="code-cell"
                         inputMode="text"
+                        autoCapitalize="characters"
+                        autoComplete="off"
                         aria-label={`Caractère ${i + 1}`}
                         value={char}
                         onChange={(e) => handleCellChange(i, e.target.value)}
                         onKeyDown={(e) => handleCellKeyDown(i, e)}
+                        onPaste={handlePaste}
+                        onFocus={(e) => e.target.select()}
                       />
                     ))}
                   </div>
                   <span className="field__hint">
-                    {invitedCode
-                      ? 'Code pré-rempli depuis ton lien d\'invitation — vérifie-le puis choisis ton pseudo.'
-                      : "Demande le code à l'hôte de la partie (5 caractères, sans 0/O/1/I)."}
+                    {invitedCode ? "Code pré-rempli depuis ton lien d'invitation." : 'Demande le code à l’hôte, ou colle directement son lien.'}
                   </span>
                 </div>
-                <div className="field">
-                  <label className="field__label" htmlFor="join-name">
-                    {copy.nameLabel}
-                  </label>
-                  <input
-                    className="input"
-                    id="join-name"
-                    type="text"
-                    maxLength={18}
-                    placeholder={copy.namePlaceholder}
-                    autoComplete="name"
-                    value={pseudo}
-                    onChange={(e) => updatePseudo(e.target.value)}
-                  />
-                  {joinError && <span className="field__hint field__hint--error">{joinError}</span>}
-                </div>
-                <button
-                  className="btn btn-primary"
-                  type="submit"
-                  disabled={joining || codeCells.join('').length !== CODE_LENGTH || !pseudo.trim()}
-                >
-                  {joining ? 'Connexion…' : 'Rejoindre la partie'}
+                {pseudoField('join-name')}
+                {error && <p className="field__error">{error.message}</p>}
+                <button className="btn btn-primary" type="submit" disabled={busy !== null || code.length !== CODE_LENGTH || !pseudoOk}>
+                  {busy === 'join' ? 'Connexion…' : '▶ Rejoindre'}
                 </button>
-                {joinErrorCode === 'GAME_IN_PROGRESS' && (
-                  <button
-                    className="btn btn-secondary"
-                    type="button"
-                    disabled={spectating || !pseudo.trim()}
-                    onClick={handleSpectate}
-                  >
-                    {spectating ? 'Connexion…' : '👁 Regarder en spectateur'}
+                {error?.code === 'GAME_IN_PROGRESS' && (
+                  <button className="btn btn-secondary" type="button" disabled={busy !== null || !pseudoOk} onClick={handleSpectate}>
+                    {busy === 'spectate' ? 'Connexion…' : '👁 Regarder en spectateur'}
                   </button>
                 )}
               </form>
             )}
           </div>
-
-          <p className="footnote">
-            Aucun compte requis — un pseudo suffit. Jouable à 3–12, sur mobile comme sur ordinateur.
-            <br />
-            <Link to="/" viewTransition>Changer d'univers</Link>
-          </p>
         </div>
       </main>
     </div>

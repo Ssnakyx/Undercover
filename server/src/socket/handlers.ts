@@ -70,6 +70,7 @@ const CUSTOM_PAIR_THEME_MAX_LENGTH = 80;
 const MAX_UNDERCOVER_SETTING = 4;
 const DISCUSSION_SECONDS_ALLOWED = new Set([0, 60, 90, 120, 180, 300]);
 const DIFFICULTIES = new Set(['all', 'easy', 'medium', 'hard']);
+const UNIVERSES = new Set<unknown>(['lol', 'smash', 'pokemon', 'games']);
 
 // ---------------------------------------------------------------------------
 // Sérialisation publique — ne JAMAIS inclure role/champion ici (contrat section 6).
@@ -481,7 +482,7 @@ export function registerSocketHandlers(io: IoServer): void {
         ack({ ok: false, error: { code: 'INVALID_NAME', message: 'Nom du host invalide' } });
         return;
       }
-      if (payload?.universe !== 'lol' && payload?.universe !== 'smash' && payload?.universe !== 'pokemon') {
+      if (!UNIVERSES.has(payload?.universe)) {
         ack({ ok: false, error: { code: 'INVALID_UNIVERSE', message: 'Univers invalide' } });
         return;
       }

@@ -11,20 +11,19 @@ par appareil. Un menu principal propose le choix entre trois **univers** de cont
 
 ---
 
-## 0. Frontière propriété intellectuelle (IMPORTANT — lire avant de designer/contenu)
+## 0. Propriété intellectuelle et images
 
-Vaut pour les TROIS univers de contenu (League of Legends, Super Smash Bros Ultimate, Pokémon).
+> Mise à jour (refonte "Character Select", octobre 2026) : la règle "aucun asset officiel" est
+> levée à la demande du propriétaire du projet, pour afficher l'image de chaque personnage.
 
-- **Autorisé et requis** : les noms de champions/combattants/Pokémon en texte brut (Garen,
-  Darius, Ashe, ... / Mario, Fox, Marth, ... / Dracaufeu, Bulbizarre, Raichu d'Alola, ...). Le
-  jeu ne fonctionne pas sans eux — ne pas les génériciser, ne pas les remplacer par des noms
-  inventés. Les noms Pokémon utilisent la traduction française officielle (voir §7).
-- **Interdit** : tout asset visuel officiel Riot Games, Nintendo/Sakurai ou The Pokémon
-  Company/Game Freak — splash arts, artworks/rendus officiels, icônes de personnage officielles,
-  logos, polices ou charte graphique copiées de leurs sites.
-- Toute représentation visuelle d'un champion/combattant/Pokémon doit être une création
-  originale (typographie du nom, silhouette géométrique stylisée maison, motif abstrait,
-  dégradé propre au design system défini section 4) — identique dans les trois univers.
+- Les noms de champions/combattants/Pokémon/jeux sont utilisés en texte brut (noms FR officiels
+  pour Pokémon et Smash, noms anglais pour LoL, identiques en jeu).
+- Images : art "loading screen" de **Data Dragon** (CDN public de Riot prévu pour les projets de
+  fans) pour LoL ; portraits Smash et artworks Pokémon **servis par le client**
+  (`client/public/img`, générés par `scripts/fetch-character-assets.py`). Aucune image pour
+  l'univers `games` ni pour les paires maison : jaquette typographique générée.
+- Projet de fans non commercial, non affilié à Riot Games, Nintendo ou The Pokémon Company (mention
+  affichée en pied du menu). À revoir si le projet devait être monétisé.
 
 ---
 
@@ -555,3 +554,34 @@ rooms (voir la mise en garde ci-dessus) : la room qui l'a créé est la seule à
 Design (maquettes statiques, aucune logique) → Backend + Contenu (en parallèle, zéro
 dépendance visuelle) → Frontend (attend les maquettes Design ET le contrat ci-dessus) → QA →
 Correction (boucle avec QA).
+
+---
+
+## 10. Refonte "Character Select" (octobre 2026) — écarts par rapport aux sections ci-dessus
+
+Les types de référence restent `server/src/types.ts` et `server/src/socket/events.ts` ; résumé
+des ajouts :
+
+- **Univers** : `'games'` (titres de jeux vidéo) en plus de `lol` / `smash` / `pokemon`.
+- **Paires** : champ `difficulty` (`easy` / `medium` / `hard`), aucune paire dont un nom contient
+  l'autre (test automatique), inversion civils/undercover une fois sur deux au tirage, et une room
+  évite de retirer ses 15 dernières paires.
+- **RoomSettings** : `undercoverCount` (0 = auto, borné pour garder les civils majoritaires),
+  `discussionSeconds` (0 / 60 / 90 / 120 / 180 / 300 — à échéance le vote démarre seul),
+  `publicVotes` (détail qui-a-voté-pour-qui dans `round:result.votes`), `difficulty`.
+- **RoomStatePublic** : `ghostVoterIds`, `mrWhiteGuessPlayerId`, `hunterShootPlayerId`,
+  `abortedByName`.
+- **Images** : `championImage` dans `role:private`, `eliminatedChampionImage` /
+  `chainEliminatedChampionImage` dans `round:result`, `championImage` + `pair` dans `game:ended`.
+- **Événements client -> serveur (hôte)** : `game:backToLobby` (depuis `game_over` / `aborted`),
+  `player:kick`, `vote:forceClose`, `reveal:forceEnd`.
+- **Événements serveur -> client** : `player:left` (départ en pleine partie, remplace le
+  `round:result` "ciblé" qui écrasait l'écran en cours) et `player:kicked`.
+- **Corrections de règles** : Amoureux et cible de l'Espion tirés indépendamment de l'ordre de
+  distribution des rôles ; vote bonus du Revenant limité au round qui suit son élimination ;
+  joueurs partis retirés avant chaque nouvelle partie ; l'hôte qui abandonne transmet le rôle
+  d'hôte ; pseudos uniques par room ; devinette de Mr White tolérante (ponctuation, alias
+  anglais, petite faute de frappe sur les noms longs) ; révélation portée à 30 s.
+- Les maquettes `/design` décrivent l'ancienne DA "Cérémonie douce" ; la DA en vigueur vit dans
+  `client/src/styles/arcade.css`.
+

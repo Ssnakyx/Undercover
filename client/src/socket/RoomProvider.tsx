@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { socket } from './client';
 import { saveSession, loadSession, clearSession } from '../lib/session';
+import { roleLabel } from '../lib/roleInfo';
 import type {
   ChatMessage,
   ErrorPayload,
   GameEndedPayload,
+  PlayerLeftPayload,
   RoomCreateAck,
   RoomJoinAck,
   RoomRejoinAck,
@@ -26,6 +28,16 @@ interface Session {
 // derniers messages (voir server/src/rooms/roomStore.ts), ceci évite juste une croissance
 // illimitée du tableau côté client pendant une très longue session sans reconnexion.
 const CHAT_CLIENT_BUFFER = 200;
+const TOAST_DURATION_MS = 5000;
+
+/** Notification éphémère (erreur serveur, joueur parti, exclusion...). Avant, les erreurs
+ * renvoyées par le serveur n'étaient affichées nulle part. */
+export interface Toast {
+  id: number;
+  kind: 'info' | 'error';
+  text: string;
+  image?: string | null;
+}
 
 interface RoomContextValue {
   connected: boolean;
@@ -39,6 +51,11 @@ interface RoomContextValue {
   lastRoundResult: RoundResultPayload | null;
   lastGameEnded: GameEndedPayload | null;
   lastError: ErrorPayload | null;
+  /** Incrémenté à chaque role:private : sert de clé pour remonter l'écran de révélation quand
+   * l'hôte relance pendant une révélation (sinon "Rôle confirmé" restait grisé). */
+  roleVersion: number;
+  toasts: Toast[];
+  dismissToast: (id: number) => void;
   chatMessages: ChatMessage[];
   chatUnreadCount: number;
   markChatRead: () => void;
@@ -59,6 +76,10 @@ interface RoomContextValue {
   hunterShoot: (targetPlayerId: string | null) => void;
   continueRound: () => void;
   restartGame: () => void;
+  backToLobby: () => void;
+  kickPlayer: (targetPlayerId: string) => void;
+  forceCloseVote: () => void;
+  forceEndReveal: () => void;
   leaveRoom: () => void;
   sendChatMessage: (text: string) => void;
 }
@@ -75,6 +96,21 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const [lastError, setLastError] = useState<ErrorPayload | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [roleVersion, setRoleVersion] = useState(0);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastIdRef = useRef(0);
+
+  const dismissToast = useCallback((id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+  const pushToast = useCallback(
+    (toast: Omit<Toast, 'id'>) => {
+      const id = ++toastIdRef.current;
+      setToasts((prev) => [...prev.slice(-3), { ...toast, id }]);
+      window.setTimeout(() => dismissToast(id), TOAST_DURATION_MS);
+    },
+    [dismissToast]
+  );
 
   const sessionRef = useRef<Session | null>(null);
   const setSession = useCallback((s: Session | null) => {
@@ -102,9 +138,16 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     }
     function onRoomState(state: RoomStatePublic) {
       setRoomState(state);
+      // Nouvelle partie ou retour au salon : on oublie le résultat et la fin de partie précédents.
+      if (state.phase === 'lobby' || state.phase === 'reveal') {
+        setLastRoundResult(null);
+        setLastGameEnded(null);
+      }
+      if (state.phase === 'lobby') setMyRole(null);
     }
     function onRolePrivate(payload: RolePrivatePayload) {
       setMyRole(payload);
+      setRoleVersion((v) => v + 1);
     }
     function onRoundResult(payload: RoundResultPayload) {
       setLastRoundResult(payload);
@@ -114,6 +157,22 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     }
     function onError(payload: ErrorPayload) {
       setLastError(payload);
+      pushToast({ kind: 'error', text: payload.message });
+    }
+    function onPlayerLeft(payload: PlayerLeftPayload) {
+      const what = payload.kicked ? 'a été exclu par l’hôte' : 'a quitté la partie';
+      const role = payload.role ? ` — il était ${roleLabel(payload.role)}` : '';
+      const word = payload.champion ? ` (${payload.champion})` : '';
+      pushToast({ kind: 'info', text: `${payload.name} ${what}${role}${word}.`, image: payload.championImage });
+    }
+    function onKicked() {
+      const s = sessionRef.current;
+      if (s) clearSession(s.roomCode);
+      setSession(null);
+      setRoomState(null);
+      setMyRole(null);
+      setChatMessages([]);
+      pushToast({ kind: 'error', text: "L'hôte t'a exclu de la partie." });
     }
     function onChatMessage(payload: ChatMessage) {
       setChatMessages((prev) => {
@@ -139,6 +198,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     socket.on('error', onError);
     socket.on('chat:message', onChatMessage);
     socket.on('chat:history', onChatHistory);
+    socket.on('player:left', onPlayerLeft);
+    socket.on('player:kicked', onKicked);
 
     return () => {
       socket.off('connect', onConnect);
@@ -150,8 +211,10 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       socket.off('error', onError);
       socket.off('chat:message', onChatMessage);
       socket.off('chat:history', onChatHistory);
+      socket.off('player:left', onPlayerLeft);
+      socket.off('player:kicked', onKicked);
     };
-  }, [setSession]);
+  }, [setSession, pushToast]);
 
   const createRoom = useCallback(
     (hostName: string, universe: Universe) =>
@@ -257,6 +320,18 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const restartGame = useCallback(() => {
     socket.emit('game:restart', {});
   }, []);
+  const backToLobby = useCallback(() => {
+    socket.emit('game:backToLobby', {});
+  }, []);
+  const kickPlayer = useCallback((targetPlayerId: string) => {
+    socket.emit('player:kick', { targetPlayerId });
+  }, []);
+  const forceCloseVote = useCallback(() => {
+    socket.emit('vote:forceClose', {});
+  }, []);
+  const forceEndReveal = useCallback(() => {
+    socket.emit('reveal:forceEnd', {});
+  }, []);
   const leaveRoom = useCallback(() => {
     socket.emit('player:leave', {});
     if (sessionRef.current) clearSession(sessionRef.current.roomCode);
@@ -288,6 +363,9 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     lastRoundResult,
     lastGameEnded,
     lastError,
+    roleVersion,
+    toasts,
+    dismissToast,
     chatMessages,
     chatUnreadCount,
     markChatRead,
@@ -308,6 +386,10 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     hunterShoot,
     continueRound,
     restartGame,
+    backToLobby,
+    kickPlayer,
+    forceCloseVote,
+    forceEndReveal,
     leaveRoom,
     sendChatMessage,
   };

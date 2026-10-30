@@ -1,13 +1,12 @@
 import { useRoom } from '../socket/RoomProvider';
-import { AppBar } from '../components/AppBar';
+import { GameHud } from '../components/GameHud';
 import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
-import { HostQuitButton } from '../components/HostQuitButton';
-import { HostRestartButton } from '../components/HostRestartButton';
+import { Countdown } from '../components/Countdown';
+import { universeCopy } from '../lib/universe';
 
-// Pas de saisie d'indice, pas de minuteur (cf. CONTRACT.md §3) : cet écran affiche uniquement
-// l'ordre de passage à titre indicatif. Les joueurs décrivent leur champion à voix haute, hors
-// app, dans cet ordre. L'hôte seul décide quand passer au vote.
+// Pas de saisie d'indice : les joueurs décrivent leur mot à voix haute, hors app, dans l'ordre
+// affiché. L'hôte lance le vote quand il juge la discussion close (ou le minuteur s'en charge).
 export function Discussion() {
   const { roomState, playerId, startVoting } = useRoom();
 
@@ -15,52 +14,47 @@ export function Discussion() {
 
   const me = roomState.players.find((p) => p.playerId === playerId);
   const isHost = me?.isHost ?? false;
-
-  function nameOf(id: string) {
-    return roomState!.players.find((p) => p.playerId === id);
-  }
+  const unit = universeCopy(roomState.universe).unitArticle;
+  const timerMs = roomState.settings.discussionSeconds * 1000;
+  const firstName = roomState.players.find((p) => p.playerId === roomState.turnOrder[0])?.name;
 
   return (
-    <div className="screen">
-      <AppBar
-        title="Discussion"
-        right={
-          <>
-            {isHost && <HostRestartButton />}
-            {isHost && <HostQuitButton />}
-            <span className="badge badge--muted">Round {roomState.round}</span>
-          </>
-        }
-      />
+    <div className="screen" data-universe={roomState.universe}>
+      <GameHud title="Discussion" />
 
       <main className="main">
         <div className="container">
-          <div className="turn-banner frame-cut">
-            <div className="turn-banner__text">
-              <div className="eyebrow">Ordre de passage</div>
-              <div className="turn-banner__who">Décrivez votre champion à voix haute</div>
-              <div className="turn-banner__sub">Aucun minuteur — prenez le temps qu'il faut, dans cet ordre</div>
+          <div className="hud-frame phase-banner">
+            <div className="phase-banner__text">
+              <div className="eyebrow">Round {roomState.round}</div>
+              <div className="phase-banner__title">Décris {unit}</div>
+              <div className="phase-banner__sub">
+                {firstName ? `${firstName} commence. ` : ''}Un indice chacun, sans jamais le nommer.
+              </div>
             </div>
+            {timerMs > 0 && <Countdown deadline={roomState.phaseDeadline} totalMs={timerMs} />}
           </div>
 
-          <section aria-labelledby="turn-title">
-            <div className="section-title">
-              <h2 id="turn-title" className="font-display">
-                Joueurs
+          <section className="section" aria-labelledby="turn-title">
+            <div className="section__head">
+              <h2 id="turn-title" className="section__title">
+                Ordre de passage
               </h2>
-              <span className="count">{roomState.turnOrder.length}</span>
+              <span className="section__count">{roomState.turnOrder.length} en lice</span>
             </div>
-
-            <div className="panel" style={{ padding: '0 var(--space-4)' }}>
+            <div className="turn-list">
               {roomState.turnOrder.map((id, i) => {
-                const p = nameOf(id);
+                const p = roomState.players.find((pl) => pl.playerId === id);
+                if (!p) return null;
                 return (
-                  <div className="turn-order__item" key={id}>
-                    <span className="turn-order__index">{i + 1}</span>
-                    <div className="turn-order__body" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                      {p && <Avatar seed={p.avatarSeed} name={p.name} />}
-                      <div className="turn-order__name">{p?.name ?? '?'}</div>
-                    </div>
+                  <div className={`turn-item${i === 0 ? ' turn-item--first' : ''}`} key={id} style={{ animationDelay: `${i * 40}ms` }}>
+                    <span className="turn-item__index">{String(i + 1).padStart(2, '0')}</span>
+                    <Avatar seed={p.avatarSeed} name={p.name} size="sm" host={p.isHost} />
+                    <span className="turn-item__name">
+                      {p.name}
+                      {p.playerId === playerId && <span className="text-low small"> (toi)</span>}
+                    </span>
+                    {!p.connected && <span className="badge">Hors ligne</span>}
                   </div>
                 );
               })}
@@ -69,16 +63,15 @@ export function Discussion() {
         </div>
       </main>
 
-      <ActionBar>
+      <ActionBar hint={isHost ? 'Lance le vote une fois que tout le monde a parlé.' : undefined}>
         {isHost ? (
-          <>
-            <button className="btn btn-primary" type="button" onClick={startVoting}>
-              Passer au vote
-            </button>
-            <span className="confirm-hint">À lancer une fois la discussion terminée</span>
-          </>
+          <button className="btn btn-primary" type="button" onClick={startVoting}>
+            ▶ Passer au vote
+          </button>
         ) : (
-          <div className="waiting-note panel">En attente que l'hôte lance le vote…</div>
+          <button className="btn btn-secondary" type="button" disabled>
+            L'hôte lancera le vote…
+          </button>
         )}
       </ActionBar>
     </div>

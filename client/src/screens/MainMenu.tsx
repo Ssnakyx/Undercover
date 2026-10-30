@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getLastRoomCode } from '../lib/session';
-import { RoleEmblem, roleDescription, roleLabel } from '../components/RoleBadge';
-import { ThemeToggle } from '../components/ThemeToggle';
+import { RoleEmblem } from '../components/RoleBadge';
+import { roleDescription, roleLabel } from '../lib/roleInfo';
+import { UNIVERSES, universeCopy } from '../lib/universe';
 import {
   GHOST_MIN_PLAYERS,
   HUNTER_MIN_PLAYERS,
@@ -12,11 +13,8 @@ import {
   PROTECTOR_MIN_PLAYERS,
   SPY_MIN_PLAYERS,
 } from '../lib/roles';
-import type { Role } from '../types';
+import type { Role, Universe } from '../types';
 
-// Rôles de base (civil/undercover) toujours actifs, puis rôles optionnels dans l'ordre du
-// Lobby, puis Amoureux en dernier (relation entre 2 joueurs, pas un Role à part entière —
-// voir types.ts#Role).
 const ROLE_ROWS: { role: Role; minPlayers?: number }[] = [
   { role: 'civil' },
   { role: 'undercover' },
@@ -28,121 +26,107 @@ const ROLE_ROWS: { role: Role; minPlayers?: number }[] = [
   { role: 'jester', minPlayers: JESTER_MIN_PLAYERS },
 ];
 
-// Menu principal : choix de l'univers de contenu (CONTRACT.md §0/§7). Aucune icône/logo
-// officiel — simples formes géométriques maison, cohérentes avec le design system.
+function UniverseCard({ universe }: { universe: Universe }) {
+  const copy = universeCopy(universe);
+  return (
+    <Link to={`/play/${universe}`} className="universe-card" data-universe={universe} viewTransition>
+      {copy.showcase.length > 0 ? (
+        <div className={`universe-card__art universe-card__art--${universe}`} aria-hidden="true">
+          {copy.showcase.map((src) => (
+            <img key={src} src={src} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
+          ))}
+        </div>
+      ) : (
+        <div className="universe-card__pad" aria-hidden="true">
+          <svg viewBox="0 0 64 40" fill="none">
+            <use href="#gamepad" />
+          </svg>
+        </div>
+      )}
+      <span className="universe-card__name">{copy.name}</span>
+      <span className="universe-card__franchise">{copy.franchise}</span>
+    </Link>
+  );
+}
+
+// Écran titre : choix de l'univers, reprise de partie, règles.
 export function MainMenu() {
   const navigate = useNavigate();
-  // Quitter une partie (bouton, fermeture d'onglet, navigation ailleurs) ne doit pas être un
-  // cul-de-sac : toute room avec une session encore valide en localStorage (voir lib/session.ts)
-  // est proposée en reprise ici, l'unique point d'entrée commun à toute navigation "de zéro".
+  // Toute room avec une session encore valide en localStorage est proposée en reprise ici (voir
+  // lib/session.ts) — quitter un onglet ne doit pas être un cul-de-sac.
   const [lastRoomCode] = useState(() => getLastRoomCode());
 
   return (
-    <div className="screen theme-paper fade-in-up">
-      <div className="theme-toggle-float">
-        <ThemeToggle />
-      </div>
+    <div className="screen" data-universe="games">
       <main className="main">
         <div className="container">
-          <div className="hero">
-            <svg className="hero__crest" viewBox="0 0 200 200" aria-hidden="true">
-              <use href="#hex-lattice" />
-            </svg>
-            <h1 className="hero__title font-display">Cover</h1>
-            <p className="hero__tagline">
-              Un traître se cache dans l'équipe. Choisis ton univers pour commencer.
+          <div className="logo">
+            <h1 className="logo__title">Undercover</h1>
+            <div className="logo__sub">Gaming Edition</div>
+            <p className="logo__tagline">
+              Tout le monde a le même personnage en tête… sauf un intrus. Décris le tien sans le nommer, et démasque l'Undercover.
             </p>
+            <span className="press-start">▶ Choisis ton univers</span>
           </div>
 
           {lastRoomCode && (
-            <section aria-labelledby="resume-title" className="resume-section">
-              <div className="section-title">
-                <h2 id="resume-title" className="font-display">
-                  Reprendre une partie
-                </h2>
-              </div>
-              <div className="panel resume-panel">
-                <button type="button" className="resume-row" onClick={() => navigate(`/room/${lastRoomCode}`)}>
-                  <span className="resume-row__code font-mono">{lastRoomCode.split('').join(' ')}</span>
-                  <span className="resume-row__cta">
-                    Reprendre
-                    <svg viewBox="0 0 24 24" fill="none" width={16} height={16}>
-                      <path d="M9 6 L15 12 L9 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </span>
-                </button>
-              </div>
-            </section>
+            <button type="button" className="resume-card" onClick={() => navigate(`/room/${lastRoomCode}`)}>
+              <span style={{ flex: 1 }}>
+                <span className="eyebrow">Continue ?</span>
+                <br />
+                <span className="small text-mid">Reprendre la partie</span>
+              </span>
+              <span className="resume-card__code">{lastRoomCode}</span>
+            </button>
           )}
 
-          <div className="menu-grid">
-            <Link to="/play/lol" className="menu-card frame-cut stagger-item" viewTransition>
-              <span className="menu-card__icon-chip">
-                <svg className="menu-card__icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                  <polygon points="20,3 35,12 35,28 20,37 5,28 5,12" stroke="currentColor" strokeWidth="2" />
-                  <path d="M13 27 L20 13 L27 27 M16 21 L24 21" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                </svg>
-              </span>
-              <div className="menu-card__title font-display">lolCover</div>
-              <div className="menu-card__sub">League of Legends</div>
-            </Link>
-
-            <Link to="/play/smash" className="menu-card frame-cut stagger-item" viewTransition>
-              <span className="menu-card__icon-chip">
-                <svg className="menu-card__icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                  <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="2" />
-                  <path d="M12 20 L18 26 L29 13" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-              <div className="menu-card__title font-display">SmashCover</div>
-              <div className="menu-card__sub">Super Smash Bros Ultimate</div>
-            </Link>
-
-            <Link to="/play/pokemon" className="menu-card frame-cut stagger-item" viewTransition>
-              <span className="menu-card__icon-chip">
-                <svg className="menu-card__icon" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-                  <circle cx="20" cy="20" r="16" stroke="currentColor" strokeWidth="2" />
-                  <path d="M4 20 L36 20" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="20" cy="20" r="5" fill="var(--ink-900)" stroke="currentColor" strokeWidth="2" />
-                </svg>
-              </span>
-              <div className="menu-card__title font-display">PokéCover</div>
-              <div className="menu-card__sub">Pokémon</div>
-            </Link>
+          <div className="universe-grid">
+            {UNIVERSES.map((u) => (
+              <UniverseCard key={u} universe={u} />
+            ))}
           </div>
 
-          <details className="roles-info panel frame-cut frame-cut--flat">
-            <summary className="roles-info__summary font-display">Les rôles</summary>
-            <div className="roles-info__list">
+          <details className="howto panel">
+            <summary>Comment jouer</summary>
+            <ol className="howto__steps">
+              <li>Un joueur crée la partie et partage le code. 3 à 12 joueurs, chacun sur son téléphone.</li>
+              <li>Chacun reçoit en secret un personnage. Les Civils ont tous le même, l'Undercover en a un proche.</li>
+              <li>À tour de rôle, chacun le décrit en un mot ou une phrase, à voix haute, sans jamais le nommer.</li>
+              <li>Tout le monde vote pour éliminer le joueur le plus suspect. Son rôle est révélé.</li>
+              <li>Les Civils gagnent s'ils éliminent tous les intrus. Les Undercover gagnent s'ils deviennent aussi nombreux que les Civils.</li>
+            </ol>
+          </details>
+
+          <details className="howto panel mt-4">
+            <summary>Les rôles</summary>
+            <div className="role-list">
               {ROLE_ROWS.map(({ role, minPlayers }) => (
-                <div key={role} className="roles-info__row">
-                  <RoleEmblem role={role} className="roles-info__icon" />
+                <div key={role} className="role-line" style={{ '--role-color': `var(--role-${role})` } as CSSProperties}>
+                  <RoleEmblem role={role} className="role-line__icon" />
                   <div>
-                    <div className="roles-info__name">
+                    <div className="role-line__name">
                       {roleLabel(role)}
-                      {minPlayers && <span className="roles-info__min"> — dès {minPlayers} joueurs</span>}
+                      {minPlayers && <span className="text-low small"> · dès {minPlayers} joueurs</span>}
                     </div>
-                    <div className="roles-info__desc">{roleDescription(role)}</div>
+                    <div className="role-line__desc">{roleDescription(role)}</div>
                   </div>
                 </div>
               ))}
-              <div className="roles-info__row">
-                <span className="roles-info__icon roles-info__icon--emoji" aria-hidden="true">
+              <div className="role-line">
+                <span className="role-line__icon" style={{ fontSize: 26, textAlign: 'center' }} aria-hidden="true">
                   💘
                 </span>
                 <div>
-                  <div className="roles-info__name">
-                    Amoureux<span className="roles-info__min"> — dès {LOVERS_MIN_PLAYERS} joueurs</span>
+                  <div className="role-line__name">
+                    Amoureux<span className="text-low small"> · dès {LOVERS_MIN_PLAYERS} joueurs</span>
                   </div>
-                  <div className="roles-info__desc">
-                    2 joueurs (de n'importe quel rôle) liés en secret. Si l'un meurt, l'autre le suit aussitôt.
-                  </div>
+                  <div className="role-line__desc">2 joueurs liés en secret, quel que soit leur rôle. Si l'un est éliminé, l'autre le suit.</div>
                 </div>
               </div>
             </div>
           </details>
 
-          <p className="footnote">Aucun compte requis — un pseudo suffit. Jouable à 3–12, sur mobile comme sur ordinateur.</p>
+          <p className="footnote">Aucun compte requis, un pseudo suffit. Projet de fans, non affilié à Riot Games, Nintendo ou The Pokémon Company.</p>
         </div>
       </main>
     </div>

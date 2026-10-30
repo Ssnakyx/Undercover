@@ -1,13 +1,16 @@
-// Couleurs d'avatar déterministes à partir de avatarSeed — palette reprise de la refonte
-// "Cérémonie douce" (5 tons chauds/froids alternés, initiale en texte sombre lisible sur
-// chaque dégradé — jamais une seule couleur de texte fixe, voir design/Cover - Nouveau design).
+// Couleurs d'avatar déterministes à partir de avatarSeed — palette néon de la DA "Character
+// Select" (voir styles/arcade.css) : un dégradé vif par joueur et une initiale sombre lisible
+// sur chaque dégradé.
 
 const PALETTE: [string, string, string][] = [
-  ['#f5c58a', '#e3a45f', '#2b1533'], // or
-  ['#8fb6f5', '#4f74c4', '#101a2b'], // bleu
-  ['#8ddcb4', '#3f9d72', '#0e2419'], // vert
-  ['#cdb0f0', '#8a5fb0', '#1c1026'], // violet
-  ['#e0c7b3', '#a3765c', '#2b1a10'], // ambre
+  ['#ff5fa2', '#c2185b', '#1a0612'], // rose
+  ['#4fd1ff', '#1f6fe0', '#06121f'], // cyan
+  ['#7dffb2', '#16a565', '#04170d'], // vert
+  ['#c79bff', '#7a3fe0', '#140a24'], // violet
+  ['#ffd25e', '#ff8a1f', '#1f1004'], // or
+  ['#ff7a6b', '#e0263e', '#1f0507'], // rouge
+  ['#9ef0ff', '#14b3c7', '#04181b'], // turquoise
+  ['#e5ff7a', '#8fbf1a', '#141a03'], // citron
 ];
 
 function hashString(input: string): number {

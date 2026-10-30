@@ -1,112 +1,90 @@
 import { useState } from 'react';
 import { useRoom } from '../socket/RoomProvider';
-import { AppBar } from '../components/AppBar';
+import { GameHud } from '../components/GameHud';
 import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
+import { Countdown } from '../components/Countdown';
 import { RoleEmblem } from '../components/RoleBadge';
-import { HostQuitButton } from '../components/HostQuitButton';
-import { HostRestartButton } from '../components/HostRestartButton';
 
-// Pas de maquette dédiée (absente de /design) — réutilise la grammaire visuelle de
-// round_result / mrwhite_guess (eliminated-block + role-reveal), même décision documentée
-// que MrWhiteGuess.tsx (voir client/README.md).
+const SHOOT_TOTAL_MS = 30_000; // miroir de server/src/game/engine.ts#HUNTER_SHOOT_TIMEOUT_MS
+
 export function HunterShoot() {
-  const { roomState, playerId, lastRoundResult, hunterShoot } = useRoom();
+  const { roomState, playerId, hunterShoot } = useRoom();
   const [target, setTarget] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
   if (!roomState) return null;
 
-  const eliminatedId = lastRoundResult?.eliminatedPlayerId ?? null;
-  const eliminated = eliminatedId ? roomState.players.find((p) => p.playerId === eliminatedId) : null;
-  const isShooter = eliminatedId !== null && eliminatedId === playerId;
-  const isHost = roomState.players.find((p) => p.playerId === playerId)?.isHost ?? false;
-  const alivePlayers = roomState.players.filter((p) => p.alive);
+  const shooterId = roomState.hunterShootPlayerId;
+  const shooter = roomState.players.find((p) => p.playerId === shooterId);
+  const isShooter = !!shooterId && shooterId === playerId;
+  const targets = roomState.players.filter((p) => p.alive && p.playerId !== playerId);
 
   function fire(targetPlayerId: string | null) {
     if (submitted) return;
-    setTarget(targetPlayerId);
     hunterShoot(targetPlayerId);
     setSubmitted(true);
+    navigator.vibrate?.([40, 30, 80]);
   }
 
   return (
-    <div className="screen">
-      <AppBar
-        title="Le Chasseur tire"
-        right={
-          <>
-            {isHost && <HostRestartButton />}
-            {isHost && <HostQuitButton />}
-            <span className="badge badge--muted">Round {roomState.round}</span>
-          </>
-        }
-      />
+    <div className="screen" data-universe={roomState.universe}>
+      <GameHud title="Le Chasseur" />
 
       <main className="main">
         <div className="container">
-          <div className="eliminated-block frame-cut frame-cut--lg">
-            <span className="eyebrow">Le Chasseur a été démasqué</span>
-            {eliminated && <Avatar seed={eliminated.avatarSeed} name={eliminated.name} size="lg" />}
-            <div className="eliminated-block__name">{eliminated?.name ?? 'Le Chasseur'}</div>
-
-            <div className="role-reveal role-reveal--hunter frame-cut">
-              <RoleEmblem role="hunter" className="role-reveal__emblem" />
-              <div>
-                <div className="role-reveal__eyebrow">Dernière balle</div>
-                <div className="role-reveal__champion" style={{ textTransform: 'none', fontSize: 'var(--text-base)' }}>
-                  Il peut tirer sur un autre joueur, qui sera éliminé aussi — ou ne tirer sur personne.
-                </div>
-              </div>
-            </div>
+          <div className="hud-frame ko-block tone-hunter">
+            <span className="eyebrow">Dernière balle</span>
+            {shooter && <Avatar seed={shooter.avatarSeed} name={shooter.name} size="xl" dead />}
+            <div className="ko-name">{shooter?.name ?? 'Le Chasseur'}</div>
+            <span className="ko-role" style={{ animationDelay: '0s' }}>
+              <RoleEmblem role="hunter" /> Chasseur
+            </span>
+            <p className="text-mid">Éliminé, il peut emporter un joueur avec lui… ou épargner tout le monde.</p>
+            <Countdown deadline={roomState.phaseDeadline} totalMs={SHOOT_TOTAL_MS} />
           </div>
 
           {isShooter && (
-            <section aria-labelledby="hunter-targets-title" className="mt-6">
-              <div className="section-title">
-                <h2 id="hunter-targets-title" className="font-display">
-                  Choisis ta cible
-                </h2>
+            <section className="section">
+              <div className="section__head">
+                <h2 className="section__title">Choisis ta cible</h2>
               </div>
-              <div className="panel" style={{ padding: '0 var(--space-5)' }}>
-                {alivePlayers
-                  .filter((p) => p.playerId !== playerId)
-                  .map((p) => (
-                    <button
-                      key={p.playerId}
-                      type="button"
-                      className="vote-row vote-btn"
-                      disabled={submitted}
-                      onClick={() => fire(p.playerId)}
-                    >
-                      <Avatar seed={p.avatarSeed} name={p.name} />
-                      <span className="player-row__name">{p.name}</span>
-                    </button>
-                  ))}
+              <div className="select-grid">
+                {targets.map((p) => (
+                  <button
+                    key={p.playerId}
+                    type="button"
+                    className="select-tile select-tile--hunt"
+                    aria-pressed={target === p.playerId}
+                    disabled={submitted}
+                    onClick={() => setTarget(p.playerId)}
+                  >
+                    <Avatar seed={p.avatarSeed} name={p.name} size="lg" />
+                    <span className="select-tile__name">{p.name}</span>
+                  </button>
+                ))}
               </div>
             </section>
           )}
         </div>
       </main>
 
-      {isShooter ? (
-        <ActionBar>
-          <button className="btn btn-secondary" type="button" disabled={submitted} onClick={() => fire(null)}>
-            Ne tirer sur personne
+      <ActionBar>
+        {isShooter ? (
+          <div className="action-bar__row">
+            <button className="btn btn-danger" type="button" disabled={!target || submitted} onClick={() => fire(target)}>
+              🎯 Tirer{target ? ` sur ${roomState.players.find((p) => p.playerId === target)?.name}` : ''}
+            </button>
+            <button className="btn btn-ghost" type="button" disabled={submitted} style={{ flex: '0 0 auto', width: 'auto' }} onClick={() => fire(null)}>
+              Épargner
+            </button>
+          </div>
+        ) : (
+          <button className="btn btn-secondary" type="button" disabled>
+            {shooter?.name ?? 'Le Chasseur'} vise…
           </button>
-          <span className="confirm-hint">
-            {submitted
-              ? target
-                ? 'Tir envoyé — en attente du résultat…'
-                : 'Tu as choisi de ne tirer sur personne.'
-              : 'Une seule décision — choisis une cible ci-dessus ou passe.'}
-          </span>
-        </ActionBar>
-      ) : (
-        <ActionBar>
-          <div className="waiting-note panel">En attente de la décision de {eliminated?.name ?? 'le Chasseur'}…</div>
-        </ActionBar>
-      )}
+        )}
+      </ActionBar>
     </div>
   );
 }

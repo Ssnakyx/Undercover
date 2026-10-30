@@ -1,160 +1,145 @@
 import { useState } from 'react';
 import { useRoom } from '../socket/RoomProvider';
-import { AppBar } from '../components/AppBar';
+import { GameHud } from '../components/GameHud';
+import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
-import { HostQuitButton } from '../components/HostQuitButton';
-import { HostRestartButton } from '../components/HostRestartButton';
+
+// Le Protecteur n'a qu'une protection par partie : on retient ici qu'elle a été utilisée (clé =
+// room + distribution de rôles), pour ne plus proposer le mode "Protéger" aux rounds suivants.
+const usedProtections = new Set<string>();
 
 export function Voting() {
-  const { roomState, playerId, myRole, submitVote, protectorProtect } = useRoom();
-  const [localTarget, setLocalTarget] = useState<string | null>(null);
-  const [protectTarget, setProtectTarget] = useState<string | null>(null);
+  const { roomState, playerId, myRole, roleVersion, submitVote, protectorProtect, forceCloseVote } = useRoom();
+  const [mode, setMode] = useState<'vote' | 'protect'>('vote');
+  const [selected, setSelected] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState<string | null>(null);
+  const [protectSelected, setProtectSelected] = useState<string | null>(null);
+  const [, forceRender] = useState(0);
 
   if (!roomState) return null;
 
-  const alivePlayers = roomState.players.filter((p) => p.alive);
   const me = roomState.players.find((p) => p.playerId === playerId);
   const isHost = me?.isHost ?? false;
-  const hasVoted = playerId !== null && roomState.votedPlayerIds.includes(playerId);
-  const locked = hasVoted || localTarget !== null;
-  const isProtector = myRole?.role === 'protector';
+  const alivePlayers = roomState.players.filter((p) => p.alive);
+  const eligibleIds = new Set([...alivePlayers.map((p) => p.playerId), ...roomState.ghostVoterIds]);
+  const isGhostVoter = !!playerId && roomState.ghostVoterIds.includes(playerId);
+  const canVote = !!playerId && eligibleIds.has(playerId);
+  const hasVoted = (!!playerId && roomState.votedPlayerIds.includes(playerId)) || submitted !== null;
+  const protectKey = `${roomState.roomCode}:${roleVersion}`;
+  const canProtect = myRole?.role === 'protector' && !!me?.alive && !usedProtections.has(protectKey);
+  const votedCount = roomState.votedPlayerIds.length;
+  const total = eligibleIds.size;
+  const targets = alivePlayers.filter((p) => p.playerId !== playerId);
 
-  function castVote(targetId: string) {
-    if (locked) return;
-    setLocalTarget(targetId);
-    submitVote(targetId);
+  function confirmVote() {
+    if (!selected || hasVoted) return;
+    submitVote(selected);
+    setSubmitted(selected);
+    navigator.vibrate?.(40);
   }
 
-  function protect(targetId: string) {
-    if (protectTarget) return;
-    setProtectTarget(targetId);
-    protectorProtect(targetId);
+  function confirmProtect() {
+    if (!protectSelected) return;
+    protectorProtect(protectSelected);
+    usedProtections.add(protectKey);
+    setMode('vote');
+    forceRender((x) => x + 1);
   }
+
+  function closeVote() {
+    if (window.confirm(`Clore le vote maintenant ? (${votedCount}/${total} bulletins)`)) forceCloseVote();
+  }
+
+  const protecting = mode === 'protect' && canProtect;
+  const current = protecting ? protectSelected : hasVoted ? submitted : selected;
 
   return (
-    <div className="screen">
-      <AppBar
-        title="Vote"
-        right={
-          <>
-            {isHost && <HostRestartButton />}
-            {isHost && <HostQuitButton />}
-            <span className="badge badge--muted">Round {roomState.round}</span>
-          </>
-        }
-      />
+    <div className="screen" data-universe={roomState.universe}>
+      <GameHud title="Vote" />
 
       <main className="main">
         <div className="container">
-          <div className="vote-banner frame-cut">
-            <div className="vote-banner__text">
-              <div className="eyebrow">Vote en cours</div>
-              <div className="vote-banner__title">Qui est suspect ?</div>
-              <div className="vote-banner__sub">Vote secret, aucun minuteur — la cible ne sera connue qu'au dépouillement</div>
+          <div className="hud-frame phase-banner">
+            <div className="phase-banner__text">
+              <div className="eyebrow">{isGhostVoter ? '👻 Dernier vote du Revenant' : 'Vote secret'}</div>
+              <div className="phase-banner__title">{protecting ? 'Qui protéger ?' : 'Qui est l’intrus ?'}</div>
+              <div className="phase-banner__sub">
+                {canVote
+                  ? hasVoted
+                    ? 'Vote enregistré. En attente des autres…'
+                    : 'Sélectionne un joueur puis confirme.'
+                  : 'Tu es éliminé : regarde les autres décider.'}
+              </div>
             </div>
           </div>
 
-          {isProtector && (
-            <div className="vote-banner frame-cut frame-cut--sm" style={{ marginTop: 'var(--space-4)' }}>
-              <div className="vote-banner__text">
-                <div className="eyebrow">Capacité — Protecteur</div>
-                <div className="vote-banner__sub">
-                  {protectTarget
-                    ? 'Protection envoyée pour ce round — capacité désormais utilisée pour toute la partie.'
-                    : "Une seule fois par partie : protège un joueur. S'il est la cible du vote majoritaire, personne n'est éliminé."}
-                </div>
-              </div>
+          {canProtect && !hasVoted && (
+            <div className="segmented mode-switch" role="group" aria-label="Action">
+              <button type="button" className="segmented__btn" aria-pressed={mode === 'vote'} onClick={() => setMode('vote')}>
+                🗳 Voter
+              </button>
+              <button type="button" className="segmented__btn" aria-pressed={mode === 'protect'} onClick={() => setMode('protect')}>
+                🛡 Protéger (1×)
+              </button>
             </div>
           )}
 
-          <div className={`confirm-banner${locked ? ' is-visible' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.8" />
-              <path d="M7.5 12.5 L10.5 15.5 L16.5 8.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span>Tu as voté. En attente des autres joueurs…</span>
-          </div>
-
           <div className="vote-progress">
-            <div className="vote-progress__dots" aria-hidden="true">
-              {alivePlayers.map((p) => (
-                <span
-                  key={p.playerId}
-                  className={`vote-progress__dot${roomState.votedPlayerIds.includes(p.playerId) ? ' vote-progress__dot--filled' : ''}`}
-                />
-              ))}
+            <div className="vote-progress__bar" aria-hidden="true">
+              <div className="vote-progress__fill" style={{ width: `${total ? (votedCount / total) * 100 : 0}%` }} />
             </div>
             <span className="vote-progress__label">
-              {roomState.votedPlayerIds.length} / {alivePlayers.length} ont voté
+              {votedCount}/{total} ont voté
             </span>
           </div>
 
-          <section aria-labelledby="vote-title">
-            <div className="panel" style={{ padding: '0 var(--space-4)' }}>
-              {me && (
-                <div className="vote-row vote-row--self">
-                  <Avatar seed={me.avatarSeed} name={me.name} />
-                  <div className="vote-row__body">
-                    <div className="vote-row__name">{me.name}</div>
-                    <div className={`vote-row__status vote-row__status--${locked ? 'voted' : 'pending'}`}>
-                      {locked ? "C'est toi — vote enregistré" : "C'est toi — tu n'as pas encore voté"}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {alivePlayers
-                .filter((p) => p.playerId !== playerId)
-                .map((p) => {
-                  const voted = roomState.votedPlayerIds.includes(p.playerId);
-                  const selected = localTarget === p.playerId;
-                  return (
-                    <div className="vote-row" key={p.playerId}>
-                      <Avatar seed={p.avatarSeed} name={p.name} />
-                      <div className="vote-row__body">
-                        <div className="vote-row__name">{p.name}</div>
-                        <div className={`vote-row__status vote-row__status--${voted ? 'voted' : 'pending'}`}>
-                          {voted ? (
-                            <>
-                              <svg viewBox="0 0 24 24" fill="none">
-                                <path d="M5 12.5 L9.5 17 L19 7" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                              A voté
-                            </>
-                          ) : (
-                            'En attente de son vote'
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        className={`vote-btn${selected ? ' vote-btn--selected' : ''}`}
-                        type="button"
-                        disabled={locked}
-                        onClick={() => castVote(p.playerId)}
-                      >
-                        {selected ? 'Voté' : 'Voter'}
-                      </button>
-                      {isProtector && (
-                        <button
-                          className={`vote-btn vote-btn--protect${protectTarget === p.playerId ? ' vote-btn--selected' : ''}`}
-                          type="button"
-                          disabled={protectTarget !== null}
-                          onClick={() => protect(p.playerId)}
-                        >
-                          {protectTarget === p.playerId ? 'Protégé' : 'Protéger'}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
-          </section>
-
-          <p className="text-low text-center" style={{ fontSize: 'var(--text-xs)', marginTop: 'var(--space-5)' }}>
-            Tu peux voter une seule fois. Ton choix reste secret jusqu'au dépouillement.
-          </p>
+          <div className="select-grid">
+            {targets.map((p, i) => {
+              const voted = roomState.votedPlayerIds.includes(p.playerId);
+              const pressed = current === p.playerId;
+              const disabled = protecting ? false : !canVote || hasVoted;
+              return (
+                <button
+                  key={p.playerId}
+                  type="button"
+                  className={`select-tile${protecting ? ' select-tile--protect' : ''}`}
+                  style={{ animationDelay: `${i * 35}ms` }}
+                  aria-pressed={pressed}
+                  disabled={disabled}
+                  onClick={() => (protecting ? setProtectSelected(p.playerId) : setSelected(p.playerId))}
+                >
+                  <Avatar seed={p.avatarSeed} name={p.name} size="lg" host={p.isHost} />
+                  <span className="select-tile__name">{p.name}</span>
+                  <span className={`select-tile__status${voted ? ' select-tile__status--done' : ''}`}>{voted ? '✓ a voté' : 'réfléchit…'}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </main>
+
+      <ActionBar hint={isHost ? 'Un joueur ne répond plus ? Tu peux clore le vote.' : undefined}>
+        <div className="action-bar__row">
+          {protecting ? (
+            <button className="btn btn-primary" type="button" disabled={!protectSelected} onClick={confirmProtect}>
+              🛡 Protéger {protectSelected ? roomState.players.find((p) => p.playerId === protectSelected)?.name : ''}
+            </button>
+          ) : canVote ? (
+            <button className="btn btn-primary" type="button" disabled={!selected || hasVoted} onClick={confirmVote}>
+              {hasVoted ? '✓ Vote envoyé' : selected ? `Voter contre ${roomState.players.find((p) => p.playerId === selected)?.name}` : 'Choisis un joueur'}
+            </button>
+          ) : (
+            <button className="btn btn-secondary" type="button" disabled>
+              Spectateur du vote
+            </button>
+          )}
+          {isHost && (
+            <button className="btn btn-ghost" type="button" style={{ flex: '0 0 auto', width: 'auto' }} onClick={closeVote}>
+              Clore
+            </button>
+          )}
+        </div>
+      </ActionBar>
     </div>
   );
 }

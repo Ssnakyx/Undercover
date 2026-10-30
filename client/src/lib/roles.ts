@@ -11,6 +11,7 @@ export interface RoleRequest {
   jester: boolean;
   hunter: boolean;
   lovers: boolean;
+  undercoverCount?: number;
 }
 
 export interface RoleDistributionCounts {
@@ -60,6 +61,15 @@ export function isLoversAvailable(n: number): boolean {
   return n >= LOVERS_MIN_PLAYERS;
 }
 
+// Miroirs de server/src/game/roles.ts (autoUndercoverCount / maxUndercoverFor).
+export function autoUndercoverCount(n: number): number {
+  return n <= 8 ? 1 : 2;
+}
+
+export function maxUndercoverFor(n: number, mrWhite: number, jester: number): number {
+  return Math.max(1, Math.floor((n - 2 * mrWhite - jester - 1) / 2));
+}
+
 export function computeRoleCounts(n: number, requested: RoleRequest): RoleDistributionCounts {
   if (!Number.isInteger(n) || n < 3) {
     return {
@@ -75,9 +85,10 @@ export function computeRoleCounts(n: number, requested: RoleRequest): RoleDistri
     };
   }
 
-  const undercover = n <= 8 ? 1 : 2;
   const mrWhite = requested.mrWhite && isMrWhiteAvailable(n) ? 1 : 0;
   const jester = requested.jester && isJesterAvailable(n) ? 1 : 0;
+  const wanted = requested.undercoverCount && requested.undercoverCount > 0 ? Math.floor(requested.undercoverCount) : 0;
+  const undercover = wanted > 0 ? Math.min(wanted, maxUndercoverFor(n, mrWhite, jester)) : autoUndercoverCount(n);
 
   let remaining = Math.max(n - undercover - mrWhite - jester, 0);
   const takeSubRole = (want: boolean, available: boolean): number => {

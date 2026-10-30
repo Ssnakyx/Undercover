@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { isUniverse, universeCopy } from '../src/lib/universe';
 import type { Universe } from '../src/types';
 
-const UNIVERSES: Universe[] = ['lol', 'smash', 'pokemon'];
+const UNIVERSES: Universe[] = ['lol', 'smash', 'pokemon', 'games'];
 
 describe('universeCopy', () => {
   it.each(UNIVERSES)('retourne une copy complète et cohérente pour "%s"', (universe) => {
