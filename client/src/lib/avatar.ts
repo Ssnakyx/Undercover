@@ -1,16 +1,16 @@
-// Couleurs d'avatar déterministes à partir de avatarSeed — palette néon de la DA "Character
-// Select" (voir styles/arcade.css) : un dégradé vif par joueur et une initiale sombre lisible
-// sur chaque dégradé.
+// Couleurs d'avatar déterministes à partir de avatarSeed. Chaque joueur est un jeton de poker
+// (voir .avatar dans styles/table.css) : c1 pour le centre, c2 pour le liseré et les rayures,
+// text pour l'initiale.
 
 const PALETTE: [string, string, string][] = [
-  ['#ff5fa2', '#c2185b', '#1a0612'], // rose
-  ['#4fd1ff', '#1f6fe0', '#06121f'], // cyan
-  ['#7dffb2', '#16a565', '#04170d'], // vert
-  ['#c79bff', '#7a3fe0', '#140a24'], // violet
-  ['#ffd25e', '#ff8a1f', '#1f1004'], // or
-  ['#ff7a6b', '#e0263e', '#1f0507'], // rouge
-  ['#9ef0ff', '#14b3c7', '#04181b'], // turquoise
-  ['#e5ff7a', '#8fbf1a', '#141a03'], // citron
+  ['#d8392b', '#9e2117', '#fff6e8'], // rouge
+  ['#2a5bd7', '#173a94', '#fff6e8'], // bleu
+  ['#2f8f4e', '#1b5c30', '#fff6e8'], // vert
+  ['#25221c', '#0f0d0a', '#e9b949'], // noir
+  ['#7b3fb8', '#4f2380', '#fff6e8'], // violet
+  ['#e9b949', '#b48419', '#2a1d05'], // or
+  ['#ef7d2a', '#b4561a', '#2a1405'], // orange
+  ['#f4efe2', '#2f8f9c', '#1d1b16'], // blanc
 ];
 
 function hashString(input: string): number {

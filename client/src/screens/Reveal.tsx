@@ -5,6 +5,7 @@ import { ActionBar } from '../components/ActionBar';
 import { Countdown } from '../components/Countdown';
 import { roleToneClass } from '../lib/roleInfo';
 import { RoleCardContent } from '../components/RoleCard';
+import { HoloTilt } from '../components/HoloTilt';
 
 const REVEAL_TOTAL_MS = 30_000; // miroir de server/src/game/engine.ts#REVEAL_ACK_TIMEOUT_MS
 
@@ -35,13 +36,13 @@ export function Reveal() {
       <main className="reveal-main">
         <div className="row" style={{ width: 'min(340px, 86vw)' }}>
           <div className="reveal-intro" style={{ flex: 1, textAlign: 'left' }}>
-            <span className="eyebrow">Top secret</span>
-            <h1>Cache ton écran</h1>
+                        <h1>Cache ton écran</h1>
           </div>
           <Countdown deadline={roomState.phaseDeadline} totalMs={REVEAL_TOTAL_MS} size="sm" />
         </div>
 
         <div className="flip-scene">
+          <HoloTilt>
           <div className={`flip-card${flipped ? ' is-flipped' : ''}`}>
             <div
               className="flip-card__face flip-card__face--front"
@@ -63,10 +64,12 @@ export function Reveal() {
 
             <div className={`flip-card__face flip-card__face--back ${roleToneClass(myRole?.role)}`} onClick={flip} role="button" tabIndex={-1} aria-label="Toucher pour cacher">
               <RoleCardContent myRole={myRole} universe={roomState.universe} />
+              <span className="holo" aria-hidden="true" />
             </div>
           </div>
+          </HoloTilt>
         </div>
-        <p className="tiny text-low pixel">{flipped ? 'Touche la carte pour la cacher' : 'Tu pourras la revoir pendant la partie'}</p>
+        <p className="tiny text-low">{flipped ? 'Touche la carte pour la cacher' : 'Tu pourras la revoir pendant la partie'}</p>
       </main>
 
       <ActionBar
@@ -82,7 +85,7 @@ export function Reveal() {
           </button>
           {isHost && (
             <button className="btn btn-ghost" type="button" style={{ flex: '0 0 auto', width: 'auto' }} onClick={forceEndReveal} title="Lancer la discussion sans attendre">
-              Passer ⏭
+              Passer
             </button>
           )}
         </div>

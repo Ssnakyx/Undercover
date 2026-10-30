@@ -153,7 +153,7 @@ export function Lobby() {
   return (
     <div className="screen" data-universe={roomState.universe}>
       <AppBar
-        title={`${copy.name} · Salon`}
+        title={copy.name}
         right={
           <button className="btn btn-ghost btn-sm" type="button" onClick={() => leaveRoom()}>
             Quitter
@@ -199,7 +199,7 @@ export function Lobby() {
                     <div className="player-tile__name">{p.name}</div>
                     <div className="player-tile__meta">
                       {p.playerId === playerId ? 'Toi' : p.isHost ? 'Hôte' : p.connected ? 'Prêt' : 'Déconnecté…'}
-                      {p.score > 0 && ` · ${p.score} pt${p.score > 1 ? 's' : ''}`}
+                      {p.score > 0 && `, ${p.score} pt${p.score > 1 ? 's' : ''}`}
                     </div>
                   </div>
                   {isHost && p.playerId !== playerId && (
@@ -364,7 +364,7 @@ export function Lobby() {
 
           <details className="section fold" open={roomState.customPairs.length > 0}>
             <summary className="section__head">
-              <h2 className="section__title">Paires maison ▾</h2>
+              <h2 className="section__title">Paires maison</h2>
               <span className="section__count">{roomState.customPairs.length}</span>
             </summary>
             <div className="panel stack" style={{ '--gap': '10px' } as CSSProperties}>
@@ -394,7 +394,7 @@ export function Lobby() {
                     <div className="custom-pair" key={pair.id}>
                       <span style={{ flex: 1 }}>
                         <strong>{pair.champA}</strong> <span className="vs">VS</span> <strong>{pair.champB}</strong>
-                        <span className="text-low"> · {pair.theme}</span>
+                        <span className="text-low"> ({pair.theme})</span>
                       </span>
                       {isHost && (
                         <button className="icon-btn" type="button" aria-label={`Retirer ${pair.champA} / ${pair.champB}`} onClick={() => removeCustomPair(pair.id)}>
@@ -434,7 +434,7 @@ export function Lobby() {
       >
         {isHost ? (
           <button className="btn btn-primary" type="button" disabled={!canStart} onClick={startGame}>
-            {canStart ? '▶ Lancer la partie' : `Encore ${MIN_PLAYERS - n} joueur${MIN_PLAYERS - n > 1 ? 's' : ''}…`}
+            {canStart ? 'Lancer la partie' : `Encore ${MIN_PLAYERS - n} joueur${MIN_PLAYERS - n > 1 ? 's' : ''}…`}
           </button>
         ) : (
           <button className="btn btn-secondary" type="button" disabled>

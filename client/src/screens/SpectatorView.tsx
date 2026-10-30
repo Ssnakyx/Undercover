@@ -32,7 +32,7 @@ export function SpectatorView() {
 
   return (
     <div className="screen" data-universe={roomState.universe}>
-      <AppBar title="Spectateur" right={<span className="badge badge--accent">Round {Math.max(1, roomState.round)}</span>} />
+      <AppBar title="Spectateur" right={<span className="badge badge--accent">Manche {Math.max(1, roomState.round)}</span>} />
 
       <main className="main">
         <div className="container">

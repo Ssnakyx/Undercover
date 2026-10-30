@@ -13,7 +13,7 @@ export function GameHud({ title }: { title: string }) {
       title={title}
       right={
         <>
-          <span className="badge badge--accent">Round {Math.max(1, roomState.round)}</span>
+          <span className="badge badge--accent">Manche {Math.max(1, roomState.round)}</span>
           {isHost && <HostRestartButton />}
           {isHost && <HostQuitButton />}
         </>

@@ -35,7 +35,7 @@ export function GameAborted() {
       <ActionBar>
         {isHost && (
           <button className="btn btn-primary" type="button" onClick={backToLobby}>
-            ▶ Retour au salon
+            Retour au salon
           </button>
         )}
         <button className="btn btn-ghost" type="button" onClick={backToHome}>

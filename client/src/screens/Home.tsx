@@ -166,7 +166,7 @@ export function Home() {
                 {pseudoField('create-name')}
                 {error && <p className="field__error">{error.message}</p>}
                 <button className="btn btn-primary" type="submit" disabled={busy !== null || !pseudoOk}>
-                  {busy === 'create' ? 'Création…' : '▶ Créer la partie'}
+                  {busy === 'create' ? 'Création…' : 'Créer la partie'}
                 </button>
               </form>
             ) : (
@@ -203,7 +203,7 @@ export function Home() {
                 {pseudoField('join-name')}
                 {error && <p className="field__error">{error.message}</p>}
                 <button className="btn btn-primary" type="submit" disabled={busy !== null || code.length !== CODE_LENGTH || !pseudoOk}>
-                  {busy === 'join' ? 'Connexion…' : '▶ Rejoindre'}
+                  {busy === 'join' ? 'Connexion…' : 'Rejoindre'}
                 </button>
                 {error?.code === 'GAME_IN_PROGRESS' && (
                   <button className="btn btn-secondary" type="button" disabled={busy !== null || !pseudoOk} onClick={handleSpectate}>

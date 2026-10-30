@@ -26,7 +26,7 @@ export function Discussion() {
         <div className="container">
           <div className="hud-frame phase-banner">
             <div className="phase-banner__text">
-              <div className="eyebrow">Round {roomState.round}</div>
+              <div className="eyebrow">Manche {roomState.round}</div>
               <div className="phase-banner__title">Décris {unit}</div>
               <div className="phase-banner__sub">
                 {firstName ? `${firstName} commence. ` : ''}Un indice chacun, sans jamais le nommer.
@@ -66,7 +66,7 @@ export function Discussion() {
       <ActionBar hint={isHost ? 'Lance le vote une fois que tout le monde a parlé.' : undefined}>
         {isHost ? (
           <button className="btn btn-primary" type="button" onClick={startVoting}>
-            ▶ Passer au vote
+            Passer au vote
           </button>
         ) : (
           <button className="btn btn-secondary" type="button" disabled>

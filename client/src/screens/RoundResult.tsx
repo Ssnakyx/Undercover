@@ -24,11 +24,15 @@ function KoCard({
   eyebrow: string;
 }) {
   const tone = { '--tone': `var(--role-${role ?? 'civil'})` } as CSSProperties;
+  const art = champion ? <CharacterArt name={champion} image={image} universe={universe} /> : <Avatar seed={player.avatarSeed} name={player.name} size="xl" dead />;
   return (
-    <div className="hud-frame ko-block" style={tone}>
+    <div className="hud-frame ko-block is-shaking" style={tone}>
       <span className="eyebrow">{eyebrow}</span>
       <div className="ko-portrait">
-        {champion ? <CharacterArt name={champion} image={image} universe={universe} /> : <Avatar seed={player.avatarSeed} name={player.name} size="xl" dead />}
+        <div className="ko-half ko-half--left">{art}</div>
+        <div className="ko-half ko-half--right" aria-hidden="true">
+          {art}
+        </div>
         <span className="ko-stamp">K.O.</span>
       </div>
       <div className="ko-name">{player.name}</div>
@@ -36,7 +40,7 @@ function KoCard({
         <span className="ko-role">
           <RoleEmblem role={role} />
           {roleLabel(role)}
-          {roleHasWord(role) && champion && <span className="text-mid"> · {champion}</span>}
+          {roleHasWord(role) && champion && <span className="text-mid">, {champion}</span>}
         </span>
       )}
     </div>
@@ -62,10 +66,10 @@ export function RoundResult() {
 
   let headline: { mark: string; title: string; sub: string } | null = null;
   if (!eliminated) {
-    if (r.protectedThisRound) headline = { mark: 'SAFE!', title: 'Le Protecteur a sauvé sa cible', sub: 'Personne n’est éliminé ce round.' };
-    else if (r.hunterShot) headline = { mark: 'MISS', title: 'Le Chasseur a baissé son arme', sub: 'Il n’a tiré sur personne.' };
-    else if (r.tie) headline = { mark: 'DRAW', title: 'Égalité !', sub: 'Personne n’est éliminé ce round.' };
-    else headline = { mark: '...', title: 'Aucun vote', sub: 'Personne n’est éliminé ce round.' };
+    if (r.protectedThisRound) headline = { mark: 'Sauvé', title: 'Le Protecteur a sauvé sa cible', sub: 'Personne n’est éliminé ce round.' };
+    else if (r.hunterShot) headline = { mark: 'Raté', title: 'Le Chasseur a baissé son arme', sub: 'Il n’a tiré sur personne.' };
+    else if (r.tie) headline = { mark: 'Égalité', title: 'Les votes sont partagés', sub: 'Personne n’est éliminé ce round.' };
+    else headline = { mark: 'Rien', title: 'Aucun vote', sub: 'Personne n’est éliminé ce round.' };
   }
 
   return (
@@ -115,8 +119,10 @@ export function RoundResult() {
                 {rows.map(([pid, count], i) => (
                   <div className={`vote-bar${count === maxVotes && !r.tie && pid === r.eliminatedPlayerId ? ' vote-bar--top' : ''}`} key={pid}>
                     <span className="vote-bar__name">{find(pid)?.name ?? '?'}</span>
-                    <span className="vote-bar__track">
-                      <span className="vote-bar__fill" style={{ display: 'block', width: `${(count / maxVotes) * 100}%`, animationDelay: `${i * 80}ms` }} />
+                    <span className="vote-bar__track" aria-hidden="true">
+                      {Array.from({ length: count }, (_, c) => (
+                        <span className="vote-chip" key={c} style={{ animationDelay: `${300 + i * 120 + c * 90}ms` }} />
+                      ))}
                     </span>
                     <span className="vote-bar__count">{count}</span>
                   </div>
@@ -124,7 +130,7 @@ export function RoundResult() {
               </div>
               {r.votes && r.votes.length > 0 && (
                 <details className="fold mt-4">
-                  <summary className="eyebrow">Qui a voté pour qui ▾</summary>
+                  <summary className="eyebrow">Qui a voté pour qui</summary>
                   <div className="ballot-list mt-2">
                     {r.votes.map((v) => (
                       <div className="ballot" key={v.voterId}>
@@ -146,7 +152,7 @@ export function RoundResult() {
       <ActionBar>
         {isHost ? (
           <button className="btn btn-primary" type="button" onClick={continueRound}>
-            ▶ Manche suivante
+            Manche suivante
           </button>
         ) : (
           <button className="btn btn-secondary" type="button" disabled>

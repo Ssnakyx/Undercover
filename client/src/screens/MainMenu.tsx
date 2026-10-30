@@ -1,7 +1,8 @@
-import { useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getLastRoomCode } from '../lib/session';
 import { RoleEmblem } from '../components/RoleBadge';
+import { CharacterArt } from '../components/CharacterArt';
 import { roleDescription, roleLabel } from '../lib/roleInfo';
 import { UNIVERSES, universeCopy } from '../lib/universe';
 import {
@@ -26,10 +27,64 @@ const ROLE_ROWS: { role: Role; minPlayers?: number }[] = [
   { role: 'jester', minPlayers: JESTER_MIN_PLAYERS },
 ];
 
+// La main de cartes de l'écran titre : un personnage de chaque univers, et une carte retournée
+// au milieu pour l'intrus.
+const HAND: ({ src: string; name: string } | null)[] = [
+  { src: universeCopy('smash').showcase[1], name: 'Mario' },
+  { src: universeCopy('lol').showcase[0], name: 'Ahri' },
+  null,
+  { src: universeCopy('pokemon').showcase[1], name: 'Pikachu' },
+  { src: universeCopy('smash').showcase[0], name: 'Link' },
+];
+const SPREAD = 11; // degrés entre deux cartes
+
+function TitleHand() {
+  const mid = (HAND.length - 1) / 2;
+  return (
+    <div className="title-hand" aria-hidden="true">
+      {HAND.map((card, i) => {
+        const style = {
+          '--rot': `${(i - mid) * SPREAD}deg`,
+          '--x': `${(i - mid) * 36}px`,
+          animationDelay: `${120 + Math.abs(i - mid) * 110}ms`,
+          zIndex: card ? 1 : 2,
+        } as CSSProperties;
+        return card ? (
+          <div key={card.name} className="title-hand__card" style={style}>
+            <CharacterArt name={card.name} image={card.src} universe="games" />
+          </div>
+        ) : (
+          <div key="back" className="title-hand__card title-hand__card--back" style={style}>
+            <span>?</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const OPEN_PACK_MS = 420; // durée de l'animation pack-rip (styles/table.css)
+
 function UniverseCard({ universe }: { universe: Universe }) {
   const copy = universeCopy(universe);
+  const navigate = useNavigate();
+  const [opening, setOpening] = useState(false);
+
+  function open(e: MouseEvent<HTMLAnchorElement>) {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    if (opening) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      navigate(`/play/${universe}`);
+      return;
+    }
+    setOpening(true);
+    navigator.vibrate?.(20);
+    window.setTimeout(() => navigate(`/play/${universe}`), OPEN_PACK_MS);
+  }
+
   return (
-    <Link to={`/play/${universe}`} className="universe-card" data-universe={universe} viewTransition>
+    <Link to={`/play/${universe}`} className={`universe-card${opening ? ' is-opening' : ''}`} data-universe={universe} onClick={open}>
       {copy.showcase.length > 0 ? (
         <div className={`universe-card__art universe-card__art--${universe}`} aria-hidden="true">
           {copy.showcase.map((src) => (
@@ -61,18 +116,18 @@ export function MainMenu() {
       <main className="main">
         <div className="container">
           <div className="logo">
+            <TitleHand />
             <h1 className="logo__title">Undercover</h1>
-            <div className="logo__sub">Gaming Edition</div>
+            <div className="logo__sub">Gaming edition</div>
             <p className="logo__tagline">
               Tout le monde a le même personnage en tête… sauf un intrus. Décris le tien sans le nommer, et démasque l'Undercover.
             </p>
-            <span className="press-start">▶ Choisis ton univers</span>
           </div>
 
           {lastRoomCode && (
             <button type="button" className="resume-card" onClick={() => navigate(`/room/${lastRoomCode}`)}>
               <span style={{ flex: 1 }}>
-                <span className="eyebrow">Continue ?</span>
+                <span className="eyebrow">Partie en cours</span>
                 <br />
                 <span className="small text-mid">Reprendre la partie</span>
               </span>
@@ -106,7 +161,7 @@ export function MainMenu() {
                   <div>
                     <div className="role-line__name">
                       {roleLabel(role)}
-                      {minPlayers && <span className="text-low small"> · dès {minPlayers} joueurs</span>}
+                      {minPlayers && <span className="text-low small">, dès {minPlayers} joueurs</span>}
                     </div>
                     <div className="role-line__desc">{roleDescription(role)}</div>
                   </div>
@@ -118,7 +173,7 @@ export function MainMenu() {
                 </span>
                 <div>
                   <div className="role-line__name">
-                    Amoureux<span className="text-low small"> · dès {LOVERS_MIN_PLAYERS} joueurs</span>
+                    Amoureux<span className="text-low small">, dès {LOVERS_MIN_PLAYERS} joueurs</span>
                   </div>
                   <div className="role-line__desc">2 joueurs liés en secret, quel que soit leur rôle. Si l'un est éliminé, l'autre le suit.</div>
                 </div>

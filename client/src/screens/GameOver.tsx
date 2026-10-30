@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRoom } from '../socket/RoomProvider';
 import { AppBar } from '../components/AppBar';
@@ -15,6 +15,29 @@ const WINNER_COPY: Record<Winner, { title: string; sub: string; tone: string }> 
   mrwhite: { title: 'Mr White s’en sort', sub: 'Par une devinette juste… ou en survivant jusqu’au bout.', tone: 'var(--role-mrwhite)' },
   jester: { title: 'Le Bouffon a gagné', sub: 'Il voulait se faire éliminer. Mission accomplie.', tone: 'var(--role-jester)' },
 };
+
+const RAIN_COLORS = ['var(--gold)', 'var(--red)', 'var(--role-civil)', 'var(--role-undercover)', 'var(--role-mrwhite)'];
+
+// Cartes qui tombent sur le bandeau de victoire. Positions tirées une fois au montage.
+function CardRain() {
+  const [cards] = useState(() =>
+    Array.from({ length: 26 }, (_, i) => ({
+      left: `${Math.random() * 100}%`,
+      '--c': RAIN_COLORS[i % RAIN_COLORS.length],
+      '--d': `${1.8 + Math.random() * 1.6}s`,
+      '--delay': `${Math.random() * 0.9}s`,
+      '--drift': `${(Math.random() - 0.5) * 120}px`,
+      '--spin': `${(Math.random() > 0.5 ? 1 : -1) * (240 + Math.random() * 480)}deg`,
+    })),
+  );
+  return (
+    <div className="card-rain" aria-hidden="true">
+      {cards.map((style, i) => (
+        <span key={i} style={style as CSSProperties} />
+      ))}
+    </div>
+  );
+}
 
 const CIVIL_SIDE: Role[] = ['civil', 'spy', 'protector', 'ghost', 'hunter'];
 
@@ -45,12 +68,13 @@ export function GameOver() {
 
   return (
     <div className="screen" data-universe={roomState.universe}>
-      <AppBar title="Fin de partie" right={<span className="badge badge--accent">{roomState.round} rounds</span>} />
+      <AppBar title="Fin de partie" right={<span className="badge badge--accent">{roomState.round} manche{roomState.round > 1 ? 's' : ''}</span>} />
 
       <main className="main">
         <div className="container stack">
           <div className="hud-frame victory" style={{ '--tone': copy.tone } as CSSProperties}>
-            <div className="victory__label">{myReveal ? (iWon ? 'VICTOIRE' : 'DÉFAITE') : 'GAME OVER'}</div>
+            {(!myReveal || iWon) && <CardRain />}
+            <div className="victory__label">{myReveal ? (iWon ? 'Victoire' : 'Défaite') : 'Partie terminée'}</div>
             <h1 className="victory__title">{copy.title}</h1>
             <p className="victory__sub">{copy.sub}</p>
           </div>
@@ -143,7 +167,7 @@ export function GameOver() {
         {isHost ? (
           <>
             <button className="btn btn-primary" type="button" onClick={restartGame}>
-              ▶ Rejouer
+              Rejouer
             </button>
             <div className="action-bar__row">
               <button className="btn btn-secondary btn-sm" type="button" onClick={backToLobby}>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRoom } from '../socket/RoomProvider';
 import { roleToneClass } from '../lib/roleInfo';
 import { RoleCardContent } from './RoleCard';
+import { HoloTilt } from './HoloTilt';
 
 /**
  * "Mon mot" : revoir son rôle et son mot à tout moment de la partie (avant, impossible une fois
@@ -24,20 +25,20 @@ export function MyWordButton() {
   return (
     <>
       <button type="button" className="fab fab--accent" aria-label="Revoir mon mot" title="Mon mot" onClick={() => setOpen(true)}>
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <rect x="5" y="3" width="14" height="18" rx="2.5" stroke="currentColor" strokeWidth="2" />
-          <path d="M9 9 h6 M9 13 h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </svg>
+        <span aria-hidden="true">?</span>
       </button>
       {open && (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Mon mot" onClick={() => setOpen(false)}>
           <div className="modal">
             <div className="flip-scene">
-              <div className={`word-card ${roleToneClass(myRole.role)}`}>
-                <RoleCardContent myRole={myRole} universe={roomState.universe} />
-              </div>
+              <HoloTilt>
+                <div className={`word-card ${roleToneClass(myRole.role)}`}>
+                  <RoleCardContent myRole={myRole} universe={roomState.universe} />
+                  <span className="holo" aria-hidden="true" />
+                </div>
+              </HoloTilt>
             </div>
-            <p className="tiny text-low pixel">Touche n'importe où pour cacher</p>
+            <p className="tiny text-low">Touche n'importe où pour cacher</p>
           </div>
         </div>
       )}

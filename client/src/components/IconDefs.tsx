@@ -5,9 +5,10 @@ export function IconDefs() {
     <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
       <defs>
         <symbol id="logo-mark" viewBox="0 0 32 32">
-          <path d="M16 2 L28 9 V23 L16 30 L4 23 V9 Z" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
-          <path d="M9 15 C11 11.5 21 11.5 23 15 C21 18.5 11 18.5 9 15 Z" fill="currentColor" opacity="0.9" />
-          <circle cx="16" cy="15" r="2.2" fill="#0a0720" />
+          <rect x="7" y="3" width="18" height="26" rx="3" fill="currentColor" transform="rotate(-10 16 16)" />
+          <rect x="10" y="6" width="12" height="20" rx="1.5" fill="none" stroke="var(--felt-deep, #12391f)" strokeWidth="1.6" transform="rotate(-10 16 16)" />
+          <path d="M13.6 13.2 a2.6 2.6 0 1 1 3.6 2.4 c-.8.4-1.2.9-1.2 1.8" fill="none" stroke="var(--felt-deep, #12391f)" strokeWidth="1.8" strokeLinecap="round" transform="rotate(-10 16 16)" />
+          <circle cx="16" cy="20.6" r="1.1" fill="var(--felt-deep, #12391f)" transform="rotate(-10 16 16)" />
         </symbol>
         <symbol id="gamepad" viewBox="0 0 64 40">
           <path d="M14 4 h36 a12 12 0 0 1 11.6 9 l2 12 a8 8 0 0 1 -14 6.4 L44 26 H20 l-5.6 5.4 A8 8 0 0 1 .4 25 l2 -12 A12 12 0 0 1 14 4 Z" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
