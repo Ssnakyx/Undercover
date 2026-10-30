@@ -10,7 +10,6 @@ export type Role = 'civil' | 'undercover' | 'mrwhite' | 'spy' | 'protector' | 'g
 export type Universe = 'lol' | 'smash' | 'pokemon' | 'games';
 
 export type PairDifficulty = 'easy' | 'medium' | 'hard' | 'extreme';
-export type PairDifficultyFilter = PairDifficulty | 'all';
 
 export interface RoomSettings {
   mrWhiteEnabled: boolean;
@@ -25,7 +24,6 @@ export interface RoomSettings {
   undercoverCount: number; // 0 = auto
   discussionSeconds: number; // 0 = pas de minuteur
   publicVotes: boolean;
-  difficulty: PairDifficultyFilter;
 }
 
 export interface ChampionPair {

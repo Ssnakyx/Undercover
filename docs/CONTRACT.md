@@ -565,12 +565,13 @@ Les types de référence restent `server/src/types.ts` et `server/src/socket/eve
 des ajouts :
 
 - **Univers** : `'games'` (titres de jeux vidéo) en plus de `lol` / `smash` / `pokemon`.
-- **Paires** : champ `difficulty` (`easy` / `medium` / `hard` / `extreme`), aucune paire dont un nom contient
+- **Paires** : champ `difficulty` (`easy` / `medium` / `hard` / `extreme`, indicatif : toutes les
+  difficultés sont tirées dans le même paquet, sans réglage), aucune paire dont un nom contient
   l'autre (test automatique), inversion civils/undercover une fois sur deux au tirage, et une room
   évite de retirer ses 15 dernières paires.
 - **RoomSettings** : `undercoverCount` (0 = auto, borné pour garder les civils majoritaires),
   `discussionSeconds` (0 / 60 / 90 / 120 / 180 / 300 — à échéance le vote démarre seul),
-  `publicVotes` (détail qui-a-voté-pour-qui dans `round:result.votes`), `difficulty`.
+  `publicVotes` (détail qui-a-voté-pour-qui dans `round:result.votes`).
 - **RoomStatePublic** : `ghostVoterIds`, `mrWhiteGuessPlayerId`, `hunterShootPlayerId`,
   `abortedByName`.
 - **Images** : `championImage` dans `role:private`, `eliminatedChampionImage` /

@@ -56,7 +56,7 @@ import {
   PROTECTOR_MIN_PLAYERS,
   SPY_MIN_PLAYERS,
 } from '../game/roles.js';
-import { getPairs } from '../content/pairsStore.js';
+import { getAllPairs } from '../content/pairsStore.js';
 import { characterImage } from '../content/characterImages.js';
 import { gameDescription } from '../content/gameInfo.js';
 
@@ -70,7 +70,6 @@ const CUSTOM_PAIR_THEME_MAX_LENGTH = 80;
 // Réglages "qualité de vie" (voir RoomSettings) — valeurs acceptées côté serveur.
 const MAX_UNDERCOVER_SETTING = 4;
 const DISCUSSION_SECONDS_ALLOWED = new Set([0, 60, 90, 120, 180, 300]);
-const DIFFICULTIES = new Set(['all', 'easy', 'medium', 'hard', 'extreme']);
 const UNIVERSES = new Set<unknown>(['lol', 'smash', 'pokemon', 'games']);
 
 // ---------------------------------------------------------------------------
@@ -131,7 +130,8 @@ function pickPairsPool(room: Room): ChampionPair[] {
   if (room.settings.customPairsEnabled && room.customPairs.length > 0) {
     return room.customPairs;
   }
-  return getPairs(room.universe, room.settings.difficulty);
+  // Toutes les difficultés dans le même paquet : pas de réglage de difficulté.
+  return getAllPairs(room.universe);
 }
 
 /** Fait entrer tous les spectateurs en jeu au prochain game:restart (voir §5bis) : "rejoindre
@@ -463,9 +463,6 @@ function validateExtraSettings(next: RoomSettings): string | null {
   }
   if (!DISCUSSION_SECONDS_ALLOWED.has(next.discussionSeconds)) {
     return 'discussionSeconds invalide';
-  }
-  if (!DIFFICULTIES.has(next.difficulty)) {
-    return 'difficulty invalide';
   }
   return null;
 }

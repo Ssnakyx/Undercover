@@ -70,8 +70,6 @@ export interface RoomSettings {
   discussionSeconds: number;
   /** true : le résultat de chaque vote montre qui a voté pour qui. */
   publicVotes: boolean;
-  /** Filtre de difficulté appliqué au pool de l'univers (ignoré pour les paires maison). */
-  difficulty: PairDifficultyFilter;
 }
 
 export type GamePhase =
