@@ -38,7 +38,7 @@ export interface PlayerRole {
  */
 export type Universe = 'lol' | 'smash' | 'pokemon' | 'games';
 
-export type PairDifficulty = 'easy' | 'medium' | 'hard';
+export type PairDifficulty = 'easy' | 'medium' | 'hard' | 'extreme';
 export type PairDifficultyFilter = PairDifficulty | 'all';
 
 export interface ChampionPair {

@@ -565,7 +565,7 @@ Les types de référence restent `server/src/types.ts` et `server/src/socket/eve
 des ajouts :
 
 - **Univers** : `'games'` (titres de jeux vidéo) en plus de `lol` / `smash` / `pokemon`.
-- **Paires** : champ `difficulty` (`easy` / `medium` / `hard`), aucune paire dont un nom contient
+- **Paires** : champ `difficulty` (`easy` / `medium` / `hard` / `extreme`), aucune paire dont un nom contient
   l'autre (test automatique), inversion civils/undercover une fois sur deux au tirage, et une room
   évite de retirer ses 15 dernières paires.
 - **RoomSettings** : `undercoverCount` (0 = auto, borné pour garder les civils majoritaires),

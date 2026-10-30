@@ -9,7 +9,7 @@ export type Role = 'civil' | 'undercover' | 'mrwhite' | 'spy' | 'protector' | 'g
 // indépendant par univers ('games' = titres de jeux vidéo plutôt que des personnages).
 export type Universe = 'lol' | 'smash' | 'pokemon' | 'games';
 
-export type PairDifficulty = 'easy' | 'medium' | 'hard';
+export type PairDifficulty = 'easy' | 'medium' | 'hard' | 'extreme';
 export type PairDifficultyFilter = PairDifficulty | 'all';
 
 export interface RoomSettings {

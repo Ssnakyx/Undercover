@@ -70,7 +70,7 @@ const CUSTOM_PAIR_THEME_MAX_LENGTH = 80;
 // Réglages "qualité de vie" (voir RoomSettings) — valeurs acceptées côté serveur.
 const MAX_UNDERCOVER_SETTING = 4;
 const DISCUSSION_SECONDS_ALLOWED = new Set([0, 60, 90, 120, 180, 300]);
-const DIFFICULTIES = new Set(['all', 'easy', 'medium', 'hard']);
+const DIFFICULTIES = new Set(['all', 'easy', 'medium', 'hard', 'extreme']);
 const UNIVERSES = new Set<unknown>(['lol', 'smash', 'pokemon', 'games']);
 
 // ---------------------------------------------------------------------------

@@ -50,6 +50,7 @@ const DIFFICULTY_OPTIONS: { value: PairDifficultyFilter; label: string }[] = [
   { value: 'easy', label: 'Facile' },
   { value: 'medium', label: 'Moyen' },
   { value: 'hard', label: 'Expert' },
+  { value: 'extreme', label: 'Ultra' },
 ];
 
 function SwitchRow({
@@ -332,7 +333,7 @@ export function Lobby() {
               <div className="setting-line">
                 <div>
                   <div className="setting-line__label">Difficulté des paires</div>
-                  <div className="setting-line__hint">Expert = personnages quasi jumeaux</div>
+                  <div className="setting-line__hint">Expert = quasi jumeaux · Ultra = presque impossibles à distinguer</div>
                 </div>
                 <div className="segmented" role="group" aria-label="Difficulté des paires">
                   {DIFFICULTY_OPTIONS.map((o) => (

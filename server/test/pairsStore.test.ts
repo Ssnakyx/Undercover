@@ -48,10 +48,10 @@ describe('qualité des paires', () => {
     }
   });
 
-  it.each(UNIVERSES)('"%s" : chaque paire a une difficulté et les trois niveaux existent', (universe) => {
+  it.each(UNIVERSES)('"%s" : chaque paire a une difficulté et les quatre niveaux existent', (universe) => {
     const pairs = getAllPairs(universe);
     expect(pairs.every((p) => p.difficulty)).toBe(true);
-    for (const d of ['easy', 'medium', 'hard'] as const) {
+    for (const d of ['easy', 'medium', 'hard', 'extreme'] as const) {
       expect(getPairs(universe, d).every((p) => p.difficulty === d)).toBe(true);
       expect(getPairs(universe, d).length).toBeGreaterThan(0);
     }
