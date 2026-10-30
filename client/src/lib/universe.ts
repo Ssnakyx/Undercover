@@ -1,7 +1,7 @@
 import type { Universe } from '../types';
 
 // Textes et identité visuelle de chaque univers de contenu — même moteur de jeu, vocabulaire
-// et couleur d'accent adaptés (voir styles/table.css, [data-universe]).
+// et couleur d'accent adaptés (voir styles/grimoire.css, [data-universe]).
 export interface UniverseCopy {
   universe: Universe;
   name: string;

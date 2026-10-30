@@ -38,7 +38,7 @@ export function roleHasWord(role: Role): boolean {
   return role !== 'mrwhite' && role !== 'jester';
 }
 
-/** Classe CSS qui pose la teinte du rôle (--tone, voir styles/table.css). */
+/** Classe CSS qui pose la teinte du rôle (--tone, voir styles/grimoire.css). */
 export function roleToneClass(role: Role | null | undefined): string {
   return `tone-${role ?? 'civil'}`;
 }

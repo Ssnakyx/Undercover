@@ -33,7 +33,7 @@ function KoCard({
         <div className="ko-half ko-half--right" aria-hidden="true">
           {art}
         </div>
-        <span className="ko-stamp">K.O.</span>
+        <span className="ko-stamp">Hors jeu</span>
       </div>
       <div className="ko-name">{player.name}</div>
       {role && (

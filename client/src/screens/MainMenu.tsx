@@ -27,43 +27,25 @@ const ROLE_ROWS: { role: Role; minPlayers?: number }[] = [
   { role: 'jester', minPlayers: JESTER_MIN_PLAYERS },
 ];
 
-// La main de cartes de l'écran titre : un personnage de chaque univers, et une carte retournée
-// au milieu pour l'intrus.
-const HAND: ({ src: string; name: string } | null)[] = [
-  { src: universeCopy('smash').showcase[1], name: 'Mario' },
-  { src: universeCopy('lol').showcase[0], name: 'Ahri' },
-  null,
-  { src: universeCopy('pokemon').showcase[1], name: 'Pikachu' },
-  { src: universeCopy('smash').showcase[0], name: 'Link' },
-];
-const SPREAD = 11; // degrés entre deux cartes
-
-function TitleHand() {
-  const mid = (HAND.length - 1) / 2;
+// Blason de l'écran titre : la carte d'un civil, et derrière elle celle de l'intrus, face cachée.
+function TitleCrest() {
   return (
-    <div className="title-hand" aria-hidden="true">
-      {HAND.map((card, i) => {
-        const style = {
-          '--rot': `${(i - mid) * SPREAD}deg`,
-          '--x': `${(i - mid) * 36}px`,
-          animationDelay: `${120 + Math.abs(i - mid) * 110}ms`,
-          zIndex: card ? 1 : 2,
-        } as CSSProperties;
-        return card ? (
-          <div key={card.name} className="title-hand__card" style={style}>
-            <CharacterArt name={card.name} image={card.src} universe="games" />
-          </div>
-        ) : (
-          <div key="back" className="title-hand__card title-hand__card--back" style={style}>
-            <span>?</span>
-          </div>
-        );
-      })}
+    <div className="crest" aria-hidden="true">
+      <svg className="crest__ring" viewBox="0 0 400 400">
+        <circle cx="200" cy="200" r="190" fill="none" stroke="currentColor" strokeOpacity="0.8" strokeWidth="2.4" strokeDasharray="120 18 6 18" />
+        <circle cx="200" cy="200" r="170" fill="none" stroke="var(--gold)" strokeOpacity="0.35" strokeWidth="1" />
+      </svg>
+      <div className="crest__shard crest__shard--back">
+        <span>?</span>
+      </div>
+      <div className="crest__shard crest__shard--front">
+        <CharacterArt name="Link" image={universeCopy('smash').showcase[0]} universe="smash" />
+      </div>
     </div>
   );
 }
 
-const OPEN_PACK_MS = 420; // durée de l'animation pack-rip (styles/table.css)
+const OPEN_PACK_MS = 420; // durée de l'animation strip-out (styles/grimoire.css)
 
 function UniverseCard({ universe }: { universe: Universe }) {
   const copy = universeCopy(universe);
@@ -116,7 +98,7 @@ export function MainMenu() {
       <main className="main">
         <div className="container">
           <div className="logo">
-            <TitleHand />
+            <TitleCrest />
             <h1 className="logo__title">Undercover</h1>
             <div className="logo__sub">Gaming edition</div>
             <p className="logo__tagline">

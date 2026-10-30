@@ -583,5 +583,5 @@ des ajouts :
   d'hôte ; pseudos uniques par room ; devinette de Mr White tolérante (ponctuation, alias
   anglais, petite faute de frappe sur les noms longs) ; révélation portée à 30 s.
 - Les maquettes `/design` décrivent l'ancienne DA "Cérémonie douce" ; la DA en vigueur vit dans
-  `client/src/styles/table.css` (DA "Table de jeu").
+  `client/src/styles/grimoire.css` (DA "Grimoire").
 

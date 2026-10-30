@@ -1,16 +1,15 @@
-// Couleurs d'avatar déterministes à partir de avatarSeed. Chaque joueur est un jeton de poker
-// (voir .avatar dans styles/table.css) : c1 pour le centre, c2 pour le liseré et les rayures,
-// text pour l'initiale.
+// Couleurs d'avatar déterministes à partir de avatarSeed. Chaque joueur est une gemme taillée
+// en losange (voir .avatar dans styles/grimoire.css) : dégradé de c1 vers c2, text pour l'initiale.
 
 const PALETTE: [string, string, string][] = [
-  ['#d8392b', '#9e2117', '#fff6e8'], // rouge
-  ['#2a5bd7', '#173a94', '#fff6e8'], // bleu
-  ['#2f8f4e', '#1b5c30', '#fff6e8'], // vert
-  ['#25221c', '#0f0d0a', '#e9b949'], // noir
-  ['#7b3fb8', '#4f2380', '#fff6e8'], // violet
-  ['#e9b949', '#b48419', '#2a1d05'], // or
-  ['#ef7d2a', '#b4561a', '#2a1405'], // orange
-  ['#f4efe2', '#2f8f9c', '#1d1b16'], // blanc
+  ['#e0424a', '#7d0f17', '#fff3df'], // rubis
+  ['#4a7be0', '#16307a', '#fff3df'], // saphir
+  ['#3fae6a', '#11502b', '#fff3df'], // émeraude
+  ['#4a4440', '#120f0d', '#e2c272'], // onyx
+  ['#a066e0', '#3f1a72', '#fff3df'], // améthyste
+  ['#ffd36a', '#a8701a', '#2a1d05'], // topaze
+  ['#ff9248', '#9a3f0e', '#2a1405'], // ambre
+  ['#e6f0f0', '#6f9aa8', '#1a1410'], // opale
 ];
 
 function hashString(input: string): number {
