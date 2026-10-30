@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getAllPairs, getPairs } from '../src/content/pairsStore.js';
 import { characterImage } from '../src/content/characterImages.js';
+import { GAME_INFO } from '../src/content/gameInfo.js';
 import type { Universe } from '../src/types.js';
 
 const UNIVERSES: Universe[] = ['lol', 'smash', 'pokemon', 'games'];
@@ -73,5 +74,16 @@ describe('qualité des paires', () => {
     expect(characterImage('lol', "Kai'Sa")).toContain('/Kaisa_0.jpg');
     expect(characterImage('lol', 'Miss Fortune')).toContain('/MissFortune_0.jpg');
     expect(characterImage('games', 'Minecraft')).toBeNull();
+  });
+});
+
+describe('univers Jeux vidéo', () => {
+  it('chaque jeu des paires a une description et un article Wikipédia pour sa jaquette', () => {
+    for (const { champA, champB } of getAllPairs('games')) {
+      for (const name of [champA, champB]) {
+        expect(GAME_INFO[name]?.description, name).toBeTruthy();
+        expect(GAME_INFO[name]?.wiki, name).toBeTruthy();
+      }
+    }
   });
 });

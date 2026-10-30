@@ -7,6 +7,7 @@ import type {
   ErrorPayload,
   GameEndedPayload,
   PlayerLeftPayload,
+  RoomClosedPayload,
   RoomCreateAck,
   RoomJoinAck,
   RoomRejoinAck,
@@ -137,6 +138,9 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       setConnected(false);
     }
     function onRoomState(state: RoomStatePublic) {
+      // Garde-fou : un état d'une autre room (ancienne partie) ne doit jamais remplacer
+      // celle où l'on est — c'est ce qui ramenait l'hôte sur sa partie précédente.
+      if (state.roomCode !== sessionRef.current?.roomCode) return;
       setRoomState(state);
       // Nouvelle partie ou retour au salon : on oublie le résultat et la fin de partie précédents.
       if (state.phase === 'lobby' || state.phase === 'reveal') {
@@ -174,6 +178,16 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       setChatMessages([]);
       pushToast({ kind: 'error', text: "L'hôte t'a exclu de la partie." });
     }
+    function onRoomClosed(payload: RoomClosedPayload) {
+      const s = sessionRef.current;
+      if (s) clearSession(s.roomCode);
+      setSession(null);
+      setRoomState(null);
+      setMyRole(null);
+      setChatMessages([]);
+      setChatUnreadCount(0);
+      pushToast({ kind: 'info', text: `${payload.hostName} (l'hôte) a quitté : la partie est fermée.` });
+    }
     function onChatMessage(payload: ChatMessage) {
       setChatMessages((prev) => {
         const next = [...prev, payload];
@@ -200,6 +214,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     socket.on('chat:history', onChatHistory);
     socket.on('player:left', onPlayerLeft);
     socket.on('player:kicked', onKicked);
+    socket.on('room:closed', onRoomClosed);
 
     return () => {
       socket.off('connect', onConnect);
@@ -213,6 +228,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       socket.off('chat:history', onChatHistory);
       socket.off('player:left', onPlayerLeft);
       socket.off('player:kicked', onKicked);
+      socket.off('room:closed', onRoomClosed);
     };
   }, [setSession, pushToast]);
 

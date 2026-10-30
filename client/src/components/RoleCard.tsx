@@ -39,7 +39,7 @@ export function RoleCardContent({ myRole, universe }: { myRole: RolePrivatePaylo
       </div>
     );
   }
-  const { role, champion, championImage, loverName, spyInsight } = myRole;
+  const { role, champion, championImage, championDescription, loverName, spyInsight } = myRole;
   const unit = universeCopy(universe).unitLabel;
   const hasWord = roleHasWord(role) && !!champion;
 
@@ -63,6 +63,7 @@ export function RoleCardContent({ myRole, universe }: { myRole: RolePrivatePaylo
           <>
             <div className="eyebrow">Ton {unit}</div>
             <div className="role-card__name">{champion}</div>
+            {championDescription && <p className="role-card__desc">{championDescription}</p>}
             <p className="role-card__text">{instruction(role, champion!, unit)}</p>
           </>
         ) : role === 'mrwhite' ? (

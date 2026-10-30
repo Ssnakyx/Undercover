@@ -195,8 +195,8 @@ hunter_shoot → round_result   [tir traité, retour round_result pour round:con
   cours (`reveal` à `mrwhite_guess`) — abandonne immédiatement la manche en cours et retire de
   nouveaux rôles/champions pour tous les joueurs. Seules `lobby` (utiliser `game:start`) et
   `aborted` (terminale) refusent cet événement.
-- **aborted** : phase terminale atteinte uniquement quand l'hôte quitte explicitement une
-  partie en cours (§5) — pas de vainqueur, pas de révélation des rôles. Les clients affichent
+- **aborted** : phase héritée, plus atteinte depuis que le départ de l'hôte ferme la room
+  (§5) — pas de vainqueur, pas de révélation des rôles. Les clients affichent
   un écran "partie terminée" avec retour à l'accueil ; aucune reprise possible depuis cette
   room (contrairement à `game_over` → `game:restart`).
 
@@ -272,11 +272,13 @@ décomptes qu'ils utilisent.
 - **Host déconnecte** (perte de connexion accidentelle) : le rôle d'host est transféré
   automatiquement au joueur connecté suivant par ordre d'arrivée dans la room ; la partie
   continue normalement.
-- **Host quitte explicitement une partie en cours** (bouton "Quitter", visible pour l'hôte de
-  `reveal` à `mrwhite_guess`/`hunter_shoot`) : contrairement à une déconnexion, il n'y a **pas** de transfert
-  de host — la partie se termine immédiatement pour tout le monde, la room passe en phase
-  `aborted` (voir §6). Un départ volontaire de l'hôte en phase `lobby` reste un simple retrait
-  (transfert de host normal, la room continue en lobby).
+- **Host quitte explicitement** (bouton "Quitter", quelle que soit la phase — lobby, partie en
+  cours ou fin de partie) : la room est **fermée pour tout le monde**. Le serveur envoie
+  `room:closed { hostName }` à tous les sockets de la room, les détache puis supprime la room ;
+  chaque client efface sa session et revient à l'accueil. Pas de transfert de host.
+- **Changer de room** : `room:create`, `room:join`, `room:joinSpectator` et `room:rejoin` (vers
+  une autre room) font d'abord quitter au socket sa room actuelle, comme un `player:leave`
+  (donc fermeture de l'ancienne room si c'était l'hôte).
 - **Room vide** : quand plus aucun joueur n'est connecté (0 socket actif), la room est détruite
   après 5 minutes.
 

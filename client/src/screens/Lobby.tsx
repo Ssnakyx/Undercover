@@ -155,7 +155,14 @@ export function Lobby() {
       <AppBar
         title={copy.name}
         right={
-          <button className="btn btn-ghost btn-sm" type="button" onClick={() => leaveRoom()}>
+          <button
+            className="btn btn-ghost btn-sm"
+            type="button"
+            onClick={() => {
+              if (isHost && n > 1 && !window.confirm('Tu es l’hôte : quitter ferme le salon pour tout le monde. Confirmer ?')) return;
+              leaveRoom();
+            }}
+          >
             Quitter
           </button>
         }

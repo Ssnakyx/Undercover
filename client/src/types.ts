@@ -180,6 +180,7 @@ export interface RolePrivatePayload {
   role: Role;
   champion: string | null;
   championImage?: string | null;
+  championDescription?: string | null;
   loverName?: string | null;
   spyInsight?: { playerName: string; team: 'civils' | 'undercover' | 'mrwhite' | 'jester' };
 }
@@ -223,6 +224,10 @@ export interface PlayerLeftPayload {
   champion: string | null;
   championImage?: string | null;
   kicked?: boolean;
+}
+
+export interface RoomClosedPayload {
+  hostName: string;
 }
 
 export interface ErrorPayload {
@@ -274,5 +279,6 @@ export interface ServerToClientEvents {
   'chat:history': (payload: ChatMessage[]) => void;
   'player:left': (payload: PlayerLeftPayload) => void;
   'player:kicked': () => void;
+  'room:closed': (payload: RoomClosedPayload) => void;
   error: (payload: ErrorPayload) => void;
 }

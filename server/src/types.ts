@@ -225,6 +225,8 @@ export interface RolePrivatePayload {
   champion: string | null;
   /** Image du personnage (URL), null si inconnue (paire maison, univers 'games', Mr White). */
   championImage?: string | null;
+  /** Univers 'games' : courte description du jeu, pour qui ne le connaît pas. */
+  championDescription?: string | null;
   /** Nom courant du partenaire "Amoureux", si settings.loversEnabled et ce joueur en fait partie. */
   loverName?: string | null;
   /** Uniquement pour le rôle "Espion" : camp d'un autre joueur tiré au sort à la révélation. */
@@ -278,6 +280,11 @@ export interface PlayerLeftPayload {
   champion: string | null;
   championImage?: string | null;
   kicked?: boolean;
+}
+
+export interface RoomClosedPayload {
+  /** Pseudo de l'hôte qui a quitté. */
+  hostName: string;
 }
 
 export interface ErrorPayload {
