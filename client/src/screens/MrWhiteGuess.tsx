@@ -1,27 +1,26 @@
 import { useState, type FormEvent } from 'react';
 import { useRoom } from '../socket/RoomProvider';
-import { AppBar } from '../components/AppBar';
+import { GameHud } from '../components/GameHud';
 import { ActionBar } from '../components/ActionBar';
 import { Avatar } from '../components/Avatar';
+import { Countdown } from '../components/Countdown';
 import { RoleEmblem } from '../components/RoleBadge';
-import { HostQuitButton } from '../components/HostQuitButton';
-import { HostRestartButton } from '../components/HostRestartButton';
 import { universeCopy } from '../lib/universe';
 
-// Pas de maquette dédiée pour cette phase (absente de /design) — réutilise la
-// grammaire visuelle de round_result (eliminated-block + role-reveal), voir
-// docs/CONTRACT.md §3. Décision documentée dans client/README.md.
+const GUESS_TOTAL_MS = 30_000; // miroir de server/src/game/engine.ts#MRWHITE_GUESS_TIMEOUT_MS
+
 export function MrWhiteGuess() {
-  const { roomState, playerId, lastRoundResult, submitGuess } = useRoom();
+  const { roomState, playerId, submitGuess } = useRoom();
   const [guess, setGuess] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
   if (!roomState) return null;
 
-  const eliminatedId = lastRoundResult?.eliminatedPlayerId ?? null;
-  const eliminated = eliminatedId ? roomState.players.find((p) => p.playerId === eliminatedId) : null;
-  const isGuesser = eliminatedId !== null && eliminatedId === playerId;
-  const isHost = roomState.players.find((p) => p.playerId === playerId)?.isHost ?? false;
+  // Le devineur vient de l'état public (et non plus du dernier round:result, qu'un départ de
+  // joueur pouvait écraser et faire disparaître ce formulaire).
+  const guesserId = roomState.mrWhiteGuessPlayerId;
+  const guesser = roomState.players.find((p) => p.playerId === guesserId);
+  const isGuesser = !!guesserId && guesserId === playerId;
   const unit = universeCopy(roomState.universe).unitLabel;
 
   function handleSubmit(e: FormEvent) {
@@ -33,68 +32,52 @@ export function MrWhiteGuess() {
   }
 
   return (
-    <div className="screen">
-      <AppBar
-        title="Devinette de Mr White"
-        right={
-          <>
-            {isHost && <HostRestartButton />}
-            {isHost && <HostQuitButton />}
-            <span className="badge badge--muted">Round {roomState.round}</span>
-          </>
-        }
-      />
+    <div className="screen" data-universe={roomState.universe}>
+      <GameHud title="Dernière chance" />
 
       <main className="main">
         <div className="container">
-          <div className="eliminated-block frame-cut frame-cut--lg">
-            <span className="eyebrow">Mr White a été démasqué</span>
-            {eliminated && <Avatar seed={eliminated.avatarSeed} name={eliminated.name} size="lg" />}
-            <div className="eliminated-block__name">{eliminated?.name ?? 'Mr White'}</div>
-
-            <div className="role-reveal role-reveal--mrwhite frame-cut">
-              <RoleEmblem role="mrwhite" className="role-reveal__emblem" />
-              <div>
-                <div className="role-reveal__eyebrow">Dernière chance</div>
-                <div className="role-reveal__champion" style={{ textTransform: 'none', fontSize: 'var(--text-base)' }}>
-                  Une devinette correcte du {unit} des civils lui offre la victoire immédiate.
-                </div>
-              </div>
+          <div className="hud-frame ko-block tone-mrwhite">
+            <span className="eyebrow">Mr White démasqué</span>
+            <div className="ko-portrait">
+              {guesser && <Avatar seed={guesser.avatarSeed} name={guesser.name} size="xl" />}
             </div>
+            <div className="ko-name">{guesser?.name ?? 'Mr White'}</div>
+            <span className="ko-role" style={{ animationDelay: '0s' }}>
+              <RoleEmblem role="mrwhite" /> Mr White
+            </span>
+            <p className="text-mid">
+              S'il devine le {unit} des Civils, il vole la victoire.
+            </p>
+            <Countdown deadline={roomState.phaseDeadline} totalMs={GUESS_TOTAL_MS} />
           </div>
         </div>
       </main>
 
-      {isGuesser ? (
-        <ActionBar>
-          <form className="inline-form" onSubmit={handleSubmit}>
-            <div className="inline-form__row">
-              <input
-                className="input"
-                type="text"
-                placeholder={`Nom du ${unit} des civils`}
-                value={guess}
-                onChange={(e) => setGuess(e.target.value)}
-                disabled={submitted}
-                autoFocus
-              />
-              <button
-                className="btn btn-primary"
-                type="submit"
-                style={{ width: 'auto', paddingInline: 'var(--space-5)' }}
-                disabled={!guess.trim() || submitted}
-              >
-                Deviner
-              </button>
-            </div>
+      <ActionBar hint={isGuesser ? (submitted ? 'Réponse envoyée…' : 'Une seule tentative. Les fautes de frappe légères sont tolérées.') : undefined}>
+        {isGuesser ? (
+          <form className="action-bar__row" onSubmit={handleSubmit}>
+            <input
+              className="input"
+              type="text"
+              placeholder={`Le ${unit} des Civils`}
+              value={guess}
+              onChange={(e) => setGuess(e.target.value)}
+              disabled={submitted}
+              autoFocus
+              enterKeyHint="go"
+              style={{ flex: 2 }}
+            />
+            <button className="btn btn-primary" type="submit" disabled={!guess.trim() || submitted}>
+              Deviner
+            </button>
           </form>
-          <span className="confirm-hint">{submitted ? 'Devinette envoyée — en attente du résultat…' : 'Une seule tentative.'}</span>
-        </ActionBar>
-      ) : (
-        <ActionBar>
-          <div className="waiting-note panel">En attente de la devinette de {eliminated?.name ?? 'Mr White'}…</div>
-        </ActionBar>
-      )}
+        ) : (
+          <button className="btn btn-secondary" type="button" disabled>
+            {guesser?.name ?? 'Mr White'} réfléchit…
+          </button>
+        )}
+      </ActionBar>
     </div>
   );
 }

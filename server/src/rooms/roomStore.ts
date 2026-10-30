@@ -25,6 +25,10 @@ export function defaultRoomSettings(): RoomSettings {
     jesterEnabled: false,
     hunterEnabled: false,
     customPairsEnabled: false,
+    undercoverCount: 0,
+    discussionSeconds: 0,
+    publicVotes: false,
+    difficulty: 'all',
   };
 }
 
@@ -78,6 +82,10 @@ export function createRoom(universe: Universe = 'lol'): Room {
     currentPairId: null,
     championA: null,
     championB: null,
+    pairTheme: null,
+    recentPairIds: [],
+    nextJoinOrder: 0,
+    abortedByName: null,
     chatMessages: [],
   };
   rooms.set(roomCode, room);

@@ -1,13 +1,15 @@
-// Couleurs d'avatar déterministes à partir de avatarSeed — palette reprise de la refonte
-// "Cérémonie douce" (5 tons chauds/froids alternés, initiale en texte sombre lisible sur
-// chaque dégradé — jamais une seule couleur de texte fixe, voir design/Cover - Nouveau design).
+// Couleurs d'avatar déterministes à partir de avatarSeed. Chaque joueur est une gemme taillée
+// en losange (voir .avatar dans styles/grimoire.css) : dégradé de c1 vers c2, text pour l'initiale.
 
 const PALETTE: [string, string, string][] = [
-  ['#f5c58a', '#e3a45f', '#2b1533'], // or
-  ['#8fb6f5', '#4f74c4', '#101a2b'], // bleu
-  ['#8ddcb4', '#3f9d72', '#0e2419'], // vert
-  ['#cdb0f0', '#8a5fb0', '#1c1026'], // violet
-  ['#e0c7b3', '#a3765c', '#2b1a10'], // ambre
+  ['#e0424a', '#7d0f17', '#fff3df'], // rubis
+  ['#4a7be0', '#16307a', '#fff3df'], // saphir
+  ['#3fae6a', '#11502b', '#fff3df'], // émeraude
+  ['#4a4440', '#120f0d', '#e2c272'], // onyx
+  ['#a066e0', '#3f1a72', '#fff3df'], // améthyste
+  ['#ffd36a', '#a8701a', '#2a1d05'], // topaze
+  ['#ff9248', '#9a3f0e', '#2a1405'], // ambre
+  ['#e6f0f0', '#6f9aa8', '#1a1410'], // opale
 ];
 
 function hashString(input: string): number {

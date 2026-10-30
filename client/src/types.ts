@@ -5,9 +5,12 @@
 // du camp civils, jester est une faction solo à part (voir server/src/types.ts pour le détail).
 export type Role = 'civil' | 'undercover' | 'mrwhite' | 'spy' | 'protector' | 'ghost' | 'jester' | 'hunter';
 
-// Univers de contenu choisi au menu principal — même moteur de jeu, trois pools de paires
-// indépendants. Aucun asset visuel officiel dans les trois cas (CONTRACT.md §0).
-export type Universe = 'lol' | 'smash' | 'pokemon';
+// Univers de contenu choisi au menu principal — même moteur de jeu, un pool de paires
+// indépendant par univers ('games' = titres de jeux vidéo plutôt que des personnages).
+export type Universe = 'lol' | 'smash' | 'pokemon' | 'games';
+
+export type PairDifficulty = 'easy' | 'medium' | 'hard';
+export type PairDifficultyFilter = PairDifficulty | 'all';
 
 export interface RoomSettings {
   mrWhiteEnabled: boolean;
@@ -19,6 +22,10 @@ export interface RoomSettings {
   jesterEnabled: boolean;
   hunterEnabled: boolean;
   customPairsEnabled: boolean;
+  undercoverCount: number; // 0 = auto
+  discussionSeconds: number; // 0 = pas de minuteur
+  publicVotes: boolean;
+  difficulty: PairDifficultyFilter;
 }
 
 export interface ChampionPair {
@@ -26,6 +33,7 @@ export interface ChampionPair {
   champA: string;
   champB: string;
   theme: string;
+  difficulty?: PairDifficulty;
 }
 
 export type GamePhase =
@@ -70,10 +78,18 @@ export interface RoomStatePublic {
   turnOrder: string[];
   votedPlayerIds: string[];
   phaseDeadline: number | null;
+  ghostVoterIds: string[];
+  mrWhiteGuessPlayerId: string | null;
+  hunterShootPlayerId: string | null;
+  abortedByName: string | null;
   customPairs: ChampionPair[];
 }
 
 // ---- Client -> Serveur (payloads) ----
+
+export interface PlayerKickPayload {
+  targetPlayerId: string;
+}
 
 export interface RoomCreatePayload {
   hostName: string;
@@ -163,6 +179,7 @@ export interface AckResponse {
 export interface RolePrivatePayload {
   role: Role;
   champion: string | null;
+  championImage?: string | null;
   loverName?: string | null;
   spyInsight?: { playerName: string; team: 'civils' | 'undercover' | 'mrwhite' | 'jester' };
 }
@@ -171,20 +188,41 @@ export interface RoundResultPayload {
   eliminatedPlayerId: string | null; // null si égalité = personne éliminé
   eliminatedRole: Role | null;
   eliminatedChampion: string | null;
+  eliminatedChampionImage?: string | null;
   voteCounts: Record<string, number>;
   tie: boolean;
   protectedThisRound?: boolean;
   chainEliminatedPlayerId?: string | null;
   chainEliminatedRole?: Role | null;
   chainEliminatedChampion?: string | null;
+  chainEliminatedChampionImage?: string | null;
+  hunterShot?: boolean;
   hunterDeclined?: boolean;
+  votes?: { voterId: string; targetPlayerId: string }[];
 }
 
 export type Winner = 'civils' | 'undercover' | 'mrwhite' | 'jester';
 
 export interface GameEndedPayload {
   winner: Winner;
-  reveal: { playerId: string; name: string; role: Role; champion: string | null; loverPlayerId?: string | null }[];
+  reveal: {
+    playerId: string;
+    name: string;
+    role: Role;
+    champion: string | null;
+    championImage?: string | null;
+    loverPlayerId?: string | null;
+  }[];
+  pair?: { civil: string; undercover: string; civilImage: string | null; undercoverImage: string | null; theme: string };
+}
+
+export interface PlayerLeftPayload {
+  playerId: string;
+  name: string;
+  role: Role | null;
+  champion: string | null;
+  championImage?: string | null;
+  kicked?: boolean;
 }
 
 export interface ErrorPayload {
@@ -221,6 +259,10 @@ export interface ClientToServerEvents {
   'game:restart': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'player:leave': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'chat:send': (payload: ChatSendPayload, ack?: (res: AckResponse) => void) => void;
+  'game:backToLobby': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
+  'player:kick': (payload: PlayerKickPayload, ack?: (res: AckResponse) => void) => void;
+  'vote:forceClose': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
+  'reveal:forceEnd': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
 }
 
 export interface ServerToClientEvents {
@@ -230,5 +272,7 @@ export interface ServerToClientEvents {
   'game:ended': (payload: GameEndedPayload) => void;
   'chat:message': (payload: ChatMessage) => void;
   'chat:history': (payload: ChatMessage[]) => void;
+  'player:left': (payload: PlayerLeftPayload) => void;
+  'player:kicked': () => void;
   error: (payload: ErrorPayload) => void;
 }

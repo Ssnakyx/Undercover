@@ -1,41 +1,20 @@
-// Bibliothèque d'icônes SVG maison (aucun asset Riot) — montée une fois dans
-// App, réutilisée partout via <use href="#id"/>. Symboles portés depuis
-// /design/lobby.html, reveal.html, round_result.html, gameover.html, plus un
-// symbole Mr White ajouté (absent des maquettes — cf. CONTRACT.md §0).
+// Bibliothèque d'icônes SVG maison — montée une fois dans App, réutilisée partout via
+// <use href="#id"/> : logo, manette du menu, emblème de chaque rôle.
 export function IconDefs() {
   return (
     <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
       <defs>
-        <symbol id="lane-top" viewBox="0 0 24 24">
-          <path
-            d="M6 10 L6 7 L8 7 L8 9 L10 9 L10 7 L12 7 L12 9 L14 9 L14 7 L16 7 L16 10 L16 18 L6 18 Z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinejoin="round"
-          />
+        <symbol id="logo-mark" viewBox="0 0 32 32">
+          <circle cx="16" cy="16" r="14" fill="none" stroke="currentColor" strokeWidth="1.2" />
+          <circle cx="16" cy="16" r="11.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeDasharray="0.6 2.4" />
+          <polygon points="16,4 19,13 28,16 19,19 16,28 13,19 4,16 13,13" fill="currentColor" />
+          <polygon points="16,10 18,16 16,22 14,16" fill="#b3202a" />
         </symbol>
-        <symbol id="lane-jungle" viewBox="0 0 24 24">
-          <line x1="6" y1="6" x2="10" y2="18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <line x1="10" y1="5" x2="14" y2="19" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <line x1="14" y1="6" x2="18" y2="18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        </symbol>
-        <symbol id="lane-mid" viewBox="0 0 24 24">
-          <polygon points="12,4 20,12 12,20 4,12" fill="none" stroke="currentColor" strokeWidth="1.4" />
-          <polygon points="12,8.5 15.5,12 12,15.5 8.5,12" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        </symbol>
-        <symbol id="lane-adc" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-          <line x1="12" y1="1" x2="12" y2="5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <line x1="1" y1="12" x2="5" y2="12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <line x1="19" y1="12" x2="23" y2="12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-        </symbol>
-        <symbol id="lane-support" viewBox="0 0 24 24">
-          <polygon points="12,3 19,12 12,21 5,12" fill="none" stroke="currentColor" strokeWidth="1.6" />
-          <circle cx="12" cy="12" r="2.2" fill="currentColor" />
-          <line x1="12" y1="0.5" x2="12" y2="3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-          <line x1="12" y1="21" x2="12" y2="23.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        <symbol id="gamepad" viewBox="0 0 64 40">
+          <path d="M14 4 h36 a12 12 0 0 1 11.6 9 l2 12 a8 8 0 0 1 -14 6.4 L44 26 H20 l-5.6 5.4 A8 8 0 0 1 .4 25 l2 -12 A12 12 0 0 1 14 4 Z" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+          <path d="M17 12 v10 M12 17 h10" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+          <circle cx="45" cy="13" r="2.6" fill="currentColor" />
+          <circle cx="51" cy="19" r="2.6" fill="currentColor" />
         </symbol>
 
         <symbol id="role-civil" viewBox="0 0 40 40">
@@ -112,16 +91,7 @@ export function IconDefs() {
           <line x1="8" y1="20" x2="13" y2="20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           <line x1="27" y1="20" x2="32" y2="20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
         </symbol>
-        {/* Signature de la refonte "Cérémonie douce" — crest du menu, texture du dos de carte
-            (Reveal), rideau de transition. Hexagones concentriques, pointe en haut. */}
-        <symbol id="hex-lattice" viewBox="0 0 200 200">
-          <g fill="none" stroke="currentColor" strokeWidth="0.6" opacity="0.9">
-            <polygon points="100,40 152,70 152,130 100,160 48,130 48,70" />
-            <polygon points="100,10 178,55 178,145 100,190 22,145 22,55" />
-            <polygon points="100,70 126,85 126,115 100,130 74,115 74,85" />
-          </g>
-        </symbol>
-      </defs>
+        </defs>
     </svg>
   );
 }

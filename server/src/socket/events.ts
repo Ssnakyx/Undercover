@@ -10,6 +10,8 @@ import type {
   GameEndedPayload,
   HunterShootPayload,
   MrWhiteGuessPayload,
+  PlayerKickPayload,
+  PlayerLeftPayload,
   ProtectorProtectPayload,
   ErrorPayload,
   RoomCreateAck,
@@ -46,6 +48,11 @@ export interface ClientToServerEvents {
   'game:restart': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'player:leave': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'chat:send': (payload: ChatSendPayload, ack?: (res: AckResponse) => void) => void;
+  // Qualité de vie hôte
+  'game:backToLobby': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
+  'player:kick': (payload: PlayerKickPayload, ack?: (res: AckResponse) => void) => void;
+  'vote:forceClose': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
+  'reveal:forceEnd': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
 }
 
 export interface ServerToClientEvents {
@@ -55,6 +62,9 @@ export interface ServerToClientEvents {
   'game:ended': (payload: GameEndedPayload) => void;
   'chat:message': (payload: ChatMessage) => void;
   'chat:history': (payload: ChatMessage[]) => void;
+  'player:left': (payload: PlayerLeftPayload) => void;
+  /** Envoyé au seul joueur exclu par l'hôte, juste avant de couper son lien à la room. */
+  'player:kicked': () => void;
   error: (payload: ErrorPayload) => void;
 }
 

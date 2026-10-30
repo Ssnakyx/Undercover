@@ -1,34 +1,101 @@
-import { useState } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useRoom } from '../socket/RoomProvider';
 import { Avatar } from '../components/Avatar';
 import { AppBar } from '../components/AppBar';
 import { ActionBar } from '../components/ActionBar';
-import { ThemeToggle } from '../components/ThemeToggle';
+import { RoleEmblem } from '../components/RoleBadge';
+import { roleLabel } from '../lib/roleInfo';
+import { universeCopy } from '../lib/universe';
 import {
+  GHOST_MIN_PLAYERS,
+  HUNTER_MIN_PLAYERS,
+  JESTER_MIN_PLAYERS,
+  LOVERS_MIN_PLAYERS,
   MAX_CUSTOM_PAIRS_PER_ROOM,
+  MR_WHITE_MIN_PLAYERS,
+  PROTECTOR_MIN_PLAYERS,
+  SPY_MIN_PLAYERS,
+  autoUndercoverCount,
   computeRoleCounts,
-  isGhostAvailable,
-  isHunterAvailable,
-  isJesterAvailable,
-  isLoversAvailable,
-  isMrWhiteAvailable,
-  isProtectorAvailable,
-  isSpyAvailable,
+  maxUndercoverFor,
 } from '../lib/roles';
+import type { PairDifficultyFilter, Role, RoomSettings } from '../types';
+
+const MAX_PLAYERS = 12;
+const MIN_PLAYERS = 3;
+
+type ToggleKey = 'mrWhiteEnabled' | 'spyEnabled' | 'protectorEnabled' | 'ghostEnabled' | 'hunterEnabled' | 'jesterEnabled' | 'loversEnabled';
+
+const ROLE_TOGGLES: { key: ToggleKey; role: Role | 'lover'; label: string; min: number; hint: string }[] = [
+  { key: 'mrWhiteEnabled', role: 'mrwhite', label: 'Mr White', min: MR_WHITE_MIN_PLAYERS, hint: "N'a aucun mot, doit bluffer" },
+  { key: 'spyEnabled', role: 'spy', label: 'Espion', min: SPY_MIN_PLAYERS, hint: "Connaît le camp d'un joueur" },
+  { key: 'protectorEnabled', role: 'protector', label: 'Protecteur', min: PROTECTOR_MIN_PLAYERS, hint: 'Sauve un joueur, une fois' },
+  { key: 'ghostEnabled', role: 'ghost', label: 'Revenant', min: GHOST_MIN_PLAYERS, hint: 'Vote encore après sa mort' },
+  { key: 'hunterEnabled', role: 'hunter', label: 'Chasseur', min: HUNTER_MIN_PLAYERS, hint: 'Emporte un joueur avec lui' },
+  { key: 'jesterEnabled', role: 'jester', label: 'Bouffon', min: JESTER_MIN_PLAYERS, hint: 'Gagne seul si on le vire' },
+  { key: 'loversEnabled', role: 'lover', label: 'Amoureux', min: LOVERS_MIN_PLAYERS, hint: '2 joueurs liés à la vie, à la mort' },
+];
+
+const TIMER_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: 'Off' },
+  { value: 60, label: '1:00' },
+  { value: 90, label: '1:30' },
+  { value: 120, label: '2:00' },
+  { value: 180, label: '3:00' },
+  { value: 300, label: '5:00' },
+];
+
+const DIFFICULTY_OPTIONS: { value: PairDifficultyFilter; label: string }[] = [
+  { value: 'all', label: 'Mix' },
+  { value: 'easy', label: 'Facile' },
+  { value: 'medium', label: 'Moyen' },
+  { value: 'hard', label: 'Expert' },
+];
+
+function SwitchRow({
+  id,
+  title,
+  hint,
+  checked,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  title: ReactNode;
+  hint: ReactNode;
+  checked: boolean;
+  disabled: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <label className={`switch-row${disabled ? ' switch-row--disabled' : ''}`} htmlFor={id}>
+      <span className="switch-row__text">
+        <span className="switch-row__title">{title}</span>
+        <br />
+        <span className="switch-row__hint">{hint}</span>
+      </span>
+      <span className="switch">
+        <input type="checkbox" id={id} checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+        <span className="switch__track" />
+      </span>
+    </label>
+  );
+}
 
 export function Lobby() {
-  const { roomState, playerId, updateSettings, startGame, addCustomPair, removeCustomPair } = useRoom();
-  const [pairChampA, setPairChampA] = useState('');
-  const [pairChampB, setPairChampB] = useState('');
+  const { roomState, playerId, updateSettings, startGame, addCustomPair, removeCustomPair, kickPlayer, leaveRoom } = useRoom();
+  const [pairA, setPairA] = useState('');
+  const [pairB, setPairB] = useState('');
   const [pairTheme, setPairTheme] = useState('');
+  const [copied, setCopied] = useState<'code' | 'link' | null>(null);
 
   if (!roomState) return null;
 
   const me = roomState.players.find((p) => p.playerId === playerId);
   const isHost = me?.isHost ?? false;
-  const host = roomState.players.find((p) => p.isHost);
   const n = roomState.players.length;
   const s = roomState.settings;
+  const copy = universeCopy(roomState.universe);
   const counts = computeRoleCounts(n, {
     mrWhite: s.mrWhiteEnabled,
     spy: s.spyEnabled,
@@ -37,427 +104,338 @@ export function Lobby() {
     jester: s.jesterEnabled,
     hunter: s.hunterEnabled,
     lovers: s.loversEnabled,
+    undercoverCount: s.undercoverCount,
   });
-  const mrWhiteAvailable = isMrWhiteAvailable(n);
-  const spyAvailable = isSpyAvailable(n);
-  const protectorAvailable = isProtectorAvailable(n);
-  const ghostAvailable = isGhostAvailable(n);
-  const jesterAvailable = isJesterAvailable(n);
-  const hunterAvailable = isHunterAvailable(n);
-  const loversAvailable = isLoversAvailable(n);
-  const canStart = isHost && n >= 3;
+  const maxUndercover = n >= MIN_PLAYERS ? maxUndercoverFor(n, counts.mrWhite, counts.jester) : 1;
+  const canStart = isHost && n >= MIN_PLAYERS;
+  const inviteLink = `${window.location.origin}/play/${roomState.universe}?code=${roomState.roomCode}`;
+
+  function flash(what: 'code' | 'link') {
+    setCopied(what);
+    window.setTimeout(() => setCopied(null), 1800);
+  }
 
   function copyCode() {
-    navigator.clipboard?.writeText(roomState!.roomCode).catch(() => {});
+    navigator.clipboard?.writeText(roomState!.roomCode).then(() => flash('code'), () => {});
   }
 
-  function inviteLink() {
-    return `${window.location.origin}/play/${roomState!.universe}?code=${roomState!.roomCode}`;
+  // Partage natif sur mobile (WhatsApp, Discord...), copie du lien sinon.
+  function shareLink() {
+    if (navigator.share) {
+      navigator.share({ title: copy.name, text: `Rejoins ma partie ${copy.name} !`, url: inviteLink }).catch(() => {});
+      return;
+    }
+    navigator.clipboard?.writeText(inviteLink).then(() => flash('link'), () => {});
   }
 
-  function copyInviteLink() {
-    navigator.clipboard?.writeText(inviteLink()).catch(() => {});
-  }
-
-  // Active d'un coup tous les rôles optionnels disponibles pour N (jamais ceux sous le seuil
-  // — settings:update rejette toute la requête si un seul champ dépasse le seuil, voir
-  // handlers.ts). Idempotent : relancer le Mode Chaos réaligne juste les toggles sur N courant.
+  // Active d'un coup tous les rôles optionnels disponibles pour N (jamais ceux sous le seuil :
+  // settings:update rejette toute la requête si un seul champ dépasse son seuil).
   function activateChaosMode() {
-    updateSettings({
-      mrWhiteEnabled: mrWhiteAvailable,
-      spyEnabled: spyAvailable,
-      protectorEnabled: protectorAvailable,
-      ghostEnabled: ghostAvailable,
-      jesterEnabled: jesterAvailable,
-      hunterEnabled: hunterAvailable,
-      loversEnabled: loversAvailable,
-    });
+    const next: Partial<RoomSettings> = {};
+    for (const t of ROLE_TOGGLES) next[t.key] = n >= t.min;
+    updateSettings(next);
+  }
+
+  function setUndercover(value: number) {
+    updateSettings({ undercoverCount: value });
   }
 
   function handleAddPair() {
-    if (!pairChampA.trim() || !pairChampB.trim()) return;
-    addCustomPair(pairChampA.trim(), pairChampB.trim(), pairTheme.trim() || undefined);
-    setPairChampA('');
-    setPairChampB('');
+    if (!pairA.trim() || !pairB.trim()) return;
+    addCustomPair(pairA.trim(), pairB.trim(), pairTheme.trim() || undefined);
+    setPairA('');
+    setPairB('');
     setPairTheme('');
   }
 
+  const undercoverLabel = s.undercoverCount === 0 ? `Auto (${n >= MIN_PLAYERS ? autoUndercoverCount(n) : 1})` : `${counts.undercover}`;
+
   return (
-    <div className="screen theme-paper">
+    <div className="screen" data-universe={roomState.universe}>
       <AppBar
-        title="Lobby"
+        title={copy.name}
         right={
-          <>
-            <ThemeToggle />
-            <span className="badge badge--host">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="M4 18 L6 8 L10 13 L12 6 L14 13 L18 8 L20 18 Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-              </svg>
-              Hôte : {host?.name ?? '—'}
-            </span>
-          </>
+          <button className="btn btn-ghost btn-sm" type="button" onClick={() => leaveRoom()}>
+            Quitter
+          </button>
         }
       />
 
       <main className="main">
         <div className="container">
-          <div className="code-share frame-cut">
-            <div className="code-share__row">
-              <div>
-                <div className="code-share__label">Code de la room</div>
-                <div className="room-code" aria-label={`Code de room : ${roomState.roomCode.split('').join(' ')}`}>
-                  {roomState.roomCode.split('').map((c, i) => (
-                    <span className="room-code__char" key={i}>
-                      {c}
+          <section className="hud-frame text-center">
+            <div className="eyebrow">Code de la room</div>
+            <div className="room-code" aria-label={`Code : ${roomState.roomCode.split('').join(' ')}`}>
+              {roomState.roomCode.split('').map((c, i) => (
+                <span className="room-code__char" key={i}>
+                  {c}
+                </span>
+              ))}
+            </div>
+            <div className="row" style={{ justifyContent: 'center' }}>
+              <button className="btn btn-secondary btn-sm" type="button" onClick={copyCode}>
+                {copied === 'code' ? '✓ Copié' : 'Copier le code'}
+              </button>
+              <button className="btn btn-primary btn-sm" type="button" onClick={shareLink}>
+                {copied === 'link' ? '✓ Lien copié' : 'Inviter'}
+              </button>
+            </div>
+          </section>
+
+          <section className="section" aria-labelledby="players-title">
+            <div className="section__head">
+              <h2 id="players-title" className="section__title">
+                Joueurs
+              </h2>
+              <span className="section__count">
+                {n}/{MAX_PLAYERS}
+              </span>
+            </div>
+            <div className="player-grid">
+              {roomState.players.map((p) => (
+                <div key={p.playerId} className={`player-tile${p.playerId === playerId ? ' player-tile--me' : ''}${p.connected ? '' : ' player-tile--offline'}`}>
+                  <Avatar seed={p.avatarSeed} name={p.name} host={p.isHost} />
+                  <div className="player-tile__body">
+                    <div className="player-tile__name">{p.name}</div>
+                    <div className="player-tile__meta">
+                      {p.playerId === playerId ? 'Toi' : p.isHost ? 'Hôte' : p.connected ? 'Prêt' : 'Déconnecté…'}
+                      {p.score > 0 && `, ${p.score} pt${p.score > 1 ? 's' : ''}`}
+                    </div>
+                  </div>
+                  {isHost && p.playerId !== playerId && (
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn--danger player-tile__kick"
+                      aria-label={`Exclure ${p.name}`}
+                      title="Exclure"
+                      onClick={() => window.confirm(`Exclure ${p.name} de la partie ?`) && kickPlayer(p.playerId)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              ))}
+              {n < MIN_PLAYERS && <div className="player-tile player-tile--empty">En attente de joueurs…</div>}
+            </div>
+          </section>
+
+          <section className="section" aria-labelledby="roles-title">
+            <div className="section__head">
+              <h2 id="roles-title" className="section__title">
+                Rôles
+              </h2>
+              {isHost && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={activateChaosMode}>
+                  🎲 Mode chaos
+                </button>
+              )}
+            </div>
+            <div className="role-toggle-grid">
+              {ROLE_TOGGLES.map((t) => {
+                const available = n >= t.min;
+                const on = s[t.key];
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    className={`role-toggle${available ? '' : ' role-toggle--locked'}`}
+                    style={{ '--role-color': `var(--role-${t.role})` } as CSSProperties}
+                    aria-pressed={on}
+                    disabled={!isHost || !available}
+                    onClick={() => updateSettings({ [t.key]: !on })}
+                  >
+                    <span className="role-toggle__top">
+                      {t.role === 'lover' ? (
+                        <span className="role-toggle__icon" style={{ fontSize: 22, lineHeight: '28px', textAlign: 'center' }} aria-hidden="true">
+                          💘
+                        </span>
+                      ) : (
+                        <RoleEmblem role={t.role} className="role-toggle__icon" />
+                      )}
+                      <span className="role-toggle__name">{t.label}</span>
+                      <span className="role-toggle__check" aria-hidden="true">
+                        {on ? '✓' : ''}
+                      </span>
                     </span>
+                    <span className="role-toggle__hint">{available ? t.hint : `Dès ${t.min} joueurs`}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="section" aria-labelledby="game-title">
+            <div className="section__head">
+              <h2 id="game-title" className="section__title">
+                Partie
+              </h2>
+            </div>
+            <div className="panel" style={{ paddingBlock: 4 }}>
+              <div className="setting-line">
+                <div>
+                  <div className="setting-line__label">Undercover</div>
+                  <div className="setting-line__hint">Auto : 1 jusqu'à 8 joueurs, 2 au-delà</div>
+                </div>
+                <div className="stepper">
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label="Moins d'Undercover"
+                    disabled={!isHost || s.undercoverCount === 0}
+                    onClick={() => setUndercover(counts.undercover <= 1 ? 0 : counts.undercover - 1)}
+                  >
+                    −
+                  </button>
+                  <span className="stepper__value">{undercoverLabel}</span>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    aria-label="Plus d'Undercover"
+                    disabled={!isHost || counts.undercover >= Math.min(4, maxUndercover)}
+                    onClick={() => setUndercover(Math.min(4, maxUndercover, counts.undercover + 1))}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div className="setting-line">
+                <div>
+                  <div className="setting-line__label">Minuteur de discussion</div>
+                  <div className="setting-line__hint">À zéro, le vote se lance tout seul</div>
+                </div>
+                <div className="segmented" role="group" aria-label="Minuteur de discussion">
+                  {TIMER_OPTIONS.map((o) => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      className="segmented__btn"
+                      aria-pressed={s.discussionSeconds === o.value}
+                      disabled={!isHost}
+                      onClick={() => updateSettings({ discussionSeconds: o.value })}
+                    >
+                      {o.label}
+                    </button>
                   ))}
                 </div>
               </div>
-              <button className="icon-btn" type="button" aria-label="Copier le code de la room" onClick={copyCode}>
-                <svg className="icon" viewBox="0 0 24 24" fill="none">
-                  <rect x="8" y="8" width="12" height="12" rx="1" stroke="currentColor" strokeWidth="1.8" />
-                  <path d="M5 16V5 h11" stroke="currentColor" strokeWidth="1.8" fill="none" />
-                </svg>
-              </button>
-            </div>
-            <button className="btn btn-secondary" type="button" onClick={copyInviteLink}>
-              <svg className="icon" viewBox="0 0 24 24" fill="none" width={16} height={16} style={{ marginRight: 'var(--space-2)' }}>
-                <path d="M9 15 L15 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                <path
-                  d="M11 6 l1.5-1.5 a3.2 3.2 0 0 1 4.5 4.5 L15.5 10.5 M13 18 l-1.5 1.5 a3.2 3.2 0 0 1 -4.5 -4.5 L8.5 13.5"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Copier le lien d'invitation
-            </button>
-          </div>
 
-          <section aria-labelledby="players-title">
-            <div className="section-title">
-              <h2 id="players-title" className="font-display">
-                Joueurs
-              </h2>
-              <span className="count">{n} / 12</span>
+              <div className="setting-line">
+                <div>
+                  <div className="setting-line__label">Difficulté des paires</div>
+                  <div className="setting-line__hint">Expert = personnages quasi jumeaux</div>
+                </div>
+                <div className="segmented" role="group" aria-label="Difficulté des paires">
+                  {DIFFICULTY_OPTIONS.map((o) => (
+                    <button
+                      key={o.value}
+                      type="button"
+                      className="segmented__btn"
+                      aria-pressed={s.difficulty === o.value}
+                      disabled={!isHost || s.customPairsEnabled}
+                      onClick={() => updateSettings({ difficulty: o.value })}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <SwitchRow
+                id="toggle-public-votes"
+                title="Votes publics"
+                hint="Le résultat montre qui a voté pour qui"
+                checked={s.publicVotes}
+                disabled={!isHost}
+                onChange={(v) => updateSettings({ publicVotes: v })}
+              />
+              <SwitchRow
+                id="toggle-reveal"
+                title={`Révéler le ${copy.unitLabel} des éliminés`}
+                hint="Sinon, seul leur rôle est annoncé"
+                checked={s.revealChampionOnElimination}
+                disabled={!isHost}
+                onChange={(v) => updateSettings({ revealChampionOnElimination: v })}
+              />
             </div>
-            <div className="panel" style={{ padding: '0 var(--space-5)' }}>
-              {roomState.players.map((p) => (
-                <div key={p.playerId} className={`player-row stagger-item${p.connected ? '' : ' player-row--offline'}`}>
-                  <Avatar seed={p.avatarSeed} name={p.name} host={p.isHost} />
-                  <div>
-                    <div className="player-row__name">{p.name}</div>
-                    <div className="player-row__meta">
-                      {p.isHost ? 'Hôte' : p.connected ? 'Connecté' : 'Déconnecté — retour possible 3 min'}
-                    </div>
+          </section>
+
+          <details className="section fold" open={roomState.customPairs.length > 0}>
+            <summary className="section__head">
+              <h2 className="section__title">Paires maison</h2>
+              <span className="section__count">{roomState.customPairs.length}</span>
+            </summary>
+            <div className="panel stack" style={{ '--gap': '10px' } as CSSProperties}>
+              {isHost && (
+                <>
+                  <div className="row">
+                    <input className="input" type="text" maxLength={40} placeholder="Mot des civils" aria-label="Mot des civils" value={pairA} onChange={(e) => setPairA(e.target.value)} />
+                    <span className="vs">VS</span>
+                    <input className="input" type="text" maxLength={40} placeholder="Mot de l'undercover" aria-label="Mot de l'undercover" value={pairB} onChange={(e) => setPairB(e.target.value)} />
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section aria-labelledby="settings-title" className="mt-6">
-            <div className="section-title">
-              <h2 id="settings-title" className="font-display">
-                Réglages de la partie
-              </h2>
-            </div>
-            <div className="panel">
-              <div className="setting-row setting-row--stat">
-                <span className="field__label" style={{ margin: 0 }}>
-                  Répartition (auto — {n} joueur{n > 1 ? 's' : ''})
-                </span>
-                <div className="distribution">
-                  <span className="badge badge--civil">{counts.civils} Civils</span>
-                  <span className="badge badge--undercover">{counts.undercover} Undercover</span>
-                  {counts.mrWhite > 0 && <span className="badge badge--mrwhite">1 Mr White</span>}
-                  {counts.spy > 0 && <span className="badge badge--spy">1 Espion</span>}
-                  {counts.protector > 0 && <span className="badge badge--protector">1 Protecteur</span>}
-                  {counts.ghost > 0 && <span className="badge badge--ghost">1 Revenant</span>}
-                  {counts.jester > 0 && <span className="badge badge--jester">1 Bouffon</span>}
-                  {counts.hunter > 0 && <span className="badge badge--hunter">1 Chasseur</span>}
-                  {counts.lovers && <span className="badge badge--lover">💘 Amoureux</span>}
-                </div>
-              </div>
-
-              {isHost && (
-                <div className="setting-row">
-                  <button type="button" className="btn btn-secondary chaos-btn" onClick={activateChaosMode}>
-                    🎲 Mode Chaos — active tous les rôles disponibles
-                  </button>
-                </div>
-              )}
-
-              <div className="setting-row">
-                <label className="switch" htmlFor="toggle-mrwhite">
-                  <input
-                    type="checkbox"
-                    id="toggle-mrwhite"
-                    checked={roomState.settings.mrWhiteEnabled}
-                    disabled={!isHost || !mrWhiteAvailable}
-                    onChange={(e) => updateSettings({ mrWhiteEnabled: e.target.checked })}
-                  />
-                  <span className="switch__track" />
-                  <span className="switch__label">
-                    <span className="switch__label-title">Mr White</span>
-                    <span className="switch__label-hint">
-                      {mrWhiteAvailable ? 'Un joueur ne connaît aucun champion — il doit bluffer' : 'Indisponible à moins de 5 joueurs'}
-                    </span>
-                  </span>
-                </label>
-              </div>
-
-              <div className="setting-row">
-                <label className="switch" htmlFor="toggle-spy">
-                  <input
-                    type="checkbox"
-                    id="toggle-spy"
-                    checked={roomState.settings.spyEnabled}
-                    disabled={!isHost || !spyAvailable}
-                    onChange={(e) => updateSettings({ spyEnabled: e.target.checked })}
-                  />
-                  <span className="switch__track" />
-                  <span className="switch__label">
-                    <span className="switch__label-title">Espion</span>
-                    <span className="switch__label-hint">
-                      {spyAvailable ? 'Camp civils — apprend le camp d\'un autre joueur à la révélation' : 'Indisponible à moins de 4 joueurs'}
-                    </span>
-                  </span>
-                </label>
-              </div>
-
-              <div className="setting-row">
-                <label className="switch" htmlFor="toggle-protector">
-                  <input
-                    type="checkbox"
-                    id="toggle-protector"
-                    checked={roomState.settings.protectorEnabled}
-                    disabled={!isHost || !protectorAvailable}
-                    onChange={(e) => updateSettings({ protectorEnabled: e.target.checked })}
-                  />
-                  <span className="switch__track" />
-                  <span className="switch__label">
-                    <span className="switch__label-title">Protecteur</span>
-                    <span className="switch__label-hint">
-                      {protectorAvailable ? 'Camp civils — peut annuler une élimination, une fois par partie' : 'Indisponible à moins de 5 joueurs'}
-                    </span>
-                  </span>
-                </label>
-              </div>
-
-              <div className="setting-row">
-                <label className="switch" htmlFor="toggle-ghost">
-                  <input
-                    type="checkbox"
-                    id="toggle-ghost"
-                    checked={roomState.settings.ghostEnabled}
-                    disabled={!isHost || !ghostAvailable}
-                    onChange={(e) => updateSettings({ ghostEnabled: e.target.checked })}
-                  />
-                  <span className="switch__track" />
-                  <span className="switch__label">
-                    <span className="switch__label-title">Revenant</span>
-                    <span className="switch__label-hint">
-                      {ghostAvailable ? 'Camp civils — vote une dernière fois après son élimination' : 'Indisponible à moins de 5 joueurs'}
-                    </span>
-                  </span>
-                </label>
-              </div>
-
-              <div className="setting-row">
-                <label className="switch" htmlFor="toggle-hunter">
-                  <input
-                    type="checkbox"
-                    id="toggle-hunter"
-                    checked={roomState.settings.hunterEnabled}
-                    disabled={!isHost || !hunterAvailable}
-                    onChange={(e) => updateSettings({ hunterEnabled: e.target.checked })}
-                  />
-                  <span className="switch__track" />
-                  <span className="switch__label">
-                    <span className="switch__label-title">Chasseur</span>
-                    <span className="switch__label-hint">
-                      {hunterAvailable ? 'Camp civils — s\'il est éliminé, il tire sur un autre joueur' : 'Indisponible à moins de 4 joueurs'}
-                    </span>
-                  </span>
-                </label>
-              </div>
-
-              <div className="setting-row">
-                <label className="switch" htmlFor="toggle-jester">
-                  <input
-                    type="checkbox"
-                    id="toggle-jester"
-                    checked={roomState.settings.jesterEnabled}
-                    disabled={!isHost || !jesterAvailable}
-                    onChange={(e) => updateSettings({ jesterEnabled: e.target.checked })}
-                  />
-                  <span className="switch__track" />
-                  <span className="switch__label">
-                    <span className="switch__label-title">Bouffon</span>
-                    <span className="switch__label-hint">
-                      {jesterAvailable ? 'Camp solo — gagne seul s\'il est éliminé par un vote' : 'Indisponible à moins de 6 joueurs'}
-                    </span>
-                  </span>
-                </label>
-              </div>
-
-              <div className="setting-row">
-                <label className="switch" htmlFor="toggle-lovers">
-                  <input
-                    type="checkbox"
-                    id="toggle-lovers"
-                    checked={roomState.settings.loversEnabled}
-                    disabled={!isHost || !loversAvailable}
-                    onChange={(e) => updateSettings({ loversEnabled: e.target.checked })}
-                  />
-                  <span className="switch__track" />
-                  <span className="switch__label">
-                    <span className="switch__label-title">💘 Amoureux</span>
-                    <span className="switch__label-hint">
-                      {loversAvailable ? '2 joueurs liés en secret — si l\'un meurt, l\'autre le suit' : 'Indisponible à moins de 4 joueurs'}
-                    </span>
-                  </span>
-                </label>
-              </div>
-
-              <div className="setting-row">
-                <label className="switch" htmlFor="toggle-reveal">
-                  <input
-                    type="checkbox"
-                    id="toggle-reveal"
-                    checked={roomState.settings.revealChampionOnElimination}
-                    disabled={!isHost}
-                    onChange={(e) => updateSettings({ revealChampionOnElimination: e.target.checked })}
-                  />
-                  <span className="switch__track" />
-                  <span className="switch__label">
-                    <span className="switch__label-title">Révéler le champion à l'élimination</span>
-                    <span className="switch__label-hint">Sinon, seul le rôle du joueur éliminé est annoncé</span>
-                  </span>
-                </label>
-              </div>
-            </div>
-          </section>
-
-          <section aria-labelledby="custom-pairs-title" className="mt-6">
-            <div className="section-title">
-              <h2 id="custom-pairs-title" className="font-display">
-                Paires personnalisées
-              </h2>
-              <span className="count">{roomState.customPairs.length}</span>
-            </div>
-            <div className="panel">
-              {isHost && (
-                <div className="setting-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--space-3)' }}>
-                  <input
-                    className="input"
-                    type="text"
-                    maxLength={40}
-                    placeholder="Ex. Batman"
-                    aria-label="Nom du premier champion/personnage"
-                    value={pairChampA}
-                    onChange={(e) => setPairChampA(e.target.value)}
-                  />
-                  <input
-                    className="input"
-                    type="text"
-                    maxLength={40}
-                    placeholder="Ex. Robin"
-                    aria-label="Nom du second champion/personnage"
-                    value={pairChampB}
-                    onChange={(e) => setPairChampB(e.target.value)}
-                  />
-                  <input
-                    className="input"
-                    type="text"
-                    maxLength={80}
-                    placeholder="Thème (optionnel)"
-                    aria-label="Thème de la paire"
-                    value={pairTheme}
-                    onChange={(e) => setPairTheme(e.target.value)}
-                  />
+                  <input className="input" type="text" maxLength={80} placeholder="Thème (optionnel)" aria-label="Thème de la paire" value={pairTheme} onChange={(e) => setPairTheme(e.target.value)} />
                   <button
                     className="btn btn-secondary"
                     type="button"
-                    disabled={!pairChampA.trim() || !pairChampB.trim() || roomState.customPairs.length >= MAX_CUSTOM_PAIRS_PER_ROOM}
+                    disabled={!pairA.trim() || !pairB.trim() || roomState.customPairs.length >= MAX_CUSTOM_PAIRS_PER_ROOM}
                     onClick={handleAddPair}
                   >
-                    Ajouter la paire
+                    + Ajouter la paire
                   </button>
+                </>
+              )}
+              {roomState.customPairs.length === 0 ? (
+                <p className="text-low small">{isHost ? 'Crée tes propres paires pour un univers 100 % maison.' : "L'hôte peut ajouter ses propres paires."}</p>
+              ) : (
+                <div>
+                  {roomState.customPairs.map((pair) => (
+                    <div className="custom-pair" key={pair.id}>
+                      <span style={{ flex: 1 }}>
+                        <strong>{pair.champA}</strong> <span className="vs">VS</span> <strong>{pair.champB}</strong>
+                        <span className="text-low"> ({pair.theme})</span>
+                      </span>
+                      {isHost && (
+                        <button className="icon-btn" type="button" aria-label={`Retirer ${pair.champA} / ${pair.champB}`} onClick={() => removeCustomPair(pair.id)}>
+                          <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
-
-              {roomState.customPairs.length === 0 ? (
-                <p className="text-low" style={{ padding: 'var(--space-4) 0', fontSize: 'var(--text-sm)' }}>
-                  Aucune paire personnalisée — {isHost ? 'ajoutes-en une pour créer un univers maison' : "l'hôte peut en ajouter"}.
-                </p>
-              ) : (
-                roomState.customPairs.map((pair) => (
-                  <div className="setting-row" key={pair.id}>
-                    <span style={{ fontSize: 'var(--text-sm)' }}>
-                      {pair.champA} / {pair.champB} — <span className="text-low">{pair.theme}</span>
-                    </span>
-                    {isHost && (
-                      <button
-                        className="icon-btn"
-                        type="button"
-                        aria-label={`Retirer la paire ${pair.champA} / ${pair.champB}`}
-                        onClick={() => removeCustomPair(pair.id)}
-                      >
-                        <svg className="icon" viewBox="0 0 24 24" fill="none" width={16} height={16}>
-                          <path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                ))
-              )}
-
-              <div className="setting-row">
-                <label className="switch" htmlFor="toggle-custom-pairs">
-                  <input
-                    type="checkbox"
-                    id="toggle-custom-pairs"
-                    checked={roomState.settings.customPairsEnabled}
-                    disabled={!isHost || roomState.customPairs.length === 0}
-                    onChange={(e) => updateSettings({ customPairsEnabled: e.target.checked })}
-                  />
-                  <span className="switch__track" />
-                  <span className="switch__label">
-                    <span className="switch__label-title">Utiliser uniquement ces paires</span>
-                    <span className="switch__label-hint">
-                      {roomState.customPairs.length === 0
-                        ? 'Ajoute au moins une paire pour activer'
-                        : `Remplace le pool ${roomState.universe} par ces ${roomState.customPairs.length} paire${roomState.customPairs.length > 1 ? 's' : ''} pour cette partie`}
-                    </span>
-                  </span>
-                </label>
-              </div>
+              <SwitchRow
+                id="toggle-custom-pairs"
+                title="Jouer uniquement avec ces paires"
+                hint={roomState.customPairs.length === 0 ? 'Ajoute au moins une paire' : `Remplace les paires ${copy.name}`}
+                checked={s.customPairsEnabled}
+                disabled={!isHost || roomState.customPairs.length === 0}
+                onChange={(v) => updateSettings({ customPairsEnabled: v })}
+              />
             </div>
-          </section>
+          </details>
         </div>
       </main>
 
-      <ActionBar>
-        {isHost ? (
-          <>
-            <button className="btn btn-primary" type="button" disabled={!canStart} onClick={startGame}>
-              Lancer la partie
-            </button>
-            <span className="confirm-hint">
-              {n} joueur{n > 1 ? 's' : ''} {canStart ? 'prêts' : '— minimum 3 pour lancer'} — répartition {counts.civils} Civils /{' '}
+      <ActionBar
+        hint={
+          <span className="distribution" style={{ justifyContent: 'center' }}>
+            <span className="badge badge--civil">{counts.civils + counts.spy + counts.protector + counts.ghost + counts.hunter} Civils</span>
+            <span className="badge badge--undercover">
               {counts.undercover} Undercover
-              {counts.mrWhite > 0 ? ' / 1 Mr White' : ''}
-              {counts.spy > 0 ? ' / 1 Espion' : ''}
-              {counts.protector > 0 ? ' / 1 Protecteur' : ''}
-              {counts.ghost > 0 ? ' / 1 Revenant' : ''}
-              {counts.hunter > 0 ? ' / 1 Chasseur' : ''}
-              {counts.jester > 0 ? ' / 1 Bouffon' : ''}
-              {counts.lovers ? ' / 💘 Amoureux' : ''}
             </span>
-          </>
+            {counts.mrWhite > 0 && <span className="badge badge--mrwhite">{roleLabel('mrwhite')}</span>}
+            {counts.jester > 0 && <span className="badge badge--jester">{roleLabel('jester')}</span>}
+          </span>
+        }
+      >
+        {isHost ? (
+          <button className="btn btn-primary" type="button" disabled={!canStart} onClick={startGame}>
+            {canStart ? 'Lancer la partie' : `Encore ${MIN_PLAYERS - n} joueur${MIN_PLAYERS - n > 1 ? 's' : ''}…`}
+          </button>
         ) : (
           <button className="btn btn-secondary" type="button" disabled>
             En attente de l'hôte…

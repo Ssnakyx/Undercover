@@ -12,14 +12,21 @@ import { GameOver } from '../screens/GameOver';
 import { GameAborted } from '../screens/GameAborted';
 import { SpectatorView } from '../screens/SpectatorView';
 import { ChatBox } from '../components/ChatBox';
+import { MyWordButton } from '../components/MyWordButton';
+import { useWakeLock } from '../hooks/useWakeLock';
+import type { GamePhase } from '../types';
+
+// Phases où un joueur a un rôle à consulter via "Mon mot".
+const IN_GAME_PHASES = new Set<GamePhase>(['discussion', 'voting', 'round_result', 'mrwhite_guess', 'hunter_shoot']);
 
 function LoadingScreen() {
   return (
     <div className="screen">
       <main className="main">
-        <div className="container">
-          <p className="text-mid text-center" style={{ marginTop: 'var(--space-9)' }}>
-            Connexion à la partie…
+        <div className="loading">
+          <span className="eyebrow">Loading</span>
+          <p className="text-mid">
+            Connexion à la partie<span className="loading__dots" />
           </p>
         </div>
       </main>
@@ -29,9 +36,18 @@ function LoadingScreen() {
 
 export function GameRoute() {
   const { roomCode: paramCode } = useParams();
-  const { roomCode, connected, roomState, rejoinFromStorage, isSpectator } = useRoom();
+  const { roomCode, connected, roomState, rejoinFromStorage, isSpectator, roleVersion, myRole } = useRoom();
   const navigate = useNavigate();
   const upper = paramCode?.toUpperCase();
+  const phase = roomState?.phase;
+
+  useWakeLock(!!phase && phase !== 'lobby' && phase !== 'game_over' && phase !== 'aborted');
+
+  // Chaque phase repart du haut de l'écran (sinon le salon s'ouvrait scrollé là où on avait
+  // laissé l'écran de fin de partie).
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [phase]);
 
   useEffect(() => {
     if (!upper) return;
@@ -51,28 +67,26 @@ export function GameRoute() {
     return <LoadingScreen />;
   }
 
+  // La clé remonte l'écran à chaque changement de phase (animation d'entrée) ET à chaque
+  // nouvelle distribution de rôles (relance pendant une révélation : l'écran repart de zéro).
+  const screenKey = `${roomState.phase}-${roleVersion}`;
+  const showMyWord = !isSpectator && !!myRole && IN_GAME_PHASES.has(roomState.phase);
+
   return (
     <>
-      {/* key={phase} force le remount du wrapper à chaque changement de phase (reveal ->
-          discussion -> voting -> ...), ce qui relance l'animation fade-in-up — sans ça le
-          <div> persisterait et l'animation ne jouerait qu'une fois au tout premier mount. */}
-      <div key={roomState.phase} className="phase-transition">
+      <div key={screenKey} className="phase-transition" data-universe={roomState.universe}>
         {isSpectator ? <SpectatorView /> : <PhaseScreen phase={roomState.phase} />}
       </div>
-      {/* Rideau d'hexagones — voir CONTRACT.md §8 "Motion" : seul moment où l'interface
-          "parle" à la place des joueurs, entre deux actes. pointer-events:none (tokens.css
-          .curtain), remonté par la même clé donc rejoué à chaque transition de phase. */}
-      <div key={`curtain-${roomState.phase}`} className="curtain" aria-hidden="true">
-        <span className="curtain__hex" />
-        <span className="curtain__hex" />
-        <span className="curtain__hex" />
+      <div key={`wipe-${roomState.phase}`} className="wipe" data-universe={roomState.universe} aria-hidden="true" />
+      <div className="fab-stack" data-universe={roomState.universe}>
+        {showMyWord && <MyWordButton />}
+        <ChatBox />
       </div>
-      <ChatBox />
     </>
   );
 }
 
-function PhaseScreen({ phase }: { phase: string }) {
+function PhaseScreen({ phase }: { phase: GamePhase }) {
   switch (phase) {
     case 'lobby':
       return <Lobby />;

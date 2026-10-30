@@ -18,6 +18,7 @@ import type {
   PublicPlayer,
   PublicSpectator,
   Room,
+  RoomSettings,
   RoomStatePublic,
   RoundResultPayload,
   Winner,
@@ -39,6 +40,7 @@ import {
 } from '../rooms/roomStore.js';
 import {
   attemptRejoin,
+  cancelDisconnectTimer,
   finalizeDisconnectTimeout,
   migrateHostIfNeeded,
   registerDisconnect,
@@ -54,7 +56,8 @@ import {
   PROTECTOR_MIN_PLAYERS,
   SPY_MIN_PLAYERS,
 } from '../game/roles.js';
-import { getAllPairs } from '../content/pairsStore.js';
+import { getPairs } from '../content/pairsStore.js';
+import { characterImage } from '../content/characterImages.js';
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -63,6 +66,11 @@ const NAME_MAX_LENGTH = 24;
 const CHAT_MESSAGE_MAX_LENGTH = 300;
 const CUSTOM_PAIR_FIELD_MAX_LENGTH = 40;
 const CUSTOM_PAIR_THEME_MAX_LENGTH = 80;
+// Réglages "qualité de vie" (voir RoomSettings) — valeurs acceptées côté serveur.
+const MAX_UNDERCOVER_SETTING = 4;
+const DISCUSSION_SECONDS_ALLOWED = new Set([0, 60, 90, 120, 180, 300]);
+const DIFFICULTIES = new Set(['all', 'easy', 'medium', 'hard']);
+const UNIVERSES = new Set<unknown>(['lol', 'smash', 'pokemon', 'games']);
 
 // ---------------------------------------------------------------------------
 // Sérialisation publique — ne JAMAIS inclure role/champion ici (contrat section 6).
@@ -102,6 +110,13 @@ function toPublicState(room: Room): RoomStatePublic {
     turnOrder: [...room.turnOrder],
     votedPlayerIds: room.votes.map((v) => v.voterId),
     phaseDeadline: room.phaseDeadline,
+    ghostVoterIds: engine
+      .playersInJoinOrder(room)
+      .filter((p) => !p.alive && p.ghostVoteAvailable)
+      .map((p) => p.playerId),
+    mrWhiteGuessPlayerId: room.phase === 'mrwhite_guess' ? room.mrWhiteGuessPlayerId : null,
+    hunterShootPlayerId: room.phase === 'hunter_shoot' ? room.hunterShootPlayerId : null,
+    abortedByName: room.phase === 'aborted' ? room.abortedByName : null,
     customPairs: [...room.customPairs],
   };
 }
@@ -115,7 +130,7 @@ function pickPairsPool(room: Room): ChampionPair[] {
   if (room.settings.customPairsEnabled && room.customPairs.length > 0) {
     return room.customPairs;
   }
-  return getAllPairs(room.universe);
+  return getPairs(room.universe, room.settings.difficulty);
 }
 
 /** Fait entrer tous les spectateurs en jeu au prochain game:restart (voir §5bis) : "rejoindre
@@ -123,11 +138,11 @@ function pickPairsPool(room: Room): ChampionPair[] {
  * cours puis deviennent joueurs complets dès la suivante, sans action de leur part. */
 function promoteSpectatorsToPlayers(room: Room): void {
   if (room.spectators.size === 0) return;
-  let joinOrder = room.players.size;
   for (const spectator of room.spectators.values()) {
-    room.players.set(spectator.playerId, { ...spectator, joinOrder: joinOrder++ });
+    if (room.players.size >= MAX_PLAYERS_PER_ROOM) break; // les suivants restent spectateurs
+    room.players.set(spectator.playerId, { ...spectator, joinOrder: room.nextJoinOrder++ });
+    room.spectators.delete(spectator.playerId);
   }
-  room.spectators.clear();
 }
 
 // Rôles considérés comme des variantes du camp civils pour l'insight de l'Espion (voir
@@ -140,6 +155,7 @@ function sendRolePrivate(io: IoServer, room: Room, player: Player): void {
   const payload: Parameters<ServerToClientEvents['role:private']>[0] = {
     role: player.role,
     champion: player.champion,
+    championImage: characterImage(room.universe, player.champion),
   };
   if (player.loverPlayerId) {
     const lover = room.players.get(player.loverPlayerId);
@@ -206,7 +222,23 @@ function scheduleHunterShootTimeout(io: IoServer, room: Room): void {
 
 function onRevealTimeout(io: IoServer, room: Room): void {
   if (room.phase !== 'reveal') return;
-  engine.enterDiscussion(room);
+  enterDiscussionAndBroadcast(io, room);
+}
+
+/** Entre en discussion, programme le minuteur optionnel (settings.discussionSeconds) et diffuse. */
+function enterDiscussionAndBroadcast(io: IoServer, room: Room, enter: () => void = () => engine.enterDiscussion(room)): void {
+  enter();
+  if (room.phaseDeadline) {
+    scheduleRoomTimer(room, room.phaseDeadline - Date.now(), () => onDiscussionTimeout(io, room));
+  } else {
+    clearRoomTimer(room);
+  }
+  broadcastRoomState(io, room);
+}
+
+function onDiscussionTimeout(io: IoServer, room: Room): void {
+  if (room.phase !== 'discussion') return;
+  engine.startVoting(room);
   broadcastRoomState(io, room);
 }
 
@@ -258,7 +290,7 @@ function finishGame(io: IoServer, room: Room, winner: Winner): void {
   clearRoomTimer(room);
   const reveal = engine.buildGameEndedReveal(room);
   broadcastRoomState(io, room);
-  const payload: GameEndedPayload = { winner, reveal };
+  const payload: GameEndedPayload = { winner, reveal, pair: engine.buildGameEndedPair(room) };
   io.to(room.roomCode).emit('game:ended', payload);
 }
 
@@ -268,7 +300,7 @@ function finishGame(io: IoServer, room: Room, winner: Winner): void {
  * explicite CONTRACT.md §5 : "marqué éliminé (rôle révélé)"), puis réconcilie l'état de jeu
  * (ordre des tours / fenêtre mrwhite_guess / conditions de victoire).
  */
-function applyMidGameDeparture(io: IoServer, room: Room, playerId: string): void {
+function applyMidGameDeparture(io: IoServer, room: Room, playerId: string, opts: { kicked?: boolean } = {}): void {
   const player = room.players.get(playerId);
   if (!player) return;
 
@@ -277,14 +309,18 @@ function applyMidGameDeparture(io: IoServer, room: Room, playerId: string): void
   // post-élimination (Amoureux/Bouffon/Chasseur), voir CONTRACT.md, règle unificatrice.
   player.ghostVoteAvailable = false;
 
-  const revealPayload: RoundResultPayload = {
-    eliminatedPlayerId: playerId,
-    eliminatedRole: player.role ?? 'civil', // rôle toujours assigné hors phase lobby
-    eliminatedChampion: room.settings.revealChampionOnElimination ? player.champion : null,
-    voteCounts: {},
-    tie: false,
-  };
-  io.to(room.roomCode).emit('round:result', revealPayload);
+  // Événement dédié (et non plus un round:result) : un round:result écrasait le résultat de
+  // vote affiché, et faisait disparaître l'écran de devinette de Mr White / de tir du Chasseur
+  // quand un autre joueur partait pendant ces phases.
+  const champion = room.settings.revealChampionOnElimination ? player.champion : null;
+  io.to(room.roomCode).emit('player:left', {
+    playerId,
+    name: player.name,
+    role: player.role,
+    champion,
+    championImage: characterImage(room.universe, champion),
+    kicked: opts.kicked ?? false,
+  });
 
   if (room.phase === 'mrwhite_guess' && room.mrWhiteGuessPlayerId === playerId) {
     const res = engine.resolveMrWhiteTimeout(room);
@@ -411,6 +447,27 @@ function isValidName(name: unknown): name is string {
   return typeof name === 'string' && name.trim().length >= 1 && name.trim().length <= NAME_MAX_LENGTH;
 }
 
+/** Deux joueurs du même nom rendaient votes et chat ambigus : refusé (casse et accents ignorés). */
+function isNameTaken(room: Room, name: string): boolean {
+  const key = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  const wanted = key(name);
+  return [...room.players.values(), ...room.spectators.values()].some((p) => key(p.name) === wanted);
+}
+
+/** Valide les réglages non booléens (voir RoomSettings) ; renvoie un message d'erreur ou null. */
+function validateExtraSettings(next: RoomSettings): string | null {
+  if (!Number.isInteger(next.undercoverCount) || next.undercoverCount < 0 || next.undercoverCount > MAX_UNDERCOVER_SETTING) {
+    return `undercoverCount doit être un entier entre 0 (auto) et ${MAX_UNDERCOVER_SETTING}`;
+  }
+  if (!DISCUSSION_SECONDS_ALLOWED.has(next.discussionSeconds)) {
+    return 'discussionSeconds invalide';
+  }
+  if (!DIFFICULTIES.has(next.difficulty)) {
+    return 'difficulty invalide';
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Enregistrement des handlers
 // ---------------------------------------------------------------------------
@@ -425,7 +482,7 @@ export function registerSocketHandlers(io: IoServer): void {
         ack({ ok: false, error: { code: 'INVALID_NAME', message: 'Nom du host invalide' } });
         return;
       }
-      if (payload?.universe !== 'lol' && payload?.universe !== 'smash' && payload?.universe !== 'pokemon') {
+      if (!UNIVERSES.has(payload?.universe)) {
         ack({ ok: false, error: { code: 'INVALID_UNIVERSE', message: 'Univers invalide' } });
         return;
       }
@@ -444,7 +501,7 @@ export function registerSocketHandlers(io: IoServer): void {
         role: null,
         champion: null,
         hasAckedReveal: false,
-        joinOrder: 0,
+        joinOrder: room.nextJoinOrder++,
         disconnectedAt: null,
         disconnectTimer: null,
         loverPlayerId: null,
@@ -482,6 +539,10 @@ export function registerSocketHandlers(io: IoServer): void {
         ack({ ok: false, error: { code: 'INVALID_NAME', message: 'Nom de joueur invalide' } });
         return;
       }
+      if (isNameTaken(room, payload.playerName)) {
+        ack({ ok: false, error: { code: 'NAME_TAKEN', message: 'Ce pseudo est déjà pris dans cette room' } });
+        return;
+      }
 
       const playerId = generatePlayerId();
       const sessionToken = generateSessionToken();
@@ -497,7 +558,7 @@ export function registerSocketHandlers(io: IoServer): void {
         role: null,
         champion: null,
         hasAckedReveal: false,
-        joinOrder: room.players.size,
+        joinOrder: room.nextJoinOrder++,
         disconnectedAt: null,
         disconnectTimer: null,
         loverPlayerId: null,
@@ -543,6 +604,10 @@ export function registerSocketHandlers(io: IoServer): void {
         ack({ ok: false, error: { code: 'INVALID_NAME', message: 'Nom de spectateur invalide' } });
         return;
       }
+      if (isNameTaken(room, payload.playerName)) {
+        ack({ ok: false, error: { code: 'NAME_TAKEN', message: 'Ce pseudo est déjà pris dans cette room' } });
+        return;
+      }
 
       const playerId = generatePlayerId();
       const sessionToken = generateSessionToken();
@@ -558,7 +623,7 @@ export function registerSocketHandlers(io: IoServer): void {
         role: null,
         champion: null,
         hasAckedReveal: false,
-        joinOrder: room.players.size + room.spectators.size,
+        joinOrder: 0, // réattribué à la promotion en joueur (promoteSpectatorsToPlayers)
         disconnectedAt: null,
         disconnectTimer: null,
         loverPlayerId: null,
@@ -625,6 +690,7 @@ export function registerSocketHandlers(io: IoServer): void {
         'jesterEnabled',
         'hunterEnabled',
         'customPairsEnabled',
+        'publicVotes',
       ];
       for (const field of boolFields) {
         if (typeof next[field] !== 'boolean') {
@@ -647,6 +713,11 @@ export function registerSocketHandlers(io: IoServer): void {
           fail(socket, ack, 'INVALID_SETTINGS', `${label} nécessite au moins ${min} joueurs`);
           return;
         }
+      }
+      const extraError = validateExtraSettings(next);
+      if (extraError) {
+        fail(socket, ack, 'INVALID_SETTINGS', extraError);
+        return;
       }
       if (next.customPairsEnabled && room.customPairs.length === 0) {
         fail(socket, ack, 'INVALID_SETTINGS', 'Ajoute au moins une paire personnalisée avant d\'activer cette option');
@@ -750,8 +821,7 @@ export function registerSocketHandlers(io: IoServer): void {
       }
       ok(ack);
       if (engine.haveAllAlivePlayersAckedReveal(room)) {
-        engine.enterDiscussion(room);
-        broadcastRoomState(io, room);
+        enterDiscussionAndBroadcast(io, room);
       }
     });
 
@@ -766,6 +836,7 @@ export function registerSocketHandlers(io: IoServer): void {
         reportEngineError(socket, ack, err, 'START_VOTING_FAILED');
         return;
       }
+      clearRoomTimer(room); // minuteur de discussion éventuel
       ok(ack);
       broadcastRoomState(io, room);
     });
@@ -849,13 +920,12 @@ export function registerSocketHandlers(io: IoServer): void {
       if (!requireHost(socket, ctx, ack)) return;
       const { room } = ctx;
       try {
-        engine.roundContinue(room);
+        enterDiscussionAndBroadcast(io, room, () => engine.roundContinue(room));
       } catch (err) {
         reportEngineError(socket, ack, err, 'CONTINUE_FAILED');
         return;
       }
       ok(ack);
-      broadcastRoomState(io, room);
     });
 
     socket.on('game:restart', (_payload, ack) => {
@@ -870,11 +940,13 @@ export function registerSocketHandlers(io: IoServer): void {
         fail(socket, ack, 'INVALID_PHASE', 'game:restart invalide en phase lobby ou aborted');
         return;
       }
+      engine.pruneDepartedPlayers(room);
       promoteSpectatorsToPlayers(room);
       try {
         engine.assignRolesAndEnterReveal(room, { pairsPool: pickPairsPool(room) });
       } catch (err) {
         reportEngineError(socket, ack, err, 'RESTART_FAILED');
+        broadcastRoomState(io, room);
         return;
       }
       ok(ack);
@@ -905,6 +977,90 @@ export function registerSocketHandlers(io: IoServer): void {
       }
       ok(ack);
       io.to(room.roomCode).emit('chat:message', message);
+    });
+
+    // Retour au salon après une partie (ou une partie interrompue) : l'hôte peut changer les
+    // réglages, de nouveaux joueurs peuvent rejoindre, les spectateurs deviennent joueurs.
+    socket.on('game:backToLobby', (_payload, ack) => {
+      const ctx = requireCtx(socket, ack);
+      if (!ctx) return;
+      if (!requireHost(socket, ctx, ack)) return;
+      const { room } = ctx;
+      if (room.phase !== 'game_over' && room.phase !== 'aborted') {
+        fail(socket, ack, 'INVALID_PHASE', 'Retour au salon possible uniquement en fin de partie');
+        return;
+      }
+      clearRoomTimer(room);
+      engine.pruneDepartedPlayers(room);
+      promoteSpectatorsToPlayers(room);
+      engine.returnToLobby(room);
+      room.abortedByName = null;
+      ok(ack);
+      broadcastRoomState(io, room);
+    });
+
+    socket.on('player:kick', (payload, ack) => {
+      const ctx = requireCtx(socket, ack);
+      if (!ctx) return;
+      if (!requireHost(socket, ctx, ack)) return;
+      const { room, player: host } = ctx;
+      const targetId = (payload?.targetPlayerId ?? '').toString();
+      if (targetId === host.playerId) {
+        fail(socket, ack, 'KICK_SELF_FORBIDDEN', 'Tu ne peux pas t’exclure toi-même');
+        return;
+      }
+      const target = room.players.get(targetId) ?? room.spectators.get(targetId);
+      if (!target) {
+        fail(socket, ack, 'PLAYER_NOT_FOUND', 'Joueur introuvable dans cette room');
+        return;
+      }
+      ok(ack);
+      // Couper le lien socket <-> room du joueur exclu (il peut revenir avec le code, en lobby).
+      if (target.socketId) {
+        const targetSocket = io.sockets.sockets.get(target.socketId);
+        targetSocket?.emit('player:kicked');
+        targetSocket?.leave(room.roomCode);
+        if (targetSocket) {
+          targetSocket.data.roomCode = null;
+          targetSocket.data.playerId = null;
+        }
+      }
+      if (room.spectators.has(targetId)) {
+        room.spectators.delete(targetId);
+        broadcastRoomState(io, room);
+        return;
+      }
+      target.sessionToken = generateSessionToken(); // invalide toute reconnexion avec l'ancien siège
+      handlePlayerDeparture(io, room, targetId, { explicit: false, kicked: true });
+    });
+
+    // L'hôte clôt le vote sans attendre les retardataires (joueur AFK, déconnecté...) : le
+    // dépouillement porte sur les bulletins déjà déposés.
+    socket.on('vote:forceClose', (_payload, ack) => {
+      const ctx = requireCtx(socket, ack);
+      if (!ctx) return;
+      if (!requireHost(socket, ctx, ack)) return;
+      const { room } = ctx;
+      if (room.phase !== 'voting') {
+        fail(socket, ack, 'INVALID_PHASE', 'Aucun vote en cours');
+        return;
+      }
+      ok(ack);
+      finishVoting(io, room);
+    });
+
+    // L'hôte passe la révélation sans attendre que tout le monde ait confirmé.
+    socket.on('reveal:forceEnd', (_payload, ack) => {
+      const ctx = requireCtx(socket, ack);
+      if (!ctx) return;
+      if (!requireHost(socket, ctx, ack)) return;
+      const { room } = ctx;
+      if (room.phase !== 'reveal') {
+        fail(socket, ack, 'INVALID_PHASE', 'Aucune révélation en cours');
+        return;
+      }
+      ok(ack);
+      enterDiscussionAndBroadcast(io, room);
     });
 
     socket.on('player:leave', (_payload, ack) => {
@@ -965,6 +1121,10 @@ export function registerSocketHandlers(io: IoServer): void {
 function handleHostAbort(io: IoServer, room: Room, hostPlayerId: string): void {
   const host = room.players.get(hostPlayerId);
   if (host) {
+    room.abortedByName = host.name;
+    // Le rôle d'hôte passe au joueur suivant : sans ça la room restait bloquée en 'aborted'
+    // sans personne pour la ramener au salon.
+    migrateHostIfNeeded(room, hostPlayerId);
     host.connected = false;
     host.socketId = null;
   }
@@ -978,10 +1138,11 @@ function handlePlayerDeparture(
   io: IoServer,
   room: Room,
   playerId: string,
-  opts: { explicit: boolean }
+  opts: { explicit: boolean; kicked?: boolean }
 ): void {
   const player = room.players.get(playerId);
   if (!player) return;
+  cancelDisconnectTimer(player);
 
   if (room.phase === 'lobby') {
     migrateHostIfNeeded(room, playerId);
@@ -1013,7 +1174,7 @@ function handlePlayerDeparture(
   player.connected = false;
   player.socketId = null;
   player.alive = false;
-  applyMidGameDeparture(io, room, playerId);
+  applyMidGameDeparture(io, room, playerId, { kicked: opts.kicked });
 }
 
 /** Appelé quand le timer de grâce de 3 minutes d'un joueur déconnecté expire. */

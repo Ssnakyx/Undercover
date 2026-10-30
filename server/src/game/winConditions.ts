@@ -51,6 +51,37 @@ export function normalizeChampionGuess(value: string): string {
     .replace(/\s+/g, ' ');
 }
 
-export function isCorrectMrWhiteGuess(guess: string, championA: string): boolean {
-  return normalizeChampionGuess(guess) === normalizeChampionGuess(championA);
+/** Ponctuation ignorée en plus de la casse/des accents ("Kha'Zix" = "khazix", "Dr. Mario" = "dr mario"). */
+function compactGuess(value: string): string {
+  return normalizeChampionGuess(value).replace(/[^a-z0-9]/g, '');
+}
+
+function editDistance(a: string, b: string): number {
+  const prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let diag = prev[0];
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = prev[j];
+      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diag + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diag = tmp;
+    }
+  }
+  return prev[b.length];
+}
+
+/**
+ * Devinette de Mr White : insensible à la casse, aux accents et à la ponctuation, accepte les
+ * alias (ex. nom anglais d'un Pokémon) et tolère une petite faute de frappe sur les noms longs
+ * (1 lettre dès 5 caractères, 2 dès 9) — on veut récompenser la bonne réponse, pas l'orthographe.
+ */
+export function isCorrectMrWhiteGuess(guess: string, championA: string, aliases: readonly string[] = []): boolean {
+  const g = compactGuess(guess);
+  if (!g) return false;
+  return [championA, ...aliases].some((candidate) => {
+    const c = compactGuess(candidate);
+    if (g === c) return true;
+    const tolerance = c.length >= 9 ? 2 : c.length >= 5 ? 1 : 0;
+    return tolerance > 0 && Math.abs(g.length - c.length) <= tolerance && editDistance(g, c) <= tolerance;
+  });
 }

@@ -135,3 +135,13 @@ describe('computeRoleCounts', () => {
     expect(computeRoleCounts(LOVERS_MIN_PLAYERS - 1, { ...NONE, lovers: true }).lovers).toBe(false);
   });
 });
+
+describe('computeRoleCounts — nombre d’Undercover imposé (miroir serveur)', () => {
+  const none = { mrWhite: false, spy: false, protector: false, ghost: false, jester: false, hunter: false, lovers: false };
+
+  it('0 = automatique, sinon valeur bornée pour garder les civils majoritaires', () => {
+    expect(computeRoleCounts(10, { ...none, undercoverCount: 0 }).undercover).toBe(2);
+    expect(computeRoleCounts(8, { ...none, undercoverCount: 3 }).undercover).toBe(3);
+    expect(computeRoleCounts(4, { ...none, undercoverCount: 3 }).undercover).toBe(1);
+  });
+});

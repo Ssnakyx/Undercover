@@ -269,3 +269,61 @@ describe('assignRoles', () => {
     expect(roles).toEqual(roles2);
   });
 });
+
+describe('Amoureux / Espion — plus de biais lié à l’ordre de distribution', () => {
+  it('les Amoureux ne contiennent pas systématiquement un Undercover', () => {
+    let withoutUndercover = 0;
+    for (let i = 0; i < 300; i++) {
+      const roles = assignRoles({
+        playerIds: makePlayerIds(8),
+        requested: { ...NONE, lovers: true },
+        championA: 'Garen',
+        championB: 'Darius',
+      });
+      const lovers = roles.filter((r) => r.loverPlayerId);
+      if (lovers.every((r) => r.role !== 'undercover')) withoutUndercover++;
+    }
+    // 1 Undercover sur 8 : un duo sans Undercover sort ~75 % du temps (avant : jamais).
+    expect(withoutUndercover).toBeGreaterThan(150);
+  });
+
+  it("l'Espion voit parfois un Undercover (avant : toujours un civil)", () => {
+    let sawUndercover = 0;
+    for (let i = 0; i < 300; i++) {
+      const roles = assignRoles({
+        playerIds: makePlayerIds(5),
+        requested: { ...NONE, spy: true },
+        championA: 'Garen',
+        championB: 'Darius',
+      });
+      const spy = roles.find((r) => r.role === 'spy')!;
+      const target = roles.find((r) => r.playerId === spy.spyInsightPlayerId)!;
+      expect(target.playerId).not.toBe(spy.playerId);
+      if (target.role === 'undercover') sawUndercover++;
+    }
+    expect(sawUndercover).toBeGreaterThan(30); // ~25 % attendu
+  });
+});
+
+describe('computeRoleCounts — nombre d’Undercover imposé', () => {
+  it('0 = automatique', () => {
+    expect(computeRoleCounts(10, { ...NONE, undercoverCount: 0 }).undercover).toBe(2);
+  });
+
+  it('respecte la valeur demandée quand elle est possible', () => {
+    expect(computeRoleCounts(8, { ...NONE, undercoverCount: 3 }).undercover).toBe(3);
+    expect(computeRoleCounts(10, { ...NONE, undercoverCount: 1 }).undercover).toBe(1);
+  });
+
+  it('borne pour que les civils restent strictement majoritaires', () => {
+    for (let n = 3; n <= 12; n++) {
+      for (const mrWhite of [false, true]) {
+        const counts = computeRoleCounts(n, { ...NONE, mrWhite, jester: true, undercoverCount: 4 });
+        const civils = counts.civils + counts.spy + counts.protector + counts.ghost + counts.hunter;
+        expect(civils).toBeGreaterThanOrEqual(counts.undercover + counts.mrWhite + 1);
+        expect(counts.undercover).toBeGreaterThanOrEqual(1);
+      }
+    }
+    expect(computeRoleCounts(4, { ...NONE, undercoverCount: 3 }).undercover).toBe(1);
+  });
+});
