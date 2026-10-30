@@ -13,7 +13,7 @@ par appareil. Un menu principal propose le choix entre trois **univers** de cont
 
 ## 0. Propriété intellectuelle et images
 
-> Mise à jour (refonte "Character Select", octobre 2026) : la règle "aucun asset officiel" est
+> Mise à jour (refonte d'octobre 2026) : la règle "aucun asset officiel" est
 > levée à la demande du propriétaire du projet, pour afficher l'image de chaque personnage.
 
 - Les noms de champions/combattants/Pokémon/jeux sont utilisés en texte brut (noms FR officiels
@@ -557,7 +557,7 @@ Correction (boucle avec QA).
 
 ---
 
-## 10. Refonte "Character Select" (octobre 2026) — écarts par rapport aux sections ci-dessus
+## 10. Refonte d'octobre 2026 — écarts par rapport aux sections ci-dessus
 
 Les types de référence restent `server/src/types.ts` et `server/src/socket/events.ts` ; résumé
 des ajouts :
@@ -583,5 +583,5 @@ des ajouts :
   d'hôte ; pseudos uniques par room ; devinette de Mr White tolérante (ponctuation, alias
   anglais, petite faute de frappe sur les noms longs) ; révélation portée à 30 s.
 - Les maquettes `/design` décrivent l'ancienne DA "Cérémonie douce" ; la DA en vigueur vit dans
-  `client/src/styles/arcade.css`.
+  `client/src/styles/table.css` (DA "Table de jeu").
 
