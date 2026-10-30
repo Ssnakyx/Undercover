@@ -56,8 +56,9 @@ import {
   PROTECTOR_MIN_PLAYERS,
   SPY_MIN_PLAYERS,
 } from '../game/roles.js';
-import { getPairs } from '../content/pairsStore.js';
+import { getAllPairs } from '../content/pairsStore.js';
 import { characterImage } from '../content/characterImages.js';
+import { gameDescription } from '../content/gameInfo.js';
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -69,7 +70,6 @@ const CUSTOM_PAIR_THEME_MAX_LENGTH = 80;
 // Réglages "qualité de vie" (voir RoomSettings) — valeurs acceptées côté serveur.
 const MAX_UNDERCOVER_SETTING = 4;
 const DISCUSSION_SECONDS_ALLOWED = new Set([0, 60, 90, 120, 180, 300]);
-const DIFFICULTIES = new Set(['all', 'easy', 'medium', 'hard']);
 const UNIVERSES = new Set<unknown>(['lol', 'smash', 'pokemon', 'games']);
 
 // ---------------------------------------------------------------------------
@@ -130,7 +130,8 @@ function pickPairsPool(room: Room): ChampionPair[] {
   if (room.settings.customPairsEnabled && room.customPairs.length > 0) {
     return room.customPairs;
   }
-  return getPairs(room.universe, room.settings.difficulty);
+  // Toutes les difficultés dans le même paquet : pas de réglage de difficulté.
+  return getAllPairs(room.universe);
 }
 
 /** Fait entrer tous les spectateurs en jeu au prochain game:restart (voir §5bis) : "rejoindre
@@ -157,6 +158,7 @@ function sendRolePrivate(io: IoServer, room: Room, player: Player): void {
     champion: player.champion,
     championImage: characterImage(room.universe, player.champion),
   };
+  if (room.universe === 'games') payload.championDescription = gameDescription(player.champion);
   if (player.loverPlayerId) {
     const lover = room.players.get(player.loverPlayerId);
     if (lover) payload.loverName = lover.name;
@@ -462,9 +464,6 @@ function validateExtraSettings(next: RoomSettings): string | null {
   if (!DISCUSSION_SECONDS_ALLOWED.has(next.discussionSeconds)) {
     return 'discussionSeconds invalide';
   }
-  if (!DIFFICULTIES.has(next.difficulty)) {
-    return 'difficulty invalide';
-  }
   return null;
 }
 
@@ -478,6 +477,7 @@ export function registerSocketHandlers(io: IoServer): void {
     socket.data.playerId = null;
 
     socket.on('room:create', (payload, ack) => {
+      leaveCurrentRoom(io, socket);
       if (!isValidName(payload?.hostName)) {
         ack({ ok: false, error: { code: 'INVALID_NAME', message: 'Nom du host invalide' } });
         return;
@@ -521,6 +521,7 @@ export function registerSocketHandlers(io: IoServer): void {
     });
 
     socket.on('room:join', (payload, ack) => {
+      leaveCurrentRoom(io, socket);
       const roomCode = (payload?.roomCode ?? '').toString().trim().toUpperCase();
       const room = getRoom(roomCode);
       if (!room) {
@@ -583,6 +584,7 @@ export function registerSocketHandlers(io: IoServer): void {
     // room:join) — si le spectateur se déconnecte ou recharge, il re-rejoint simplement en
     // spectateur. Promu joueur complet au prochain game:restart.
     socket.on('room:joinSpectator', (payload, ack) => {
+      leaveCurrentRoom(io, socket);
       const roomCode = (payload?.roomCode ?? '').toString().trim().toUpperCase();
       const room = getRoom(roomCode);
       if (!room) {
@@ -645,6 +647,9 @@ export function registerSocketHandlers(io: IoServer): void {
 
     socket.on('room:rejoin', (payload, ack) => {
       const roomCode = (payload?.roomCode ?? '').toString().trim().toUpperCase();
+      if (socket.data.roomCode !== roomCode || socket.data.playerId !== payload?.playerId) {
+        leaveCurrentRoom(io, socket);
+      }
       const room = getRoom(roomCode);
       const result = attemptRejoin(
         room,
@@ -1066,17 +1071,8 @@ export function registerSocketHandlers(io: IoServer): void {
     socket.on('player:leave', (_payload, ack) => {
       const ctx = requireCtx(socket, ack);
       if (!ctx) return;
-      const { room, player, isSpectator } = ctx;
-      socket.leave(room.roomCode);
-      socket.data.roomCode = null;
-      socket.data.playerId = null;
       ok(ack);
-      if (isSpectator) {
-        room.spectators.delete(player.playerId);
-        broadcastRoomState(io, room);
-        return;
-      }
-      handlePlayerDeparture(io, room, player.playerId, { explicit: true });
+      leaveCurrentRoom(io, socket);
     });
 
     socket.on('disconnect', () => {
@@ -1112,25 +1108,48 @@ export function registerSocketHandlers(io: IoServer): void {
 }
 
 /**
- * Termine immédiatement une partie en cours suite au départ volontaire de l'hôte (bouton
- * "Quitter" — voir client/src/components/HostQuitButton.tsx). Contrairement à une
- * déconnexion, il n'y a pas de transfert de host : la partie est terminée pour tout le monde
- * (docs/CONTRACT.md §5). `isHost` reste à true sur le joueur parti pour que les clients restants
- * puissent afficher qui a quitté.
+ * Fait quitter au socket la room à laquelle il est rattaché, comme un départ volontaire
+ * (player:leave). Appelé aussi avant room:create / room:join / room:joinSpectator / room:rejoin
+ * vers une autre room : sans ça, le socket restait abonné aux diffusions de l'ancienne room
+ * (et y restait hôte) — son écran repartait sur l'ancienne partie dès qu'elle bougeait.
  */
-function handleHostAbort(io: IoServer, room: Room, hostPlayerId: string): void {
-  const host = room.players.get(hostPlayerId);
-  if (host) {
-    room.abortedByName = host.name;
-    // Le rôle d'hôte passe au joueur suivant : sans ça la room restait bloquée en 'aborted'
-    // sans personne pour la ramener au salon.
-    migrateHostIfNeeded(room, hostPlayerId);
-    host.connected = false;
-    host.socketId = null;
+function leaveCurrentRoom(io: IoServer, socket: IoSocket): void {
+  const { roomCode, playerId } = socket.data;
+  socket.data.roomCode = null;
+  socket.data.playerId = null;
+  if (!roomCode) return;
+  socket.leave(roomCode);
+  const room = getRoom(roomCode);
+  if (!room || !playerId) return;
+  if (room.spectators.has(playerId)) {
+    room.spectators.delete(playerId);
+    broadcastRoomState(io, room);
+    return;
   }
-  clearRoomTimer(room);
-  engine.abortGame(room);
-  broadcastRoomState(io, room);
+  const player = room.players.get(playerId);
+  if (!player || player.socketId !== socket.id) return; // siège repris par un autre onglet
+  handlePlayerDeparture(io, room, playerId, { explicit: true });
+}
+
+/**
+ * Départ volontaire de l'hôte (bouton "Quitter", quelle que soit la phase) : la room est
+ * fermée pour tout le monde — plus de transfert d'hôte ni de room fantôme qui continue sans
+ * son créateur. Chaque client reçoit room:closed, oublie sa session et revient à l'accueil.
+ * Une simple déconnexion (réseau, téléphone en veille) garde, elle, le délai de grâce et la
+ * migration d'hôte (voir rooms/reconnection.ts).
+ */
+function closeRoom(io: IoServer, room: Room, hostName: string): void {
+  io.to(room.roomCode).emit('room:closed', { hostName });
+  const socketIds = io.sockets.adapter.rooms.get(room.roomCode);
+  for (const socketId of [...(socketIds ?? [])]) {
+    const s = io.sockets.sockets.get(socketId);
+    if (!s) continue;
+    s.leave(room.roomCode);
+    s.data.roomCode = null;
+    s.data.playerId = null;
+  }
+  for (const player of room.players.values()) cancelDisconnectTimer(player);
+  deleteRoom(room.roomCode);
 }
 
 /** Gestion commune départ explicite (player:leave) — lobby: retrait; en jeu: élimination. */
@@ -1144,6 +1163,12 @@ function handlePlayerDeparture(
   if (!player) return;
   cancelDisconnectTimer(player);
 
+  // L'hôte s'en va de lui-même : la partie est fermée pour tous (voir closeRoom).
+  if (opts.explicit && player.isHost) {
+    closeRoom(io, room, player.name);
+    return;
+  }
+
   if (room.phase === 'lobby') {
     migrateHostIfNeeded(room, playerId);
     room.players.delete(playerId);
@@ -1152,13 +1177,6 @@ function handlePlayerDeparture(
       return;
     }
     broadcastRoomState(io, room);
-    return;
-  }
-
-  // Départ volontaire de l'hôte pendant une partie en cours -> la partie se termine, elle ne
-  // continue pas avec un host de secours (cf. déconnexion accidentelle, gérée séparément).
-  if (opts.explicit && player.isHost && room.phase !== 'game_over' && room.phase !== 'aborted') {
-    handleHostAbort(io, room, playerId);
     return;
   }
 

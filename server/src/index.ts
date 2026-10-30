@@ -7,6 +7,7 @@ import cors from 'cors';
 import { Server } from 'socket.io';
 import type { ClientToServerEvents, InterServerEvents, ServerToClientEvents, SocketData } from './socket/events.js';
 import { registerSocketHandlers } from './socket/handlers.js';
+import { prefetchGameCovers } from './content/gameInfo.js';
 
 const PORT = Number(process.env.PORT) || 3001;
 
@@ -29,4 +30,5 @@ registerSocketHandlers(io);
 httpServer.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`[lolcover-server] listening on http://localhost:${PORT}`);
+  void prefetchGameCovers();
 });

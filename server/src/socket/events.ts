@@ -20,6 +20,7 @@ import type {
   RoomJoinPayload,
   RoomRejoinAck,
   RoomRejoinPayload,
+  RoomClosedPayload,
   RoomStatePublic,
   RolePrivatePayload,
   RoundResultPayload,
@@ -65,6 +66,8 @@ export interface ServerToClientEvents {
   'player:left': (payload: PlayerLeftPayload) => void;
   /** Envoyé au seul joueur exclu par l'hôte, juste avant de couper son lien à la room. */
   'player:kicked': () => void;
+  /** L'hôte a quitté : la room est supprimée, chaque client revient à l'accueil. */
+  'room:closed': (payload: RoomClosedPayload) => void;
   error: (payload: ErrorPayload) => void;
 }
 

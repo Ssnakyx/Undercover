@@ -19,7 +19,7 @@ import {
   computeRoleCounts,
   maxUndercoverFor,
 } from '../lib/roles';
-import type { PairDifficultyFilter, Role, RoomSettings } from '../types';
+import type { Role, RoomSettings } from '../types';
 
 const MAX_PLAYERS = 12;
 const MIN_PLAYERS = 3;
@@ -43,13 +43,6 @@ const TIMER_OPTIONS: { value: number; label: string }[] = [
   { value: 120, label: '2:00' },
   { value: 180, label: '3:00' },
   { value: 300, label: '5:00' },
-];
-
-const DIFFICULTY_OPTIONS: { value: PairDifficultyFilter; label: string }[] = [
-  { value: 'all', label: 'Mix' },
-  { value: 'easy', label: 'Facile' },
-  { value: 'medium', label: 'Moyen' },
-  { value: 'hard', label: 'Expert' },
 ];
 
 function SwitchRow({
@@ -155,7 +148,14 @@ export function Lobby() {
       <AppBar
         title={copy.name}
         right={
-          <button className="btn btn-ghost btn-sm" type="button" onClick={() => leaveRoom()}>
+          <button
+            className="btn btn-ghost btn-sm"
+            type="button"
+            onClick={() => {
+              if (isHost && n > 1 && !window.confirm('Tu es l’hôte : quitter ferme le salon pour tout le monde. Confirmer ?')) return;
+              leaveRoom();
+            }}
+          >
             Quitter
           </button>
         }
@@ -315,27 +315,6 @@ export function Lobby() {
                       aria-pressed={s.discussionSeconds === o.value}
                       disabled={!isHost}
                       onClick={() => updateSettings({ discussionSeconds: o.value })}
-                    >
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="setting-line">
-                <div>
-                  <div className="setting-line__label">Difficulté des paires</div>
-                  <div className="setting-line__hint">Expert = personnages quasi jumeaux</div>
-                </div>
-                <div className="segmented" role="group" aria-label="Difficulté des paires">
-                  {DIFFICULTY_OPTIONS.map((o) => (
-                    <button
-                      key={o.value}
-                      type="button"
-                      className="segmented__btn"
-                      aria-pressed={s.difficulty === o.value}
-                      disabled={!isHost || s.customPairsEnabled}
-                      onClick={() => updateSettings({ difficulty: o.value })}
                     >
                       {o.label}
                     </button>

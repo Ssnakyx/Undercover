@@ -60,8 +60,9 @@ export function GameOver() {
   const pair = lastGameEnded.pair;
   const leaderboard = [...roomState.players].sort((a, b) => b.score - a.score);
 
-  // Quitter depuis game_over n'affecte que soi — la partie est déjà terminée.
+  // Un joueur qui quitte ne fait partir que lui ; l'hôte, lui, ferme la room pour tous.
   function backToMenu() {
+    if (isHost && !window.confirm('Tu es l’hôte : quitter ferme la partie pour tout le monde. Confirmer ?')) return;
     leaveRoom();
     navigate('/', { replace: true });
   }

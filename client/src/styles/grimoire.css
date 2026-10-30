@@ -2042,6 +2042,18 @@ details.fold > summary::-webkit-details-marker {
   line-height: 1.38;
 }
 
+/* Univers Jeux vidéo : de quoi parle le jeu, pour qui ne le connaît pas. */
+.role-card__desc {
+  margin-top: 6px;
+  padding: 5px 9px;
+  font-size: 0.8rem;
+  font-style: italic;
+  line-height: 1.32;
+  color: var(--ink);
+  background: rgba(90, 60, 20, 0.08);
+  box-shadow: inset 2px 0 0 var(--gold, currentColor);
+}
+
 .role-card__secret {
   margin-top: 8px;
   padding: 7px 10px;

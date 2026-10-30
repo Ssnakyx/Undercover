@@ -38,7 +38,7 @@ export interface PlayerRole {
  */
 export type Universe = 'lol' | 'smash' | 'pokemon' | 'games';
 
-export type PairDifficulty = 'easy' | 'medium' | 'hard';
+export type PairDifficulty = 'easy' | 'medium' | 'hard' | 'extreme';
 export type PairDifficultyFilter = PairDifficulty | 'all';
 
 export interface ChampionPair {
@@ -70,8 +70,6 @@ export interface RoomSettings {
   discussionSeconds: number;
   /** true : le résultat de chaque vote montre qui a voté pour qui. */
   publicVotes: boolean;
-  /** Filtre de difficulté appliqué au pool de l'univers (ignoré pour les paires maison). */
-  difficulty: PairDifficultyFilter;
 }
 
 export type GamePhase =
@@ -225,6 +223,8 @@ export interface RolePrivatePayload {
   champion: string | null;
   /** Image du personnage (URL), null si inconnue (paire maison, univers 'games', Mr White). */
   championImage?: string | null;
+  /** Univers 'games' : courte description du jeu, pour qui ne le connaît pas. */
+  championDescription?: string | null;
   /** Nom courant du partenaire "Amoureux", si settings.loversEnabled et ce joueur en fait partie. */
   loverName?: string | null;
   /** Uniquement pour le rôle "Espion" : camp d'un autre joueur tiré au sort à la révélation. */
@@ -278,6 +278,11 @@ export interface PlayerLeftPayload {
   champion: string | null;
   championImage?: string | null;
   kicked?: boolean;
+}
+
+export interface RoomClosedPayload {
+  /** Pseudo de l'hôte qui a quitté. */
+  hostName: string;
 }
 
 export interface ErrorPayload {

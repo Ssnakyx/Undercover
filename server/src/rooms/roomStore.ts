@@ -28,7 +28,6 @@ export function defaultRoomSettings(): RoomSettings {
     undercoverCount: 0,
     discussionSeconds: 0,
     publicVotes: false,
-    difficulty: 'all',
   };
 }
 

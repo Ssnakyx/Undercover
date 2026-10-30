@@ -9,8 +9,7 @@ export type Role = 'civil' | 'undercover' | 'mrwhite' | 'spy' | 'protector' | 'g
 // indépendant par univers ('games' = titres de jeux vidéo plutôt que des personnages).
 export type Universe = 'lol' | 'smash' | 'pokemon' | 'games';
 
-export type PairDifficulty = 'easy' | 'medium' | 'hard';
-export type PairDifficultyFilter = PairDifficulty | 'all';
+export type PairDifficulty = 'easy' | 'medium' | 'hard' | 'extreme';
 
 export interface RoomSettings {
   mrWhiteEnabled: boolean;
@@ -25,7 +24,6 @@ export interface RoomSettings {
   undercoverCount: number; // 0 = auto
   discussionSeconds: number; // 0 = pas de minuteur
   publicVotes: boolean;
-  difficulty: PairDifficultyFilter;
 }
 
 export interface ChampionPair {
@@ -180,6 +178,7 @@ export interface RolePrivatePayload {
   role: Role;
   champion: string | null;
   championImage?: string | null;
+  championDescription?: string | null;
   loverName?: string | null;
   spyInsight?: { playerName: string; team: 'civils' | 'undercover' | 'mrwhite' | 'jester' };
 }
@@ -223,6 +222,10 @@ export interface PlayerLeftPayload {
   champion: string | null;
   championImage?: string | null;
   kicked?: boolean;
+}
+
+export interface RoomClosedPayload {
+  hostName: string;
 }
 
 export interface ErrorPayload {
@@ -274,5 +277,6 @@ export interface ServerToClientEvents {
   'chat:history': (payload: ChatMessage[]) => void;
   'player:left': (payload: PlayerLeftPayload) => void;
   'player:kicked': () => void;
+  'room:closed': (payload: RoomClosedPayload) => void;
   error: (payload: ErrorPayload) => void;
 }

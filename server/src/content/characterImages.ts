@@ -5,11 +5,13 @@
 //   - smash   : portraits servis par le client (client/public/img/smash), voir
 //               scripts/fetch-character-assets.py
 //   - pokemon : artworks servis par le client (client/public/img/pokemon), idem
-//   - games   : pas d'image (titres de jeux) — le client affiche une jaquette typographique
+//   - games   : jaquette Wikipédia chargée au démarrage (content/gameInfo.ts), sinon le client
+//               affiche une jaquette typographique
 // Paires personnalisées : pas d'image non plus, même rendu typographique.
 
 import type { Universe } from '../types.js';
 import { pokemonAssets, smashAssets, type CharacterAsset } from './characterAssets.generated.js';
+import { gameCover } from './gameInfo.js';
 
 const DDRAGON = 'https://ddragon.leagueoflegends.com/cdn/img/champion/loading';
 
@@ -42,6 +44,7 @@ function assetFor(universe: Universe, name: string): CharacterAsset | undefined 
 export function characterImage(universe: Universe, name: string | null | undefined): string | null {
   if (!name) return null;
   if (universe === 'lol') return `${DDRAGON}/${lolChampionId(name)}_0.jpg`;
+  if (universe === 'games') return gameCover(name);
   return assetFor(universe, name)?.file ?? null;
 }
 

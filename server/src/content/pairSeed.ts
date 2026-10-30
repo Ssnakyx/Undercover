@@ -8,6 +8,8 @@
 // rôle à la simple lecture de son mot, ce qui casse le jeu.
 //
 // Difficulté = proximité des deux personnages :
+//   extreme: tout est en commun (franchise, rôle, look, gameplay) ; seuls des détails pointus
+//            les séparent — les descriptions des deux camps se recoupent presque entièrement
 //   hard   : quasi-jumeaux (même rôle, même look ou même lore), très dur à démasquer
 //   medium : clairement liés, mais des indices précis les distinguent
 //   easy   : lien plus lâche, idéal pour découvrir le jeu
