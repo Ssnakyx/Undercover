@@ -40,5 +40,6 @@ export function roleHasWord(role: Role): boolean {
 
 /** Classe CSS qui pose la teinte du rôle (--tone, voir styles/grimoire.css). */
 export function roleToneClass(role: Role | null | undefined): string {
-  return `tone-${role ?? 'civil'}`;
+  // Undercover et Mr White ont la teinte de Civil : la couleur de la carte ne trahit pas le camp.
+  return `tone-${!role || role === 'undercover' || role === 'mrwhite' ? 'civil' : role}`;
 }

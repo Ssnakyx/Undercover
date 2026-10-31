@@ -154,7 +154,9 @@ const CIVIL_ALIGNED_ROLES = new Set(['civil', 'spy', 'protector', 'ghost', 'hunt
 function sendRolePrivate(io: IoServer, room: Room, player: Player): void {
   if (!player.socketId || !player.role) return;
   const payload: Parameters<ServerToClientEvents['role:private']>[0] = {
-    role: player.role,
+    // Un joueur ne sait pas s'il est Civil ou Undercover : il ne reçoit que son mot. Le vrai
+    // rôle n'est révélé qu'à l'élimination et en fin de partie.
+    role: player.role === 'undercover' ? 'civil' : player.role,
     champion: player.champion,
     championImage: characterImage(room.universe, player.champion),
   };
