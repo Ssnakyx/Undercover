@@ -14,9 +14,8 @@ const SPY_TEAM_LABEL: Record<string, string> = {
 function instruction(role: RolePrivatePayload['role'], word: string, unit: string): string {
   switch (role) {
     case 'civil':
-      return `Décris ${word} sans jamais le nommer. Repère les indices qui sonnent faux : certains joueurs n'ont pas le même ${unit} que toi.`;
     case 'undercover':
-      return `Les autres ont un ${unit} proche du tien. Fonds-toi dans la masse sans te trahir.`;
+      return `Décris ${word} sans jamais le nommer. Tout le monde n'a peut-être pas le même ${unit} que toi : écoute bien les autres.`;
     case 'spy':
       return `Camp des Civils. Décris ${word} comme eux, et sers-toi de ton info secrète.`;
     case 'protector':
@@ -29,6 +28,10 @@ function instruction(role: RolePrivatePayload['role'], word: string, unit: strin
       return '';
   }
 }
+
+// La carte ne dit pas si l'on est Civil, Undercover ou Mr White : elle montre juste le mot (ou
+// l'absence de mot). Seuls les rôles spéciaux, qui ont un pouvoir à connaître, sont nommés.
+const UNNAMED_ROLES = new Set<RolePrivatePayload['role']>(['civil', 'undercover', 'mrwhite']);
 
 /** Dos de la carte de révélation (aussi affiché dans "Mon mot" pendant la partie). */
 export function RoleCardContent({ myRole, universe }: { myRole: RolePrivatePayload | null; universe: Universe }) {
@@ -46,10 +49,12 @@ export function RoleCardContent({ myRole, universe }: { myRole: RolePrivatePaylo
   return (
     <>
       <div className="role-card__art">
-        <span className="role-card__role">
-          <RoleEmblem role={role} />
-          {roleLabel(role)}
-        </span>
+        {!UNNAMED_ROLES.has(role) && (
+          <span className="role-card__role">
+            <RoleEmblem role={role} />
+            {roleLabel(role)}
+          </span>
+        )}
         {hasWord ? (
           <CharacterArt name={champion} image={championImage} universe={universe} />
         ) : (
@@ -70,7 +75,7 @@ export function RoleCardContent({ myRole, universe }: { myRole: RolePrivatePaylo
           <>
             <div className="role-card__name">Aucun mot</div>
             <p className="role-card__text">
-              Tu ne connais pas le {unit} des autres. Écoute, bluffe, et si tu es démasqué, devine-le pour gagner quand même.
+              Tu n'as pas de {unit} cette fois. Écoute les autres, bluffe, et si tu es démasqué, devine leur {unit} pour gagner quand même.
             </p>
           </>
         ) : (
@@ -81,7 +86,6 @@ export function RoleCardContent({ myRole, universe }: { myRole: RolePrivatePaylo
             </p>
           </>
         )}
-        {role === 'undercover' && <p className="role-card__secret">🤫 Rôle secret — ne le révèle à personne.</p>}
         {spyInsight && (
           <p className="role-card__secret">
             🔍 Info secrète : <strong>{spyInsight.playerName}</strong> {SPY_TEAM_LABEL[spyInsight.team] ?? spyInsight.team}.

@@ -440,7 +440,7 @@ interface ChatMessage {
 // ---- Serveur -> Client(s) ----
 'room:state'    RoomStatePublic                          // PUBLIC, à chaque changement d'état
 'role:private'  {                                         // PRIVATE, envoyé à reveal + à la reconnexion si phase >= reveal
-  role: Role,
+  role: Role,                         // 'undercover' est envoyé comme 'civil' : un joueur ne connaît que son mot
   champion: string | null,
   loverName?: string | null,          // si loversEnabled et ce joueur est un des 2 Amoureux
   spyInsight?: { playerName: string, team: 'civils' | 'undercover' | 'mrwhite' | 'jester' }, // rôle Espion uniquement
