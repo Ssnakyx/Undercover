@@ -9,11 +9,11 @@
 //               affiche une jaquette typographique
 //   - anime   : pas d'image (carte typographique) ; alias dans content/animeInfo.ts
 //   - smash-anime / lol-anime : image de l'univers d'origine du personnage (content/mixPairs.ts)
-//   - brawl   : pas d'image (carte typographique)
+//   - brawl   : modèles servis par le client (client/public/img/brawl), idem Smash
 // Paires personnalisées : pas d'image non plus, même rendu typographique.
 
 import type { Universe } from '../types.js';
-import { pokemonAssets, smashAssets, type CharacterAsset } from './characterAssets.generated.js';
+import { brawlAssets, pokemonAssets, smashAssets, type CharacterAsset } from './characterAssets.generated.js';
 import { gameCover } from './gameInfo.js';
 import { animeAliases, animeDescription } from './animeInfo.js';
 import { isMixUniverse, mixEntry } from './mixPairs.js';
@@ -43,6 +43,7 @@ export function lolChampionId(name: string): string {
 function assetFor(universe: Universe, name: string): CharacterAsset | undefined {
   if (universe === 'smash') return smashAssets[name];
   if (universe === 'pokemon') return pokemonAssets[name];
+  if (universe === 'brawl') return brawlAssets[name];
   return undefined;
 }
 

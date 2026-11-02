@@ -566,7 +566,7 @@ des ajouts :
 
 - **Univers** : `'games'` (titres de jeux vidéo) et `'anime'` (personnages de manga et d'anime,
   `server/src/content/animePairs.ts` ; série + alias de devinette dans `animeInfo.ts`, pas
-  d'image), `'brawl'` (Brawl Stars, `brawlPairs.ts`, pas d'image) et les mélanges
+  d'image), `'brawl'` (Brawl Stars, `brawlPairs.ts`, images dans `client/public/img/brawl`) et les mélanges
   `'smash-anime'` / `'lol-anime'` (`mixPairs.ts` : uniquement des paires croisées, un
   personnage Smash/LoL face à un personnage d'anime ; chaque nom garde l'image, la description
   et les alias de sa source, et un homonyme d'anime prendrait sa série entre parenthèses) en plus de `lol` / `smash` / `pokemon`.
