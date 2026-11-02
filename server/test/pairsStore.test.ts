@@ -64,7 +64,7 @@ describe('qualité des paires', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it.each(['smash', 'pokemon'] as const)('"%s" : chaque personnage a son image', (universe) => {
+  it.each(['smash', 'pokemon', 'brawl'] as const)('"%s" : chaque personnage a son image', (universe) => {
     for (const { champA, champB } of getAllPairs(universe)) {
       expect(characterImage(universe, champA), champA).toMatch(/^\/img\//);
       expect(characterImage(universe, champB), champB).toMatch(/^\/img\//);

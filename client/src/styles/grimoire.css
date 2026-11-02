@@ -1419,7 +1419,8 @@ p {
   transform: scale(1.12);
 }
 
-.universe-card__art--lol img {
+.universe-card__art--framed img,
+.universe-card__art--framed .universe-card__slot {
   width: 40px;
   height: 54px;
   margin-left: -6px;
@@ -1428,10 +1429,15 @@ p {
   border: 2px solid var(--gold);
 }
 
-.universe-card__art--lol img:nth-child(1) {
+.universe-card__art--framed > * {
+  display: block;
+  background: var(--night);
+}
+
+.universe-card__art--framed > :nth-child(1) {
   transform: rotate(-8deg);
 }
-.universe-card__art--lol img:nth-child(3) {
+.universe-card__art--framed > :nth-child(3) {
   transform: rotate(8deg);
 }
 

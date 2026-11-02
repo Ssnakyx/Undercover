@@ -28,8 +28,8 @@ cd client && npm test && npm run lint && npm run build
 
 - `server/` — Express + Socket.io, état en mémoire. Moteur de jeu pur et testé dans `src/game/`,
   paires par univers dans `src/content/`.
-- `client/` — React + Vite. DA "Grimoire" (inspirée de Metaphor: ReFantazio) dans `src/styles/grimoire.css`, images Smash et
-  Pokémon dans `public/img/` (régénérables via `scripts/fetch-character-assets.py`).
+- `client/` — React + Vite. DA "Grimoire" (inspirée de Metaphor: ReFantazio) dans `src/styles/grimoire.css`, images Smash,
+  Pokémon et Brawl Stars dans `public/img/` (régénérables via `scripts/fetch-character-assets.py`).
 - `docs/CONTRACT.md` — contrat technique (règles, événements socket).
 
 Projet de fans non commercial, non affilié à Riot Games, Nintendo ou The Pokémon Company.

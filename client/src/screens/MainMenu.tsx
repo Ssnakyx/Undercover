@@ -1,10 +1,11 @@
-import { useState, type CSSProperties, type MouseEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getLastRoomCode } from '../lib/session';
 import { RoleEmblem } from '../components/RoleBadge';
 import { CharacterArt } from '../components/CharacterArt';
 import { roleDescription, roleLabel } from '../lib/roleInfo';
 import { UNIVERSES, universeCopy } from '../lib/universe';
+import { isWikiRef, resolveWikiImage } from '../lib/wikiImage';
 import {
   GHOST_MIN_PLAYERS,
   HUNTER_MIN_PLAYERS,
@@ -45,6 +46,21 @@ function TitleCrest() {
   );
 }
 
+// Image de la carte d'univers : URL directe, ou "wiki:Titre" résolu via Wikipédia (lib/wikiImage).
+function ShowcaseImage({ src }: { src: string }) {
+  const [url, setUrl] = useState<string | null>(isWikiRef(src) ? null : src);
+  useEffect(() => {
+    if (!isWikiRef(src)) return;
+    let alive = true;
+    void resolveWikiImage(src).then((resolved) => alive && setUrl(resolved));
+    return () => {
+      alive = false;
+    };
+  }, [src]);
+  if (!url) return <span className="universe-card__slot" />;
+  return <img src={url} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />;
+}
+
 const OPEN_PACK_MS = 420; // durée de l'animation strip-out (styles/grimoire.css)
 
 function UniverseCard({ universe }: { universe: Universe }) {
@@ -68,9 +84,9 @@ function UniverseCard({ universe }: { universe: Universe }) {
   return (
     <Link to={`/play/${universe}`} className={`universe-card${opening ? ' is-opening' : ''}`} data-universe={universe} onClick={open}>
       {copy.showcase.length > 0 ? (
-        <div className={`universe-card__art universe-card__art--${universe}`} aria-hidden="true">
+        <div className={`universe-card__art universe-card__art--${copy.framed ? 'framed' : universe}`} aria-hidden="true">
           {copy.showcase.map((src) => (
-            <img key={src} src={src} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
+            <ShowcaseImage key={src} src={src} />
           ))}
         </div>
       ) : (

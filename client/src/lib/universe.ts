@@ -11,8 +11,10 @@ export interface UniverseCopy {
   unitArticle: string; // "ton champion", "ton jeu"...
   nameLabel: string; // libellé du champ pseudo
   namePlaceholder: string;
-  /** Personnages mis en avant sur la carte du menu (images servies par le client ou Data Dragon). */
+  /** Images de la carte du menu : URL (client, Data Dragon) ou "wiki:Titre" (lib/wikiImage). */
   showcase: string[];
+  /** Images en cartes encadrées (illustrations, jaquettes) plutôt qu'en personnages détourés. */
+  framed?: boolean;
 }
 
 const DDRAGON = 'https://ddragon.leagueoflegends.com/cdn/img/champion/loading';
@@ -28,6 +30,7 @@ const COPY: Record<Universe, UniverseCopy> = {
     nameLabel: "Ton pseudo d'invocateur",
     namePlaceholder: 'ex. NoctaJungle',
     showcase: [`${DDRAGON}/Ahri_0.jpg`, `${DDRAGON}/Garen_0.jpg`, `${DDRAGON}/Jinx_0.jpg`],
+    framed: true,
   },
   smash: {
     universe: 'smash',
@@ -60,7 +63,8 @@ const COPY: Record<Universe, UniverseCopy> = {
     unitArticle: 'ton jeu',
     nameLabel: 'Ton pseudo de gamer',
     namePlaceholder: 'ex. xX_Sn1per_Xx',
-    showcase: [],
+    showcase: ['wiki:Minecraft', 'wiki:The Legend of Zelda: Breath of the Wild', 'wiki:Grand Theft Auto V'],
+    framed: true,
   },
   anime: {
     universe: 'anime',
@@ -71,7 +75,8 @@ const COPY: Record<Universe, UniverseCopy> = {
     unitArticle: 'ton personnage',
     nameLabel: "Ton pseudo d'otaku",
     namePlaceholder: 'ex. RoiDesPirates',
-    showcase: [],
+    showcase: ['wiki:Monkey D. Luffy', 'wiki:Goku', 'wiki:Naruto Uzumaki'],
+    framed: true,
   },
   'smash-anime': {
     universe: 'smash-anime',
@@ -82,7 +87,8 @@ const COPY: Record<Universe, UniverseCopy> = {
     unitArticle: 'ton personnage',
     nameLabel: 'Ton pseudo de combattant',
     namePlaceholder: 'ex. FalconKamehameha',
-    showcase: [],
+    showcase: ['wiki:Monkey D. Luffy', '/img/smash/mario.webp', 'wiki:Goku'],
+    framed: true,
   },
   'lol-anime': {
     universe: 'lol-anime',
@@ -93,7 +99,8 @@ const COPY: Record<Universe, UniverseCopy> = {
     unitArticle: 'ton personnage',
     nameLabel: "Ton pseudo d'invocateur",
     namePlaceholder: 'ex. AhriNoKitsune',
-    showcase: [],
+    showcase: [`${DDRAGON}/Ahri_0.jpg`, 'wiki:Naruto Uzumaki', `${DDRAGON}/Yasuo_0.jpg`],
+    framed: true,
   },
   brawl: {
     universe: 'brawl',
@@ -104,7 +111,7 @@ const COPY: Record<Universe, UniverseCopy> = {
     unitArticle: 'ton Brawler',
     nameLabel: 'Ton pseudo de brawler',
     namePlaceholder: 'ex. ShellyMain',
-    showcase: [],
+    showcase: ['/img/brawl/16000000.webp', '/img/brawl/16000005.webp', '/img/brawl/16000010.webp'],
   },
 };
 
