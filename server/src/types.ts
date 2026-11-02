@@ -34,9 +34,11 @@ export interface PlayerRole {
 /**
  * Univers de contenu choisi au menu principal — même moteur de jeu, un pool de paires
  * indépendant par univers (voir content/pairsStore.ts). 'lol' = League of Legends, 'smash' =
- * Super Smash Bros Ultimate, 'pokemon' = Pokémon, 'games' = titres de jeux vidéo.
+ * Super Smash Bros Ultimate, 'pokemon' = Pokémon, 'games' = titres de jeux vidéo,
+ * 'anime' = personnages de manga et d'anime, 'smash-anime' / 'lol-anime' = mélanges (voir
+ * content/mixPairs.ts), 'brawl' = Brawlers de Brawl Stars.
  */
-export type Universe = 'lol' | 'smash' | 'pokemon' | 'games';
+export type Universe = 'lol' | 'smash' | 'pokemon' | 'games' | 'anime' | 'smash-anime' | 'lol-anime' | 'brawl';
 
 export type PairDifficulty = 'easy' | 'medium' | 'hard' | 'extreme';
 export type PairDifficultyFilter = PairDifficulty | 'all';
@@ -223,7 +225,7 @@ export interface RolePrivatePayload {
   champion: string | null;
   /** Image du personnage (URL), null si inconnue (paire maison, univers 'games', Mr White). */
   championImage?: string | null;
-  /** Univers 'games' : courte description du jeu, pour qui ne le connaît pas. */
+  /** Univers 'games' : courte description du jeu ; 'anime' : série du personnage. Pour qui ne le connaît pas. */
   championDescription?: string | null;
   /** Nom courant du partenaire "Amoureux", si settings.loversEnabled et ce joueur en fait partie. */
   loverName?: string | null;

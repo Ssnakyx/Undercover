@@ -4,8 +4,10 @@ Le jeu d'ambiance **Undercover** version gaming, en temps réel, un joueur par t
 Chacun reçoit en secret un personnage ; les Civils ont tous le même, l'Undercover en a un très
 proche. On le décrit à tour de rôle sans le nommer, puis on vote pour éliminer l'intrus.
 
-Quatre univers : **lolCover** (League of Legends), **SmashCover** (Super Smash Bros. Ultimate),
-**PokéCover** (Pokémon) et **GameCover** (titres de jeux vidéo), plus des paires maison.
+Huit univers : **lolCover** (League of Legends), **SmashCover** (Super Smash Bros. Ultimate),
+**PokéCover** (Pokémon), **GameCover** (titres de jeux vidéo), **AnimeCover** (personnages de
+manga et d'anime), **BrawlCover** (Brawl Stars), et deux mélanges **Smash × Anime** et
+**LoL × Anime** (uniquement des paires croisées, ex. Ahri / Kurama), plus des paires maison.
 Rôles optionnels : Mr White, Espion, Protecteur, Revenant, Chasseur, Bouffon, Amoureux.
 
 ## Lancer en local

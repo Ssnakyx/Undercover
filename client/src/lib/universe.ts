@@ -7,7 +7,7 @@ export interface UniverseCopy {
   name: string;
   franchise: string; // sous-titre affiché sous le nom
   tagline: string;
-  unitLabel: string; // "champion" / "combattant" / "Pokémon" / "jeu" — instructions de jeu
+  unitLabel: string; // "champion" / "combattant" / "Pokémon" / "jeu" / "personnage" — instructions de jeu
   unitArticle: string; // "ton champion", "ton jeu"...
   nameLabel: string; // libellé du champ pseudo
   namePlaceholder: string;
@@ -62,14 +62,58 @@ const COPY: Record<Universe, UniverseCopy> = {
     namePlaceholder: 'ex. xX_Sn1per_Xx',
     showcase: [],
   },
+  anime: {
+    universe: 'anime',
+    name: 'AnimeCover',
+    franchise: 'Manga & Anime',
+    tagline: "Un intrus s'est glissé dans le manga. Décris ton personnage sans le nommer et démasque les Undercover.",
+    unitLabel: 'personnage',
+    unitArticle: 'ton personnage',
+    nameLabel: "Ton pseudo d'otaku",
+    namePlaceholder: 'ex. RoiDesPirates',
+    showcase: [],
+  },
+  'smash-anime': {
+    universe: 'smash-anime',
+    name: 'Smash × Anime',
+    franchise: 'Super Smash Bros. et Manga & Anime',
+    tagline: 'Les combattants de Smash croisent les héros de manga. Décris ton personnage sans le nommer et démasque les Undercover.',
+    unitLabel: 'personnage',
+    unitArticle: 'ton personnage',
+    nameLabel: 'Ton pseudo de combattant',
+    namePlaceholder: 'ex. FalconKamehameha',
+    showcase: [],
+  },
+  'lol-anime': {
+    universe: 'lol-anime',
+    name: 'LoL × Anime',
+    franchise: 'League of Legends et Manga & Anime',
+    tagline: 'Les champions de la Faille croisent les héros de manga. Décris ton personnage sans le nommer et démasque les Undercover.',
+    unitLabel: 'personnage',
+    unitArticle: 'ton personnage',
+    nameLabel: "Ton pseudo d'invocateur",
+    namePlaceholder: 'ex. AhriNoKitsune',
+    showcase: [],
+  },
+  brawl: {
+    universe: 'brawl',
+    name: 'BrawlCover',
+    franchise: 'Brawl Stars',
+    tagline: 'Un intrus se cache dans ton équipe. Décris ton Brawler sans le nommer et démasque les Undercover.',
+    unitLabel: 'Brawler',
+    unitArticle: 'ton Brawler',
+    nameLabel: 'Ton pseudo de brawler',
+    namePlaceholder: 'ex. ShellyMain',
+    showcase: [],
+  },
 };
 
-export const UNIVERSES: Universe[] = ['lol', 'smash', 'pokemon', 'games'];
+export const UNIVERSES: Universe[] = ['lol', 'smash', 'pokemon', 'games', 'anime', 'smash-anime', 'lol-anime', 'brawl'];
 
 export function universeCopy(universe: Universe): UniverseCopy {
   return COPY[universe];
 }
 
 export function isUniverse(value: string | undefined): value is Universe {
-  return value === 'lol' || value === 'smash' || value === 'pokemon' || value === 'games';
+  return (UNIVERSES as (string | undefined)[]).includes(value);
 }

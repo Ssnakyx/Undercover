@@ -57,7 +57,7 @@ import {
   SPY_MIN_PLAYERS,
 } from '../game/roles.js';
 import { getAllPairs } from '../content/pairsStore.js';
-import { characterImage } from '../content/characterImages.js';
+import { characterDescription, characterImage } from '../content/characterImages.js';
 import { gameDescription } from '../content/gameInfo.js';
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -70,7 +70,7 @@ const CUSTOM_PAIR_THEME_MAX_LENGTH = 80;
 // Réglages "qualité de vie" (voir RoomSettings) — valeurs acceptées côté serveur.
 const MAX_UNDERCOVER_SETTING = 4;
 const DISCUSSION_SECONDS_ALLOWED = new Set([0, 60, 90, 120, 180, 300]);
-const UNIVERSES = new Set<unknown>(['lol', 'smash', 'pokemon', 'games']);
+const UNIVERSES = new Set<unknown>(['lol', 'smash', 'pokemon', 'games', 'anime', 'smash-anime', 'lol-anime', 'brawl']);
 
 // ---------------------------------------------------------------------------
 // Sérialisation publique — ne JAMAIS inclure role/champion ici (contrat section 6).
@@ -161,6 +161,7 @@ function sendRolePrivate(io: IoServer, room: Room, player: Player): void {
     championImage: characterImage(room.universe, player.champion),
   };
   if (room.universe === 'games') payload.championDescription = gameDescription(player.champion);
+  else payload.championDescription = characterDescription(room.universe, player.champion);
   if (player.loverPlayerId) {
     const lover = room.players.get(player.loverPlayerId);
     if (lover) payload.loverName = lover.name;
