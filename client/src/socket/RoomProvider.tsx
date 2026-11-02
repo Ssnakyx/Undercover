@@ -14,6 +14,7 @@ import type {
   RoomSettings,
   RoomStatePublic,
   RolePrivatePayload,
+  EliminatedRevealPayload,
   RoundResultPayload,
   SpectatorJoinAck,
   Universe,
@@ -44,6 +45,8 @@ interface RoomContextValue {
   connected: boolean;
   roomState: RoomStatePublic | null;
   myRole: RolePrivatePayload | null;
+  /** Cartes et rôles de tous, reçus uniquement quand on est éliminé (voir AllCardsButton). */
+  eliminatedReveal: EliminatedRevealPayload | null;
   playerId: string | null;
   roomCode: string | null;
   /** true si `playerId` figure dans roomState.spectators (jamais persisté en session — voir
@@ -92,6 +95,13 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const [session, setSessionState] = useState<Session | null>(null);
   const [roomState, setRoomState] = useState<RoomStatePublic | null>(null);
   const [myRole, setMyRole] = useState<RolePrivatePayload | null>(null);
+  const [eliminatedReveal, setEliminatedRevealState] = useState<EliminatedRevealPayload | null>(null);
+  // Miroir pour savoir, dans le handler socket, si c'est la première réception (toast unique).
+  const eliminatedRevealRef = useRef<EliminatedRevealPayload | null>(null);
+  const setEliminatedReveal = useCallback((v: EliminatedRevealPayload | null) => {
+    eliminatedRevealRef.current = v;
+    setEliminatedRevealState(v);
+  }, []);
   const [lastRoundResult, setLastRoundResult] = useState<RoundResultPayload | null>(null);
   const [lastGameEnded, setLastGameEnded] = useState<GameEndedPayload | null>(null);
   const [lastError, setLastError] = useState<ErrorPayload | null>(null);
@@ -130,6 +140,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
             setSession(null);
             setRoomState(null);
             setMyRole(null);
+            setEliminatedReveal(null);
           }
         });
       }
@@ -148,10 +159,21 @@ export function RoomProvider({ children }: { children: ReactNode }) {
         setLastGameEnded(null);
       }
       if (state.phase === 'lobby') setMyRole(null);
+      // Hors partie en cours, la vue "éliminé" n'a plus lieu d'être (fin de partie : tout est
+      // révélé à tous ; nouvelle partie : tout le monde revit).
+      if (state.phase === 'lobby' || state.phase === 'reveal' || state.phase === 'game_over' || state.phase === 'aborted') {
+        setEliminatedReveal(null);
+      }
     }
     function onRolePrivate(payload: RolePrivatePayload) {
       setMyRole(payload);
       setRoleVersion((v) => v + 1);
+    }
+    function onEliminatedReveal(payload: EliminatedRevealPayload) {
+      if (!eliminatedRevealRef.current) {
+        pushToast({ kind: 'info', text: 'Tu es éliminé : touche 👁 pour voir la carte et le rôle de chaque joueur.' });
+      }
+      setEliminatedReveal(payload);
     }
     function onRoundResult(payload: RoundResultPayload) {
       setLastRoundResult(payload);
@@ -175,6 +197,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setRoomState(null);
       setMyRole(null);
+      setEliminatedReveal(null);
       setChatMessages([]);
       pushToast({ kind: 'error', text: "L'hôte t'a exclu de la partie." });
     }
@@ -184,6 +207,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       setSession(null);
       setRoomState(null);
       setMyRole(null);
+      setEliminatedReveal(null);
       setChatMessages([]);
       setChatUnreadCount(0);
       pushToast({ kind: 'info', text: `${payload.hostName} (l'hôte) a quitté : la partie est fermée.` });
@@ -207,6 +231,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     socket.on('disconnect', onDisconnect);
     socket.on('room:state', onRoomState);
     socket.on('role:private', onRolePrivate);
+    socket.on('eliminated:reveal', onEliminatedReveal);
     socket.on('round:result', onRoundResult);
     socket.on('game:ended', onGameEnded);
     socket.on('error', onError);
@@ -221,6 +246,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       socket.off('disconnect', onDisconnect);
       socket.off('room:state', onRoomState);
       socket.off('role:private', onRolePrivate);
+      socket.off('eliminated:reveal', onEliminatedReveal);
       socket.off('round:result', onRoundResult);
       socket.off('game:ended', onGameEnded);
       socket.off('error', onError);
@@ -230,7 +256,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       socket.off('player:kicked', onKicked);
       socket.off('room:closed', onRoomClosed);
     };
-  }, [setSession, pushToast]);
+  }, [setSession, pushToast, setEliminatedReveal]);
 
   const createRoom = useCallback(
     (hostName: string, universe: Universe) =>
@@ -354,9 +380,10 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setRoomState(null);
     setMyRole(null);
+    setEliminatedReveal(null);
     setChatMessages([]);
     setChatUnreadCount(0);
-  }, [setSession]);
+  }, [setSession, setEliminatedReveal]);
   const sendChatMessage = useCallback((text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -373,6 +400,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     connected,
     roomState,
     myRole,
+    eliminatedReveal,
     playerId,
     roomCode: session?.roomCode ?? null,
     isSpectator,

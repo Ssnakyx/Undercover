@@ -832,3 +832,64 @@ describe('tallyVotesAndEliminate — votes publics', () => {
     _resetRoomStoreForTests();
   });
 });
+
+describe('canSeeAllCards — un éliminé voit la carte et le rôle de tous', () => {
+  let room: Room;
+  let alive: Player, dead: Player;
+
+  beforeEach(() => {
+    _resetRoomStoreForTests();
+    room = createRoom();
+    alive = addPlayer(room, { joinOrder: 0 });
+    dead = addPlayer(room, { joinOrder: 1, role: 'undercover', alive: false });
+    room.phase = 'discussion';
+  });
+
+  afterEach(() => {
+    _resetRoomStoreForTests();
+  });
+
+  it('jamais pour un joueur encore en vie', () => {
+    for (const phase of ['discussion', 'voting', 'round_result', 'mrwhite_guess', 'hunter_shoot'] as const) {
+      room.phase = phase;
+      expect(engine.canSeeAllCards(room, alive)).toBe(false);
+    }
+  });
+
+  it('oui pour un éliminé pendant toutes les phases de partie en cours', () => {
+    for (const phase of ['discussion', 'voting', 'round_result', 'mrwhite_guess', 'hunter_shoot'] as const) {
+      room.phase = phase;
+      expect(engine.canSeeAllCards(room, dead)).toBe(true);
+    }
+  });
+
+  it('non hors partie en cours (salon, révélation, fin, interrompue)', () => {
+    for (const phase of ['lobby', 'reveal', 'game_over', 'aborted'] as const) {
+      room.phase = phase;
+      expect(engine.canSeeAllCards(room, dead)).toBe(false);
+    }
+  });
+
+  it('Revenant : pas tant que son vote bonus est disponible', () => {
+    const ghost = addPlayer(room, { joinOrder: 2, role: 'ghost', alive: false, ghostVoteAvailable: true });
+    expect(engine.canSeeAllCards(room, ghost)).toBe(false);
+    ghost.ghostVoteAvailable = false;
+    expect(engine.canSeeAllCards(room, ghost)).toBe(true);
+  });
+
+  it('Mr White : pas pendant sa devinette (il lirait le mot des civils)', () => {
+    const mrWhite = addPlayer(room, { joinOrder: 2, role: 'mrwhite', alive: false });
+    room.phase = 'mrwhite_guess';
+    room.mrWhiteGuessPlayerId = mrWhite.playerId;
+    expect(engine.canSeeAllCards(room, mrWhite)).toBe(false);
+    expect(engine.canSeeAllCards(room, dead)).toBe(true);
+  });
+
+  it('Chasseur : pas pendant son tir', () => {
+    const hunter = addPlayer(room, { joinOrder: 2, role: 'hunter', alive: false });
+    room.phase = 'hunter_shoot';
+    room.hunterShootPlayerId = hunter.playerId;
+    expect(engine.canSeeAllCards(room, hunter)).toBe(false);
+    expect(engine.canSeeAllCards(room, dead)).toBe(true);
+  });
+});

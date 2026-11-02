@@ -14,6 +14,7 @@ import type {
   PlayerLeftPayload,
   ProtectorProtectPayload,
   ErrorPayload,
+  EliminatedRevealPayload,
   RoomCreateAck,
   RoomCreatePayload,
   RoomJoinAck,
@@ -59,6 +60,8 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
   'room:state': (state: RoomStatePublic) => void;
   'role:private': (payload: RolePrivatePayload) => void;
+  /** Au seul joueur éliminé autorisé (voir game/engine.ts#canSeeAllCards). */
+  'eliminated:reveal': (payload: EliminatedRevealPayload) => void;
   'round:result': (payload: RoundResultPayload) => void;
   'game:ended': (payload: GameEndedPayload) => void;
   'chat:message': (payload: ChatMessage) => void;

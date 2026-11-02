@@ -13,6 +13,7 @@ import { randomUUID } from 'node:crypto';
 import type {
   ChampionPair,
   ChatMessage,
+  EliminatedRevealPayload,
   GameEndedPayload,
   Player,
   PublicPlayer,
@@ -123,6 +124,19 @@ function toPublicState(room: Room): RoomStatePublic {
 
 function broadcastRoomState(io: IoServer, room: Room): void {
   io.to(room.roomCode).emit('room:state', toPublicState(room));
+  sendEliminatedReveals(io, room);
+}
+
+/** Cartes et rôles de tous, envoyés socket par socket aux seuls éliminés autorisés — jamais
+ * en broadcast, pour que rien n'arrive chez un joueur encore en vie. Rejoué à chaque état
+ * (élimination, reconnexion, fin du vote du Revenant…), le client remplace simplement. */
+function sendEliminatedReveals(io: IoServer, room: Room): void {
+  let payload: EliminatedRevealPayload | null = null;
+  for (const player of room.players.values()) {
+    if (!player.socketId || !engine.canSeeAllCards(room, player)) continue;
+    payload ??= { reveal: engine.buildGameEndedReveal(room), pair: engine.buildGameEndedPair(room) };
+    io.to(player.socketId).emit('eliminated:reveal', payload);
+  }
 }
 
 /** "Univers maison" (voir §7bis) : pool réellement utilisé pour game:start/restart. */

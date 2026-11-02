@@ -13,6 +13,7 @@ import { GameAborted } from '../screens/GameAborted';
 import { SpectatorView } from '../screens/SpectatorView';
 import { ChatBox } from '../components/ChatBox';
 import { MyWordButton } from '../components/MyWordButton';
+import { AllCardsButton } from '../components/AllCardsButton';
 import { useWakeLock } from '../hooks/useWakeLock';
 import type { GamePhase } from '../types';
 
@@ -36,7 +37,7 @@ function LoadingScreen() {
 
 export function GameRoute() {
   const { roomCode: paramCode } = useParams();
-  const { roomCode, connected, roomState, rejoinFromStorage, isSpectator, roleVersion, myRole } = useRoom();
+  const { roomCode, connected, roomState, rejoinFromStorage, isSpectator, roleVersion, myRole, eliminatedReveal } = useRoom();
   const navigate = useNavigate();
   const upper = paramCode?.toUpperCase();
   const phase = roomState?.phase;
@@ -71,6 +72,7 @@ export function GameRoute() {
   // nouvelle distribution de rôles (relance pendant une révélation : l'écran repart de zéro).
   const screenKey = `${roomState.phase}-${roleVersion}`;
   const showMyWord = !isSpectator && !!myRole && IN_GAME_PHASES.has(roomState.phase);
+  const showAllCards = !isSpectator && !!eliminatedReveal && IN_GAME_PHASES.has(roomState.phase);
 
   return (
     <>
@@ -79,6 +81,7 @@ export function GameRoute() {
       </div>
       <div key={`wipe-${roomState.phase}`} className="wipe" data-universe={roomState.universe} aria-hidden="true" />
       <div className="fab-stack" data-universe={roomState.universe}>
+        {showAllCards && <AllCardsButton />}
         {showMyWord && <MyWordButton />}
         <ChatBox />
       </div>
