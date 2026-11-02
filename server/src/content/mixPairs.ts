@@ -1,16 +1,15 @@
-// Univers mixtes 'smash-anime' et 'lol-anime' : le paquet réunit toutes les paires des deux
-// univers d'origine, plus des paires croisées (un combattant Smash ou un champion LoL face à
-// un personnage d'anime qui lui ressemble). Voir content/pairSeed.ts pour le format.
+// Univers mixtes 'smash-anime' et 'lol-anime' : UNIQUEMENT des paires croisées, un combattant
+// Smash ou un champion LoL face à un personnage d'anime qui lui ressemble. Voir
+// content/pairSeed.ts pour le format.
 //
 // Chaque nom garde sa source (image Smash/LoL, série et alias de l'anime). Si un même nom
 // existe des deux côtés (« Nami » : LoL et One Piece), le personnage d'anime prend sa série
 // entre parenthèses pour qu'on ne les confonde pas.
 
-import type { ChampionPair, PairDifficulty, Universe } from '../types.js';
+import type { ChampionPair, Universe } from '../types.js';
 import { buildPairs, type PairSeed } from './pairSeed.js';
 import { smashPairs } from './smashPairs.js';
 import { lolPairs } from './lolPairs.js';
-import { animePairs } from './animePairs.js';
 import { ANIME_INFO } from './animeInfo.js';
 
 export type MixSource = 'smash' | 'lol' | 'anime';
@@ -62,6 +61,21 @@ const SMASH_ANIME: PairSeed[] = [
   ['Roi DaDiDou', 'Big Mom', 'Tyrans gourmands', 'easy'],
   ['Zelda', 'Princesse Mononoké', 'Princesses de légende', 'easy'],
   ['Kirby', 'Chopper', 'Mascottes mignonnes qui se transforment', 'easy'],
+  ['King K. Rool', 'Crocodile', 'Méchants crocodiles', 'extreme'],
+  ['Simon', 'Tanjiro', 'Chasseurs de démons et de vampires', 'hard'],
+  ['Daraen', 'Shikamaru', 'Tacticiens de génie', 'hard'],
+  ['Richter', 'Rengoku', 'Chasseurs de démons à la cape flamboyante', 'medium'],
+  ['Byleth', 'Kakashi', 'Profs qui entraînent les héros', 'medium'],
+  ['Roy', 'Ace', 'Jeunes guerriers du feu', 'medium'],
+  ['Kazuya', 'Akaza', 'Combattants à moitié démons', 'medium'],
+  ['Pyra / Mythra', 'Erza', 'Guerrières aux cheveux rouges et à l’épée', 'medium'],
+  ['Dr. Mario', 'Chopper', 'Médecins de l’équipe', 'medium'],
+  ['Ken', 'Sanji', 'Blonds qui se battent à coups de pied', 'medium'],
+  ['Pit Maléfique', 'Sasuke', 'Rivaux ténébreux du héros', 'medium'],
+  ['Luigi', 'Usopp', 'Froussards au grand cœur', 'medium'],
+  ['Donkey Kong', 'Franky', 'Colosses aux gros bras', 'easy'],
+  ['Mario', 'Goku', 'Héros les plus célèbres du Japon', 'easy'],
+  ['Lucario', 'Kurama', 'Bêtes qui maîtrisent l’énergie', 'easy'],
 ];
 
 // [champion LoL, personnage d'anime, thème, difficulté]
@@ -101,6 +115,19 @@ const LOL_ANIME: PairSeed[] = [
   ['Nautilus', 'Franky', 'Colosses en métal liés à la mer', 'easy'],
   ['Lee Sin', 'Ken le Survivant', 'Maîtres d’arts martiaux', 'easy'],
   ['Annie', 'Nezuko', 'Fillettes adorables… à ne pas énerver', 'easy'],
+  ['Yuumi', 'Luna', 'Chats magiques qui aident l’héroïne', 'extreme'],
+  ['Jhin', 'Light Yagami', 'Tueurs qui voient le meurtre comme un art', 'hard'],
+  ['Yone', 'Ichigo', 'Épéistes à moitié démons qui portent un masque', 'hard'],
+  ['Ryze', 'Frieren', 'Mages qui ont vécu des siècles', 'hard'],
+  ['Twisted Fate', 'Lupin III', 'Voleurs charmeurs et joueurs', 'hard'],
+  ['Kennen', 'Killua', 'Petits rapides et électriques', 'hard'],
+  ['Thresh', 'Orochimaru', 'Méchants qui collectionnent les âmes et les corps', 'medium'],
+  ['Irelia', 'Mikasa', 'Lames qui défendent leur patrie', 'medium'],
+  ['Vi', 'Bakugo', 'Têtes brûlées qui règlent tout aux poings', 'medium'],
+  ['Sett', 'Jotaro', 'Bagarreurs aux poings redoutables', 'medium'],
+  ['Graves', 'Nicky Larson', 'Flingueurs au grand cœur', 'medium'],
+  ['Draven', 'Baggy', 'Frimeurs qui adorent qu’on parle d’eux', 'medium'],
+  ['Garen', 'All Might', 'Héros nationaux pleins de muscles', 'easy'],
 ];
 
 interface MixDef {
@@ -118,27 +145,15 @@ function namesOf(pairs: ChampionPair[]): Set<string> {
   return new Set(pairs.flatMap((p) => [p.champA, p.champB]));
 }
 
-const ANIME_NAMES = namesOf(animePairs);
-
 function build(def: MixDef): { pairs: ChampionPair[]; index: Map<string, MixEntry> } {
   const otherNames = namesOf(def.other.pairs);
   const index = new Map<string, MixEntry>();
-  for (const name of otherNames) index.set(name, { source: def.other.source, base: name });
-  const animeName = (name: string): string => {
-    const display = otherNames.has(name) ? `${name} (${ANIME_INFO[name]?.series ?? 'anime'})` : name;
-    index.set(display, { source: 'anime', base: name });
-    return display;
-  };
-  for (const name of ANIME_NAMES) animeName(name);
-
-  const rekey = (pairs: ChampionPair[], rename: (n: string) => string): PairSeed[] =>
-    pairs.map((p) => [rename(p.champA), rename(p.champB), p.theme ?? '', p.difficulty as PairDifficulty]);
-
-  const seeds: PairSeed[] = [
-    ...def.cross.map(([a, b, theme, d]) => [a, animeName(b), theme, d] as const),
-    ...rekey(def.other.pairs, (n) => n),
-    ...rekey(animePairs, animeName),
-  ];
+  const seeds: PairSeed[] = def.cross.map(([name, anime, theme, d]) => {
+    index.set(name, { source: def.other.source, base: name });
+    const display = otherNames.has(anime) ? `${anime} (${ANIME_INFO[anime]?.series ?? 'anime'})` : anime;
+    index.set(display, { source: 'anime', base: anime });
+    return [name, display, theme, d] as const;
+  });
   return { pairs: buildPairs(def.universe as Universe, seeds), index };
 }
 

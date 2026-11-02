@@ -123,11 +123,8 @@ describe('univers mixtes Smash × Anime et LoL × Anime', () => {
     }
   });
 
-  it.each(['smash-anime', 'lol-anime'] as const)('"%s" : contient les deux paquets d’origine plus les paires croisées', (universe) => {
-    const source = universe === 'smash-anime' ? 'smash' : 'lol';
-    expect(getAllPairs(universe).length).toBe(
-      getAllPairs(source).length + getAllPairs('anime').length + CROSS_SEEDS[universe].length,
-    );
+  it.each(['smash-anime', 'lol-anime'] as const)('"%s" : uniquement des paires croisées', (universe) => {
+    expect(getAllPairs(universe).length).toBe(CROSS_SEEDS[universe].length);
   });
 
   it('les images et descriptions suivent l’univers d’origine du personnage', () => {
@@ -136,15 +133,6 @@ describe('univers mixtes Smash × Anime et LoL × Anime', () => {
     expect(characterImage('lol-anime', 'Ahri')).toContain('/Ahri_0.jpg');
     expect(characterDescription('lol-anime', 'Ahri')).toContain('League of Legends');
     expect(characterDescription('smash-anime', 'Zoro')).toBe('Personnage de « One Piece »');
-  });
-
-  it('un homonyme (« Nami » LoL et One Piece) est distingué par sa série', () => {
-    const names = new Set(getAllPairs('lol-anime').flatMap((p) => [p.champA, p.champB]));
-    expect(names.has('Nami')).toBe(true);
-    expect(names.has('Nami (One Piece)')).toBe(true);
-    expect(characterImage('lol-anime', 'Nami')).toContain('/Nami_0.jpg');
-    expect(characterImage('lol-anime', 'Nami (One Piece)')).toBeNull();
-    expect(characterAliases('lol-anime', 'Nami (One Piece)')).toContain('Nami');
   });
 
   it('chaque personnage des mixes a une description', () => {
