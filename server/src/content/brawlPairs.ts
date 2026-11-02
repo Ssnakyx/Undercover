@@ -1,5 +1,5 @@
-// Univers 'brawl' — Brawlers de Brawl Stars, noms officiels (identiques en jeu FR). Pas
-// d'image : le client affiche une carte typographique. Voir content/pairSeed.ts pour le format
+// Univers 'brawl' — Brawlers de Brawl Stars, noms officiels (identiques en jeu FR). Images
+// servies par le client (scripts/fetch-character-assets.py). Voir content/pairSeed.ts pour le format
 // et les règles de qualité.
 
 import { buildPairs, type PairSeed } from './pairSeed.js';
