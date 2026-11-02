@@ -6,8 +6,9 @@
 export type Role = 'civil' | 'undercover' | 'mrwhite' | 'spy' | 'protector' | 'ghost' | 'jester' | 'hunter';
 
 // Univers de contenu choisi au menu principal — même moteur de jeu, un pool de paires
-// indépendant par univers ('games' = titres de jeux vidéo plutôt que des personnages).
-export type Universe = 'lol' | 'smash' | 'pokemon' | 'games';
+// indépendant par univers ('games' = titres de jeux vidéo plutôt que des personnages, 'anime' = personnages de
+// manga et d'anime).
+export type Universe = 'lol' | 'smash' | 'pokemon' | 'games' | 'anime';
 
 export type PairDifficulty = 'easy' | 'medium' | 'hard' | 'extreme';
 

@@ -9,12 +9,14 @@ import { lolPairs } from './lolPairs.js';
 import { smashPairs } from './smashPairs.js';
 import { pokemonPairs } from './pokemonPairs.js';
 import { gamesPairs } from './gamesPairs.js';
+import { animePairs } from './animePairs.js';
 
 const pools: Record<Universe, ChampionPair[]> = {
   lol: lolPairs,
   smash: smashPairs,
   pokemon: pokemonPairs,
   games: gamesPairs,
+  anime: animePairs,
 };
 
 export function getAllPairs(universe: Universe): ChampionPair[] {

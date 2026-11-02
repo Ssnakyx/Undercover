@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { getAllPairs, getPairs } from '../src/content/pairsStore.js';
-import { characterImage } from '../src/content/characterImages.js';
+import { characterAliases, characterImage } from '../src/content/characterImages.js';
 import { GAME_INFO } from '../src/content/gameInfo.js';
+import { ANIME_INFO, animeDescription } from '../src/content/animeInfo.js';
 import type { Universe } from '../src/types.js';
 
-const UNIVERSES: Universe[] = ['lol', 'smash', 'pokemon', 'games'];
+const UNIVERSES: Universe[] = ['lol', 'smash', 'pokemon', 'games', 'anime'];
 
 function norm(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -85,5 +86,27 @@ describe('univers Jeux vidéo', () => {
         expect(GAME_INFO[name]?.wiki, name).toBeTruthy();
       }
     }
+  });
+});
+
+describe('univers Manga & Anime', () => {
+  it('chaque personnage des paires a sa série (affichée sur sa carte)', () => {
+    for (const { champA, champB } of getAllPairs('anime')) {
+      for (const name of [champA, champB]) {
+        expect(ANIME_INFO[name]?.series, name).toBeTruthy();
+        expect(animeDescription(name), name).toBeTruthy();
+      }
+    }
+  });
+
+  it('pas d’image, mais les alias servent à la devinette de Mr White', () => {
+    expect(characterImage('anime', 'Luffy')).toBeNull();
+    expect(characterAliases('anime', 'Goku')).toContain('Sangoku');
+    expect(animeDescription('Luffy')).toBe('Personnage de « One Piece »');
+  });
+
+  it('aucune fiche orpheline (chaque personnage décrit sert dans au moins une paire)', () => {
+    const used = new Set(getAllPairs('anime').flatMap((p) => [p.champA, p.champB]));
+    for (const name of Object.keys(ANIME_INFO)) expect(used.has(name), name).toBe(true);
   });
 });

@@ -16,6 +16,13 @@ export function IconDefs() {
           <circle cx="45" cy="13" r="2.6" fill="currentColor" />
           <circle cx="51" cy="19" r="2.6" fill="currentColor" />
         </symbol>
+        {/* Bulle de manga « !! » — carte de l'univers Manga & Anime */}
+        <symbol id="manga-bubble" viewBox="0 0 64 40">
+          <path d="M32 3 C48 3 60 10 60 19 C60 28 48 34 32 34 C29 34 26 33.8 23.5 33.3 L11 38.5 L15.5 30.5 C8 27.5 4 23.5 4 19 C4 10 16 3 32 3 Z" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+          <path d="M28 10 v9 M36 10 v9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="28" cy="25.5" r="1.9" fill="currentColor" />
+          <circle cx="36" cy="25.5" r="1.9" fill="currentColor" />
+        </symbol>
 
         <symbol id="role-civil" viewBox="0 0 40 40">
           <polygon points="10,0 30,0 40,20 30,40 10,40 0,20" fill="none" stroke="currentColor" strokeWidth="2" />
