@@ -10,6 +10,8 @@ import { smashPairs } from './smashPairs.js';
 import { pokemonPairs } from './pokemonPairs.js';
 import { gamesPairs } from './gamesPairs.js';
 import { animePairs } from './animePairs.js';
+import { lolAnimePairs, smashAnimePairs } from './mixPairs.js';
+import { brawlPairs } from './brawlPairs.js';
 
 const pools: Record<Universe, ChampionPair[]> = {
   lol: lolPairs,
@@ -17,6 +19,9 @@ const pools: Record<Universe, ChampionPair[]> = {
   pokemon: pokemonPairs,
   games: gamesPairs,
   anime: animePairs,
+  'smash-anime': smashAnimePairs,
+  'lol-anime': lolAnimePairs,
+  brawl: brawlPairs,
 };
 
 export function getAllPairs(universe: Universe): ChampionPair[] {

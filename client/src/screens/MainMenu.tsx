@@ -76,7 +76,7 @@ function UniverseCard({ universe }: { universe: Universe }) {
       ) : (
         <div className="universe-card__pad" aria-hidden="true">
           <svg viewBox="0 0 64 40" fill="none">
-            <use href={universe === 'anime' ? '#manga-bubble' : '#gamepad'} />
+            <use href={universe.includes('anime') ? '#manga-bubble' : '#gamepad'} />
           </svg>
         </div>
       )}
@@ -163,7 +163,7 @@ export function MainMenu() {
             </div>
           </details>
 
-          <p className="footnote">Aucun compte requis, un pseudo suffit. Projet de fans, non affilié à Riot Games, Nintendo, The Pokémon Company ni aux éditeurs des mangas cités.</p>
+          <p className="footnote">Aucun compte requis, un pseudo suffit. Projet de fans, non affilié à Riot Games, Nintendo, The Pokémon Company, Supercell ni aux éditeurs des mangas cités.</p>
         </div>
       </main>
     </div>

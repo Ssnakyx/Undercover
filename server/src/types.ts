@@ -35,9 +35,10 @@ export interface PlayerRole {
  * Univers de contenu choisi au menu principal — même moteur de jeu, un pool de paires
  * indépendant par univers (voir content/pairsStore.ts). 'lol' = League of Legends, 'smash' =
  * Super Smash Bros Ultimate, 'pokemon' = Pokémon, 'games' = titres de jeux vidéo,
- * 'anime' = personnages de manga et d'anime.
+ * 'anime' = personnages de manga et d'anime, 'smash-anime' / 'lol-anime' = mélanges (voir
+ * content/mixPairs.ts), 'brawl' = Brawlers de Brawl Stars.
  */
-export type Universe = 'lol' | 'smash' | 'pokemon' | 'games' | 'anime';
+export type Universe = 'lol' | 'smash' | 'pokemon' | 'games' | 'anime' | 'smash-anime' | 'lol-anime' | 'brawl';
 
 export type PairDifficulty = 'easy' | 'medium' | 'hard' | 'extreme';
 export type PairDifficultyFilter = PairDifficulty | 'all';

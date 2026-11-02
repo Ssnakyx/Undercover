@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { getAllPairs, getPairs } from '../src/content/pairsStore.js';
-import { characterAliases, characterImage } from '../src/content/characterImages.js';
+import { characterAliases, characterDescription, characterImage } from '../src/content/characterImages.js';
+import { CROSS_SEEDS } from '../src/content/mixPairs.js';
 import { GAME_INFO } from '../src/content/gameInfo.js';
 import { ANIME_INFO, animeDescription } from '../src/content/animeInfo.js';
 import type { Universe } from '../src/types.js';
 
-const UNIVERSES: Universe[] = ['lol', 'smash', 'pokemon', 'games', 'anime'];
+const UNIVERSES: Universe[] = ['lol', 'smash', 'pokemon', 'games', 'anime', 'smash-anime', 'lol-anime', 'brawl'];
 
 function norm(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -108,5 +109,50 @@ describe('univers Manga & Anime', () => {
   it('aucune fiche orpheline (chaque personnage décrit sert dans au moins une paire)', () => {
     const used = new Set(getAllPairs('anime').flatMap((p) => [p.champA, p.champB]));
     for (const name of Object.keys(ANIME_INFO)) expect(used.has(name), name).toBe(true);
+  });
+});
+
+describe('univers mixtes Smash × Anime et LoL × Anime', () => {
+  it.each(['smash-anime', 'lol-anime'] as const)('"%s" : chaque nom des paires croisées vient bien de son univers', (universe) => {
+    const source = universe === 'smash-anime' ? 'smash' : 'lol';
+    const sourceNames = new Set(getAllPairs(source).flatMap((p) => [p.champA, p.champB]));
+    const animeNames = new Set(getAllPairs('anime').flatMap((p) => [p.champA, p.champB]));
+    for (const [a, b] of CROSS_SEEDS[universe]) {
+      expect(sourceNames.has(a), a).toBe(true);
+      expect(animeNames.has(b), b).toBe(true);
+    }
+  });
+
+  it.each(['smash-anime', 'lol-anime'] as const)('"%s" : contient les deux paquets d’origine plus les paires croisées', (universe) => {
+    const source = universe === 'smash-anime' ? 'smash' : 'lol';
+    expect(getAllPairs(universe).length).toBe(
+      getAllPairs(source).length + getAllPairs('anime').length + CROSS_SEEDS[universe].length,
+    );
+  });
+
+  it('les images et descriptions suivent l’univers d’origine du personnage', () => {
+    expect(characterImage('smash-anime', 'Link')).toMatch(/^\/img\/smash\//);
+    expect(characterImage('smash-anime', 'Luffy')).toBeNull();
+    expect(characterImage('lol-anime', 'Ahri')).toContain('/Ahri_0.jpg');
+    expect(characterDescription('lol-anime', 'Ahri')).toContain('League of Legends');
+    expect(characterDescription('smash-anime', 'Zoro')).toBe('Personnage de « One Piece »');
+  });
+
+  it('un homonyme (« Nami » LoL et One Piece) est distingué par sa série', () => {
+    const names = new Set(getAllPairs('lol-anime').flatMap((p) => [p.champA, p.champB]));
+    expect(names.has('Nami')).toBe(true);
+    expect(names.has('Nami (One Piece)')).toBe(true);
+    expect(characterImage('lol-anime', 'Nami')).toContain('/Nami_0.jpg');
+    expect(characterImage('lol-anime', 'Nami (One Piece)')).toBeNull();
+    expect(characterAliases('lol-anime', 'Nami (One Piece)')).toContain('Nami');
+  });
+
+  it('chaque personnage des mixes a une description', () => {
+    for (const universe of ['smash-anime', 'lol-anime'] as const) {
+      for (const { champA, champB } of getAllPairs(universe)) {
+        expect(characterDescription(universe, champA), champA).toBeTruthy();
+        expect(characterDescription(universe, champB), champB).toBeTruthy();
+      }
+    }
   });
 });

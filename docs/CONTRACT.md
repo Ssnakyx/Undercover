@@ -566,7 +566,10 @@ des ajouts :
 
 - **Univers** : `'games'` (titres de jeux vidéo) et `'anime'` (personnages de manga et d'anime,
   `server/src/content/animePairs.ts` ; série + alias de devinette dans `animeInfo.ts`, pas
-  d'image) en plus de `lol` / `smash` / `pokemon`.
+  d'image), `'brawl'` (Brawl Stars, `brawlPairs.ts`, pas d'image) et les mélanges
+  `'smash-anime'` / `'lol-anime'` (`mixPairs.ts` : les deux pools d'origine + paires croisées ;
+  chaque nom garde l'image, la description et les alias de sa source, et un homonyme d'anime
+  prend sa série entre parenthèses, ex. « Nami (One Piece) ») en plus de `lol` / `smash` / `pokemon`.
 - **Paires** : champ `difficulty` (`easy` / `medium` / `hard` / `extreme`, indicatif : toutes les
   difficultés sont tirées dans le même paquet, sans réglage), aucune paire dont un nom contient
   l'autre (test automatique), inversion civils/undercover une fois sur deux au tirage, et une room

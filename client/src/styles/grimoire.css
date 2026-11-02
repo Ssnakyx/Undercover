@@ -87,8 +87,13 @@
 [data-universe='games'] {
   --cool: rgba(22, 62, 80, 0.6);
 }
-[data-universe='anime'] {
+[data-universe='anime'],
+[data-universe='smash-anime'],
+[data-universe='lol-anime'] {
   --cool: rgba(120, 28, 70, 0.55);
+}
+[data-universe='brawl'] {
+  --cool: rgba(150, 96, 20, 0.55);
 }
 
 /* --------------------------------------------------------------------------

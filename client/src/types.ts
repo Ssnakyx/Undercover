@@ -7,8 +7,8 @@ export type Role = 'civil' | 'undercover' | 'mrwhite' | 'spy' | 'protector' | 'g
 
 // Univers de contenu choisi au menu principal — même moteur de jeu, un pool de paires
 // indépendant par univers ('games' = titres de jeux vidéo plutôt que des personnages, 'anime' = personnages de
-// manga et d'anime).
-export type Universe = 'lol' | 'smash' | 'pokemon' | 'games' | 'anime';
+// manga et d'anime, 'smash-anime' / 'lol-anime' = mélanges, 'brawl' = Brawl Stars).
+export type Universe = 'lol' | 'smash' | 'pokemon' | 'games' | 'anime' | 'smash-anime' | 'lol-anime' | 'brawl';
 
 export type PairDifficulty = 'easy' | 'medium' | 'hard' | 'extreme';
 
