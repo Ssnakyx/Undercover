@@ -641,6 +641,26 @@ export function buildGameEndedReveal(room: Room): GameEndedPayload['reveal'] {
     }));
 }
 
+/** Phases de partie en cours où un éliminé peut consulter toutes les cartes (hors lobby,
+ * révélation où personne n'est encore mort, et fin de partie où tout est révélé à tous). */
+const ELIMINATED_REVEAL_PHASES = new Set<Room['phase']>(['discussion', 'voting', 'round_result', 'mrwhite_guess', 'hunter_shoot']);
+
+/**
+ * true si ce joueur éliminé peut voir la carte et le rôle de tous les joueurs. Jamais un
+ * joueur en vie, et jamais un éliminé qui a encore une action qui pèse sur la partie :
+ * - le Revenant tant que son vote bonus n'est pas utilisé (il voterait à coup sûr) ;
+ * - Mr White pendant sa devinette (il lirait le mot des civils) ;
+ * - le Chasseur pendant son tir (il viserait à coup sûr).
+ */
+export function canSeeAllCards(room: Room, player: Player): boolean {
+  if (player.alive || !player.role) return false;
+  if (!ELIMINATED_REVEAL_PHASES.has(room.phase)) return false;
+  if (player.ghostVoteAvailable) return false;
+  if (room.phase === 'mrwhite_guess' && room.mrWhiteGuessPlayerId === player.playerId) return false;
+  if (room.phase === 'hunter_shoot' && room.hunterShootPlayerId === player.playerId) return false;
+  return true;
+}
+
 export function buildGameEndedPair(room: Room): GameEndedPayload['pair'] {
   if (!room.championA || !room.championB) return undefined;
   return {

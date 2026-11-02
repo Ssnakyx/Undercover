@@ -216,6 +216,14 @@ export interface GameEndedPayload {
   pair?: { civil: string; undercover: string; civilImage: string | null; undercoverImage: string | null; theme: string };
 }
 
+/** Envoyé au seul joueur éliminé (jamais en broadcast) : carte et rôle de chaque joueur.
+ * Retenu tant que l'éliminé a encore une action (vote du Revenant, devinette de Mr White, tir
+ * du Chasseur). Même forme que l'écran de fin de partie. */
+export interface EliminatedRevealPayload {
+  reveal: GameEndedPayload['reveal'];
+  pair?: GameEndedPayload['pair'];
+}
+
 export interface PlayerLeftPayload {
   playerId: string;
   name: string;
@@ -272,6 +280,7 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
   'room:state': (state: RoomStatePublic) => void;
   'role:private': (payload: RolePrivatePayload) => void;
+  'eliminated:reveal': (payload: EliminatedRevealPayload) => void;
   'round:result': (payload: RoundResultPayload) => void;
   'game:ended': (payload: GameEndedPayload) => void;
   'chat:message': (payload: ChatMessage) => void;

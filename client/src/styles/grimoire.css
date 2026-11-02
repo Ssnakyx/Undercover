@@ -3286,3 +3286,56 @@ details.fold > summary::-webkit-details-marker {
     height: 270px;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Éliminé : cartes et rôles de tous (components/AllCardsButton.tsx)
+   -------------------------------------------------------------------------- */
+.fab__eye {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.all-cards {
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 16px 22px;
+  background: var(--night);
+  box-shadow: 0 0 0 1px var(--gold), var(--lift-hi);
+  animation: pop-in 0.3s var(--ease-pop) both;
+}
+
+.all-cards .section__head {
+  align-items: center;
+}
+
+.all-cards__close {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.all-cards__pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.all-cards__vs {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--gold);
+  margin: 0 4px;
+}
+
+.all-cards__grid {
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+}
+
+.reveal-tile--dead {
+  filter: grayscale(0.7) brightness(0.8);
+}

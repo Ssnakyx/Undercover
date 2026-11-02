@@ -271,6 +271,15 @@ export interface GameEndedPayload {
   pair?: { civil: string; undercover: string; civilImage: string | null; undercoverImage: string | null; theme: string };
 }
 
+/** Envoyé au SEUL socket d'un joueur éliminé (jamais en broadcast) : la carte et le rôle de
+ * chaque joueur, pour suivre la fin de partie en connaissance de cause. Retenu tant que
+ * l'éliminé a encore une action en jeu (vote du Revenant, devinette de Mr White, tir du
+ * Chasseur). Même forme que l'écran de fin de partie. */
+export interface EliminatedRevealPayload {
+  reveal: GameEndedPayload['reveal'];
+  pair?: GameEndedPayload['pair'];
+}
+
 /** Un joueur a quitté (ou n'est pas revenu à temps) en pleine partie : son rôle est révélé.
  * Événement distinct de round:result pour ne jamais écraser l'écran de résultat en cours. */
 export interface PlayerLeftPayload {
