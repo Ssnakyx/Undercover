@@ -91,6 +91,8 @@ export function createRoom(universe: Universe = 'lol'): Room {
     recentPairIds: [],
     nextJoinOrder: 0,
     abortedByName: null,
+    gameNumber: 0,
+    afterlifeReaders: new Set(),
     chatMessages: [],
   };
   rooms.set(roomCode, room);

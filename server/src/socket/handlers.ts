@@ -22,6 +22,7 @@ import type {
   RoomSettings,
   RoomStatePublic,
   RoundResultPayload,
+  StoredChatMessage,
   Winner,
 } from '../types.js';
 import {
@@ -141,6 +142,11 @@ function sendEliminatedReveals(io: IoServer, room: Room): void {
     if (!player.socketId || !engine.canSeeAllCards(room, player)) continue;
     payload ??= { reveal: engine.buildGameEndedReveal(room), pair: engine.buildGameEndedPair(room) };
     io.to(player.socketId).emit('eliminated:reveal', payload);
+    // Il vient de rejoindre le chat des éliminés : on lui donne ce qui s'y est déjà dit.
+    if (!room.afterlifeReaders.has(player.playerId)) {
+      room.afterlifeReaders.add(player.playerId);
+      sendChatHistory(io, player.socketId, room);
+    }
   }
 }
 
@@ -208,7 +214,75 @@ function sendRolePrivateToAllConnected(io: IoServer, room: Room): void {
 /** Rejoue l'historique de chat (tampon borné, voir CHAT_HISTORY_LIMIT) au seul socket qui
  * vient de rejoindre/recréer/se reconnecter — pure convenience, jamais broadcast. */
 function sendChatHistory(io: IoServer, socketId: string, room: Room): void {
-  io.to(socketId).emit('chat:history', room.chatMessages);
+  const reader = readerOfSocket(room, socketId);
+  const visible = room.chatMessages.filter((m) => canReadChatMessage(room, m, reader));
+  io.to(socketId).emit('chat:history', visible.map(toPublicChatMessage));
+}
+
+// ---------------------------------------------------------------------------
+// Chat des éliminés : pendant une partie, un mort voit toutes les cartes (vue des éliminés) et
+// un spectateur n'a rien à dire aux vivants. Leurs messages restent donc entre éliminés et
+// spectateurs jusqu'à la fin de la partie, sinon un mort pouvait écrire « Bob est l'Undercover ».
+// ---------------------------------------------------------------------------
+
+const GAME_IN_PROGRESS_PHASES = new Set<Room['phase']>([
+  'reveal',
+  'discussion',
+  'voting',
+  'round_result',
+  'mrwhite_guess',
+  'hunter_shoot',
+]);
+
+type ChatReader = { kind: 'player'; player: Player } | { kind: 'spectator' } | { kind: 'unknown' };
+
+function readerOfSocket(room: Room, socketId: string): ChatReader {
+  for (const p of room.players.values()) if (p.socketId === socketId) return { kind: 'player', player: p };
+  for (const p of room.spectators.values()) if (p.socketId === socketId) return { kind: 'spectator' };
+  return { kind: 'unknown' };
+}
+
+/** Un message écrit maintenant par ce joueur/spectateur part-il dans le chat des éliminés ? */
+function writesToAfterlife(room: Room, ctx: { player: Player; isSpectator: boolean }): boolean {
+  if (!GAME_IN_PROGRESS_PHASES.has(room.phase)) return false;
+  return ctx.isSpectator || !ctx.player.alive;
+}
+
+/** Peut-il lire le chat des éliminés ? Spectateurs, et éliminés autorisés à voir toutes les
+ * cartes (pas le Revenant avant son vote, ni Mr White pendant sa devinette, ni le Chasseur
+ * pendant son tir : ils agissent encore sur la partie). */
+function canReadAfterlife(room: Room, reader: ChatReader): boolean {
+  if (reader.kind === 'spectator') return true;
+  if (reader.kind === 'player') return engine.canSeeAllCards(room, reader.player);
+  return false;
+}
+
+function canReadChatMessage(room: Room, message: StoredChatMessage, reader: ChatReader): boolean {
+  if (!message.afterlife) return true;
+  // Une fois la partie de ce message terminée, tout le monde peut le relire.
+  if (message.gameNumber !== room.gameNumber || !GAME_IN_PROGRESS_PHASES.has(room.phase)) return true;
+  if (reader.kind === 'player' && reader.player.playerId === message.playerId) return true;
+  return canReadAfterlife(room, reader);
+}
+
+function toPublicChatMessage(m: StoredChatMessage): ChatMessage {
+  const out: ChatMessage = { id: m.id, playerId: m.playerId, name: m.name, text: m.text, ts: m.ts };
+  if (m.afterlife) out.afterlife = true;
+  return out;
+}
+
+/** Nouvelle partie : nouveau numéro, personne n'a encore reçu le chat des éliminés. */
+function beginNewGameChat(room: Room): void {
+  room.gameNumber += 1;
+  room.afterlifeReaders.clear();
+}
+
+/** Fin de partie : chacun reçoit l'historique complet, chat des éliminés compris. */
+function revealChatHistoryToAll(io: IoServer, room: Room): void {
+  if (!room.chatMessages.some((m) => m.afterlife && m.gameNumber === room.gameNumber)) return;
+  for (const p of [...room.players.values(), ...room.spectators.values()]) {
+    if (p.socketId) sendChatHistory(io, p.socketId, room);
+  }
 }
 
 function emitError(socket: IoSocket, code: string, message: string): void {
@@ -309,6 +383,9 @@ function onHunterShootTimeout(io: IoServer, room: Room): void {
 }
 
 function finishGame(io: IoServer, room: Room, winner: Winner): void {
+  // Garde-fou : une partie ne se termine qu'une fois (sinon points de soirée et stats de
+  // compte comptés plusieurs fois, et game:ended renvoyé à tout le monde).
+  if (room.phase === 'game_over' || room.phase === 'aborted' || room.phase === 'lobby') return;
   engine.awardScoreForWinner(room, winner);
   recordAccountStats(room, winner);
   engine.enterGameOver(room);
@@ -317,6 +394,7 @@ function finishGame(io: IoServer, room: Room, winner: Winner): void {
   broadcastRoomState(io, room);
   const payload: GameEndedPayload = { winner, reveal, pair: engine.buildGameEndedPair(room) };
   io.to(room.roomCode).emit('game:ended', payload);
+  revealChatHistoryToAll(io, room);
 }
 
 /** Comptes joueurs : +1 partie (et +1 victoire si son camp gagne) pour chaque joueur connecté
@@ -848,6 +926,7 @@ export function registerSocketHandlers(io: IoServer): void {
         reportEngineError(socket, ack, err, 'START_FAILED');
         return;
       }
+      beginNewGameChat(room);
       ok(ack);
       sendRolePrivateToAllConnected(io, room);
       broadcastRoomState(io, room);
@@ -994,6 +1073,7 @@ export function registerSocketHandlers(io: IoServer): void {
         broadcastRoomState(io, room);
         return;
       }
+      beginNewGameChat(room);
       ok(ack);
       sendRolePrivateToAllConnected(io, room);
       broadcastRoomState(io, room);
@@ -1009,19 +1089,31 @@ export function registerSocketHandlers(io: IoServer): void {
         fail(socket, ack, 'INVALID_MESSAGE', 'Message vide');
         return;
       }
-      const message: ChatMessage = {
+      const message: StoredChatMessage = {
         id: randomUUID(),
         playerId: player.playerId,
         name: player.name,
         text,
         ts: Date.now(),
+        gameNumber: room.gameNumber,
       };
+      if (writesToAfterlife(room, ctx)) message.afterlife = true;
       room.chatMessages.push(message);
       if (room.chatMessages.length > CHAT_HISTORY_LIMIT) {
         room.chatMessages.splice(0, room.chatMessages.length - CHAT_HISTORY_LIMIT);
       }
       ok(ack);
-      io.to(room.roomCode).emit('chat:message', message);
+      const outgoing = toPublicChatMessage(message);
+      if (!message.afterlife) {
+        io.to(room.roomCode).emit('chat:message', outgoing);
+        return;
+      }
+      for (const p of [...room.players.values(), ...room.spectators.values()]) {
+        if (!p.socketId) continue;
+        if (canReadChatMessage(room, message, readerOfSocket(room, p.socketId))) {
+          io.to(p.socketId).emit('chat:message', outgoing);
+        }
+      }
     });
 
     // Retour au salon après une partie (ou une partie interrompue) : l'hôte peut changer les
@@ -1274,6 +1366,10 @@ function handleDisconnectGraceExpired(io: IoServer, room: Room, playerId: string
   }
   const outcome = finalizeDisconnectTimeout(room, playerId);
   if (outcome.outcome === 'reconnected') return;
+  if (outcome.outcome === 'kept') {
+    broadcastRoomState(io, room);
+    return;
+  }
 
   if (outcome.outcome === 'removed') {
     if (room.players.size === 0) {

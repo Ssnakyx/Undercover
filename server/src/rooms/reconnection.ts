@@ -129,6 +129,7 @@ export function cancelDisconnectTimer(player: Player): void {
 export type DisconnectGraceOutcome =
   | { outcome: 'reconnected' } // le joueur est revenu avant l'expiration, rien à faire
   | { outcome: 'removed'; player: Player } // en lobby : retiré de la room
+  | { outcome: 'kept' } // partie terminée : reste déconnecté, retiré au prochain lancement
   | { outcome: 'eliminated'; player: Player }; // en jeu : marqué éliminé (rôle révélé)
 
 /**
@@ -146,6 +147,13 @@ export function finalizeDisconnectTimeout(room: Room, playerId: string): Disconn
   if (room.phase === 'lobby') {
     room.players.delete(playerId);
     return { outcome: 'removed', player };
+  }
+
+  // Partie déjà terminée : rien à éliminer. Le traiter comme un départ en cours de partie
+  // relançait la fin de partie (points et stats comptés une seconde fois). Il sera retiré par
+  // pruneDepartedPlayers au prochain lancement ou retour au salon.
+  if (room.phase === 'game_over' || room.phase === 'aborted') {
+    return { outcome: 'kept' };
   }
 
   player.alive = false;

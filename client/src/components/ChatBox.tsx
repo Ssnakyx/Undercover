@@ -3,6 +3,7 @@ import { useRoom } from '../socket/RoomProvider';
 import { Avatar } from './Avatar';
 
 const MESSAGE_MAX_LENGTH = 300;
+const AFTERLIFE_PHASES = new Set(['reveal', 'discussion', 'voting', 'round_result', 'mrwhite_guess', 'hunter_shoot']);
 
 // Chat texte libre entre joueurs d'une room — convenience pure, ne fait pas partie de la
 // boucle de jeu (voir server/src/types.ts ChatMessage). Monté une seule fois par GameRoute,
@@ -20,6 +21,12 @@ export function ChatBox() {
   }, [chatMessages, open]);
 
   if (!roomState) return null;
+
+  // Pendant une partie, un éliminé ou un spectateur n'écrit qu'aux autres éliminés et aux
+  // spectateurs (le serveur filtre, ceci ne fait que l'annoncer).
+  const inGame = AFTERLIFE_PHASES.has(roomState.phase);
+  const me = roomState.players.find((p) => p.playerId === playerId);
+  const writesToAfterlife = inGame && (!me || !me.alive);
 
   function authorOf(pid: string) {
     return roomState!.players.find((p) => p.playerId === pid) ?? roomState!.spectators.find((p) => p.playerId === pid);
@@ -42,20 +49,26 @@ export function ChatBox() {
       {open && (
         <div className="chat-panel" role="dialog" aria-label="Chat de la room">
           <div className="chat-panel__head">
-            <span>Chat</span>
+            <span>{writesToAfterlife ? 'Chat des éliminés' : 'Chat'}</span>
             <button className="icon-btn" type="button" aria-label="Fermer le chat" onClick={handleToggle}>
               <svg viewBox="0 0 24 24" fill="none">
                 <path d="M6 6 L18 18 M18 6 L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
               </svg>
             </button>
           </div>
+          {writesToAfterlife && (
+            <p className="chat-panel__note">Les vivants ne te lisent pas : seuls les éliminés et les spectateurs voient tes messages jusqu'à la fin de la partie.</p>
+          )}
           <div className="chat-panel__list" ref={listRef}>
             {chatMessages.length === 0 && <p className="text-low small text-center" style={{ margin: 'auto 0' }}>Aucun message — dites bonjour !</p>}
             {chatMessages.map((m) => (
-              <div className={`chat-msg${m.playerId === playerId ? ' chat-msg--self' : ''}`} key={m.id}>
+              <div className={`chat-msg${m.playerId === playerId ? ' chat-msg--self' : ''}${m.afterlife ? ' chat-msg--afterlife' : ''}`} key={m.id}>
                 <Avatar seed={authorOf(m.playerId)?.avatarSeed ?? m.playerId} account={authorOf(m.playerId)?.account} name={m.name} size="sm" />
                 <div style={{ minWidth: 0 }}>
-                  <div className="chat-msg__name">{m.name}</div>
+                  <div className="chat-msg__name">
+                    {m.name}
+                    {m.afterlife && <span className="chat-msg__tag"> · éliminés</span>}
+                  </div>
                   <div className="chat-msg__text">{m.text}</div>
                 </div>
               </div>
@@ -66,7 +79,7 @@ export function ChatBox() {
               className="input"
               type="text"
               maxLength={MESSAGE_MAX_LENGTH}
-              placeholder="Écrire un message…"
+              placeholder={writesToAfterlife ? 'Écrire aux éliminés…' : 'Écrire un message…'}
               autoComplete="off"
               enterKeyHint="send"
               value={draft}
