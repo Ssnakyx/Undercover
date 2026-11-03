@@ -209,6 +209,22 @@ describe('reconnection', () => {
       expect(player.role).toBe('civil'); // toujours accessible pour révélation par l'appelant
     });
 
+    it('partie terminée : le joueur reste déconnecté sans être éliminé (pas de fin de partie rejouée)', () => {
+      for (const phase of ['game_over', 'aborted'] as const) {
+        const room = createRoom();
+        room.phase = phase;
+        const player = addPlayer(room, { joinOrder: 0, connected: false });
+        player.role = 'civil';
+
+        const outcome = finalizeDisconnectTimeout(room, player.playerId);
+
+        expect(outcome.outcome).toBe('kept');
+        expect(player.alive).toBe(true);
+        expect(room.players.has(player.playerId)).toBe(true);
+        expect(player.disconnectTimer).toBeNull();
+      }
+    });
+
     it('ne fait rien si le joueur s\'est reconnecté avant l\'expiration', () => {
       const room = createRoom();
       room.phase = 'clues';

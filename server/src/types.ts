@@ -324,6 +324,15 @@ export interface ChatMessage {
   name: string;
   text: string;
   ts: number; // epoch ms
+  /** Écrit par un éliminé ou un spectateur pendant une partie : lisible seulement par les
+   * éliminés qui voient toutes les cartes et les spectateurs, jamais par les vivants (sinon un
+   * mort pouvait révéler les rôles). Absent pour un message normal. */
+  afterlife?: true;
+}
+
+/** Message de chat tel que conservé par le serveur (numéro de la partie où il a été écrit). */
+export interface StoredChatMessage extends ChatMessage {
+  gameNumber: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -393,5 +402,9 @@ export interface Room {
   /** Compteur monotone pour joinOrder (room.players.size donnait des doublons après un départ). */
   nextJoinOrder: number;
   abortedByName: string | null;
-  chatMessages: ChatMessage[]; // tampon borné (voir CHAT_HISTORY_LIMIT), pas d'archivage long terme
+  /** Incrémenté à chaque lancement de partie (game:start / game:restart). */
+  gameNumber: number;
+  /** Éliminés qui ont déjà reçu l'historique du chat des éliminés pour la partie en cours. */
+  afterlifeReaders: Set<string>;
+  chatMessages: StoredChatMessage[]; // tampon borné (voir CHAT_HISTORY_LIMIT), pas d'archivage long terme
 }

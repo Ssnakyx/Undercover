@@ -2677,6 +2677,25 @@ details.fold > summary::-webkit-details-marker {
   color: var(--red-lo);
 }
 
+/* Chat des éliminés : messages des morts et spectateurs, invisibles des vivants en partie. */
+.chat-msg--afterlife .chat-msg__text {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.chat-msg__tag {
+  font-size: 0.78rem;
+  opacity: 0.75;
+}
+
+.chat-panel__note {
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  color: var(--ink-mid);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+
 .chat-msg__text {
   font-size: 0.94rem;
   word-break: break-word;
@@ -3127,4 +3146,43 @@ details.fold > summary::-webkit-details-marker {
   color: var(--gold-hi);
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* Bandeau « le serveur se réveille » (components/ServerWakeBanner.tsx) */
+.wake-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 110;
+  transform: translateX(-50%);
+  width: min(460px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  background: var(--parchment);
+  color: var(--ink);
+  clip-path: var(--slant-soft);
+  box-shadow: inset 5px 0 0 var(--gold);
+  font-weight: 700;
+  font-size: 0.9rem;
+  animation: toast-in 0.35s var(--ease-pop) both;
+}
+
+.wake-banner__dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: wake-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes wake-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wake-banner__dot { animation: none; }
 }

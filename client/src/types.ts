@@ -257,6 +257,8 @@ export interface ChatMessage {
   name: string;
   text: string;
   ts: number;
+  /** Chat des éliminés : écrit par un mort ou un spectateur pendant la partie, invisible des vivants. */
+  afterlife?: boolean;
 }
 
 // ---- Événements socket (miroir de server/src/socket/events.ts) ----

@@ -23,6 +23,7 @@ import {
   toAccountPublic,
 } from './service.js';
 import type { AccountRecord } from './store.js';
+import { clientIpFromHeaders } from '../security/clientIp.js';
 
 // Limite simple anti-force brute sur inscription/connexion : N tentatives par IP et par fenêtre.
 const AUTH_WINDOW_MS = 10 * 60 * 1000;
@@ -30,9 +31,7 @@ const AUTH_MAX_ATTEMPTS = 20;
 const authAttempts = new Map<string, { count: number; resetAt: number }>();
 
 function clientIp(req: Request): string {
-  const fwd = req.headers['x-forwarded-for'];
-  const first = (Array.isArray(fwd) ? fwd[0] : fwd)?.split(',')[0]?.trim();
-  return first || req.socket.remoteAddress || 'unknown';
+  return clientIpFromHeaders(req.headers, req.socket.remoteAddress);
 }
 
 function authRateLimit(req: Request, res: Response, next: NextFunction): void {

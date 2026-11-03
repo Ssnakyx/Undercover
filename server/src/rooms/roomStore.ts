@@ -33,6 +33,12 @@ export function defaultRoomSettings(): RoomSettings {
 
 export const MAX_CUSTOM_PAIRS_PER_ROOM = 30;
 export const MAX_SPECTATORS_PER_ROOM = 20;
+/** Plafond global de salons simultanés (protection mémoire d'un serveur public). */
+export const MAX_ACTIVE_ROOMS = 400;
+
+export function countRooms(): number {
+  return rooms.size;
+}
 
 function generateRoomCodeCandidate(): string {
   let code = '';
@@ -85,6 +91,8 @@ export function createRoom(universe: Universe = 'lol'): Room {
     recentPairIds: [],
     nextJoinOrder: 0,
     abortedByName: null,
+    gameNumber: 0,
+    afterlifeReaders: new Set(),
     chatMessages: [],
   };
   rooms.set(roomCode, room);
