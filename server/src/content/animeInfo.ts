@@ -1,7 +1,7 @@
 // Univers 'anime' : série d'origine de chaque personnage (affichée sur SA carte pour qui ne le
 // connaît pas, comme la description des jeux de l'univers 'games') et autres orthographes
 // acceptées pour la devinette de Mr White (nom complet, nom japonais, nom anglais...).
-// Pas d'image : le client affiche une carte typographique.
+// Images : content/animeImages.ts (AniList, chargées au démarrage).
 
 export interface AnimeCharacter {
   series: string;

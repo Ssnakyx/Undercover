@@ -1054,7 +1054,11 @@ p {
   filter: sepia(0.18) contrast(1.05) drop-shadow(3px 5px 0 rgba(60, 30, 10, 0.25));
 }
 
-.char-art[data-universe='lol'] img {
+/* Illustrations pleine carte (LoL, personnages d'anime AniList) : recadrées sur le visage.
+   Repérées aussi par leur URL pour les modes mixtes, où un même univers mélange les deux styles. */
+.char-art[data-universe='lol'] img,
+.char-art img[src*='ddragon.leagueoflegends.com'],
+.char-art img[src*='anilist.co'] {
   object-fit: cover;
   object-position: center 18%;
   filter: sepia(0.15) contrast(1.05);
