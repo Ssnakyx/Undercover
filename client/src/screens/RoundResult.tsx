@@ -24,7 +24,7 @@ function KoCard({
   eyebrow: string;
 }) {
   const tone = { '--tone': `var(--role-${role ?? 'civil'})` } as CSSProperties;
-  const art = champion ? <CharacterArt name={champion} image={image} universe={universe} /> : <Avatar seed={player.avatarSeed} name={player.name} size="xl" dead />;
+  const art = champion ? <CharacterArt name={champion} image={image} universe={universe} /> : <Avatar seed={player.avatarSeed} account={player.account} name={player.name} size="xl" dead />;
   return (
     <div className="hud-frame ko-block is-shaking" style={tone}>
       <span className="eyebrow">{eyebrow}</span>

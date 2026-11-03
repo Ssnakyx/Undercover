@@ -21,12 +21,8 @@ export function ChatBox() {
 
   if (!roomState) return null;
 
-  function avatarSeedFor(pid: string): string {
-    return (
-      roomState!.players.find((p) => p.playerId === pid)?.avatarSeed ??
-      roomState!.spectators.find((p) => p.playerId === pid)?.avatarSeed ??
-      pid
-    );
+  function authorOf(pid: string) {
+    return roomState!.players.find((p) => p.playerId === pid) ?? roomState!.spectators.find((p) => p.playerId === pid);
   }
 
   function handleToggle() {
@@ -57,7 +53,7 @@ export function ChatBox() {
             {chatMessages.length === 0 && <p className="text-low small text-center" style={{ margin: 'auto 0' }}>Aucun message — dites bonjour !</p>}
             {chatMessages.map((m) => (
               <div className={`chat-msg${m.playerId === playerId ? ' chat-msg--self' : ''}`} key={m.id}>
-                <Avatar seed={avatarSeedFor(m.playerId)} name={m.name} size="sm" />
+                <Avatar seed={authorOf(m.playerId)?.avatarSeed ?? m.playerId} account={authorOf(m.playerId)?.account} name={m.name} size="sm" />
                 <div style={{ minWidth: 0 }}>
                   <div className="chat-msg__name">{m.name}</div>
                   <div className="chat-msg__text">{m.text}</div>

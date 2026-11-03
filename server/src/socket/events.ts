@@ -2,6 +2,7 @@
 // Sert à la fois de documentation vivante et de garde-fou compile-time pour handlers.ts.
 
 import type {
+  AccountAttachPayload,
   AckResponse,
   ChatMessage,
   ChatSendPayload,
@@ -55,6 +56,8 @@ export interface ClientToServerEvents {
   'player:kick': (payload: PlayerKickPayload, ack?: (res: AckResponse) => void) => void;
   'vote:forceClose': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'reveal:forceEnd': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
+  // Comptes joueurs (optionnels) : rattache le compte connecté au siège courant de la room.
+  'account:attach': (payload: AccountAttachPayload, ack?: (res: AckResponse) => void) => void;
 }
 
 export interface ServerToClientEvents {

@@ -10,6 +10,9 @@ manga et d'anime), **BrawlCover** (Brawl Stars), et deux mélanges **Smash × An
 **LoL × Anime** (uniquement des paires croisées, ex. Ahri / Kurama), plus des paires maison.
 Rôles optionnels : Mr White, Espion, Protecteur, Revenant, Chasseur, Bouffon, Amoureux.
 
+Comptes joueurs facultatifs (page « Mon compte ») : photo de profil et statistiques de parties,
+au global et par rôle. Stockés dans Postgres via `DATABASE_URL` (voir `server/README.md`).
+
 ## Lancer en local
 
 ```bash
@@ -26,7 +29,7 @@ cd client && npm test && npm run lint && npm run build
 
 ## Structure
 
-- `server/` — Express + Socket.io, état en mémoire. Moteur de jeu pur et testé dans `src/game/`,
+- `server/` — Express + Socket.io, état des parties en mémoire, comptes joueurs dans Postgres (`src/accounts/`). Moteur de jeu pur et testé dans `src/game/`,
   paires par univers dans `src/content/`.
 - `client/` — React + Vite. DA "Grimoire" (inspirée de Metaphor: ReFantazio) dans `src/styles/grimoire.css`, images Smash,
   Pokémon et Brawl Stars dans `public/img/` (régénérables via `scripts/fetch-character-assets.py`).

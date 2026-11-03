@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react';
 import { avatarColors, avatarInitial } from '../lib/avatar';
+import { accountPhotoUrl } from '../lib/account';
+import type { PublicAccountTag } from '../types';
 
 interface AvatarProps {
   seed: string;
@@ -8,16 +10,19 @@ interface AvatarProps {
   host?: boolean;
   dead?: boolean;
   className?: string;
+  /** Compte joueur rattaché : sa photo remplace l'initiale dans la gemme. */
+  account?: Pick<PublicAccountTag, 'id' | 'photoVersion'> | null;
 }
 
-export function Avatar({ seed, name, size = 'md', host = false, dead = false, className }: AvatarProps) {
+export function Avatar({ seed, name, size = 'md', host = false, dead = false, className, account }: AvatarProps) {
+  const photo = accountPhotoUrl(account);
   const { c1, c2, text } = avatarColors(seed);
   const classes = ['avatar', size !== 'md' ? `avatar--${size}` : '', dead ? 'avatar--dead' : '', className]
     .filter(Boolean)
     .join(' ');
   const avatar = (
     <span className={classes} style={{ '--avatar-c1': c1, '--avatar-c2': c2, '--avatar-text': text } as CSSProperties} aria-hidden="true">
-      {avatarInitial(name)}
+      {photo ? <img className="avatar__photo" src={photo} alt="" loading="lazy" /> : avatarInitial(name)}
     </span>
   );
   if (!host) return avatar;

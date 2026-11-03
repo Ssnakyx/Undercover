@@ -60,6 +60,7 @@ import {
 import { getAllPairs } from '../content/pairsStore.js';
 import { characterDescription, characterImage } from '../content/characterImages.js';
 import { gameDescription } from '../content/gameInfo.js';
+import { accountFromToken, recordGameResults } from '../accounts/service.js';
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -86,6 +87,7 @@ function toPublicPlayer(player: Player): PublicPlayer {
     alive: player.alive,
     avatarSeed: player.avatarSeed,
     score: player.score,
+    account: player.account ?? null,
   };
 }
 
@@ -94,6 +96,7 @@ function toPublicSpectator(spectator: Player): PublicSpectator {
     playerId: spectator.playerId,
     name: spectator.name,
     avatarSeed: spectator.avatarSeed,
+    account: spectator.account ?? null,
   };
 }
 
@@ -305,12 +308,26 @@ function onHunterShootTimeout(io: IoServer, room: Room): void {
 
 function finishGame(io: IoServer, room: Room, winner: Winner): void {
   engine.awardScoreForWinner(room, winner);
+  recordAccountStats(room, winner);
   engine.enterGameOver(room);
   clearRoomTimer(room);
   const reveal = engine.buildGameEndedReveal(room);
   broadcastRoomState(io, room);
   const payload: GameEndedPayload = { winner, reveal, pair: engine.buildGameEndedPair(room) };
   io.to(room.roomCode).emit('game:ended', payload);
+}
+
+/** Comptes joueurs : +1 partie (et +1 victoire si son camp gagne) pour chaque joueur connecté
+ * à un compte, ventilé par rôle. Asynchrone et sans effet sur la partie si la base échoue. */
+function recordAccountStats(room: Room, winner: Winner): void {
+  const entries = [...room.players.values()]
+    .filter((p) => p.account && p.role)
+    .map((p) => ({ accountId: p.account!.id, role: p.role!, won: engine.isOnWinningTeam(p.role, winner) }));
+  if (entries.length === 0) return;
+  recordGameResults(entries).catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error('[accounts] enregistrement des stats impossible', err);
+  });
 }
 
 /**
@@ -1083,6 +1100,37 @@ export function registerSocketHandlers(io: IoServer): void {
       }
       ok(ack);
       enterDiscussionAndBroadcast(io, room);
+    });
+
+    // Rattache (ou détache, token null) le compte joueur au siège courant. Un même compte ne
+    // peut occuper qu'un siège par room, pour ne jamais compter deux fois la même partie.
+    socket.on('account:attach', (payload, ack) => {
+      const token = payload?.token ?? null;
+      void (async () => {
+        const account = token === null ? null : await accountFromToken(token);
+        if (token !== null && !account) {
+          ack?.({ ok: false, error: { code: 'UNAUTHORIZED', message: 'Session de compte expirée, reconnecte-toi' } });
+          return;
+        }
+        // Re-vérifie le contexte après l'attente : le joueur a pu quitter entre-temps.
+        const ctx = requireCtx(socket, ack);
+        if (!ctx) return;
+        const { room, player } = ctx;
+        if (account) {
+          const others = [...room.players.values(), ...room.spectators.values()];
+          if (others.some((p) => p !== player && p.account?.id === account.id)) {
+            ack?.({ ok: false, error: { code: 'ACCOUNT_IN_USE', message: 'Ce compte joue déjà dans cette room' } });
+            return;
+          }
+        }
+        player.account = account ? { id: account.id, username: account.username, photoVersion: account.photoVersion } : null;
+        ok(ack);
+        broadcastRoomState(io, room);
+      })().catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[accounts] account:attach', err);
+        ack?.({ ok: false, error: { code: 'SERVER_ERROR', message: 'Comptes indisponibles pour le moment' } });
+      });
     });
 
     socket.on('player:leave', (_payload, ack) => {

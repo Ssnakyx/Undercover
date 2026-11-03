@@ -194,7 +194,7 @@ export function Lobby() {
             <div className="player-grid">
               {roomState.players.map((p) => (
                 <div key={p.playerId} className={`player-tile${p.playerId === playerId ? ' player-tile--me' : ''}${p.connected ? '' : ' player-tile--offline'}`}>
-                  <Avatar seed={p.avatarSeed} name={p.name} host={p.isHost} />
+                  <Avatar seed={p.avatarSeed} account={p.account} name={p.name} host={p.isHost} />
                   <div className="player-tile__body">
                     <div className="player-tile__name">{p.name}</div>
                     <div className="player-tile__meta">

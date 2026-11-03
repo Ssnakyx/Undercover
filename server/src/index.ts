@@ -9,11 +9,16 @@ import type { ClientToServerEvents, InterServerEvents, ServerToClientEvents, Soc
 import { registerSocketHandlers } from './socket/handlers.js';
 import { prefetchGameCovers } from './content/gameInfo.js';
 import { prefetchAnimeImages } from './content/animeImages.js';
+import { accountsRouter } from './accounts/routes.js';
+import { initAccountStore } from './accounts/service.js';
 
 const PORT = Number(process.env.PORT) || 3001;
 
 const app = express();
 app.use(cors({ origin: '*' }));
+// Comptes joueurs (optionnels) : monté avant express.json() global, le routeur a sa propre
+// limite de taille (photo de profil en base64).
+app.use('/api', accountsRouter());
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
@@ -33,4 +38,5 @@ httpServer.listen(PORT, () => {
   console.log(`[lolcover-server] listening on http://localhost:${PORT}`);
   void prefetchGameCovers();
   void prefetchAnimeImages();
+  void initAccountStore(process.env.DATABASE_URL);
 });
