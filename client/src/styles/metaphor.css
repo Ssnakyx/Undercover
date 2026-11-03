@@ -170,11 +170,13 @@
 }
 
 /* --------------------------------------------------------------------------
-   3. Écran titre : la cascade
+   3. Écran titre : la liste des univers
+   Version sobre : une colonne lisible, légèrement penchée ; seule la ligne
+   sélectionnée reçoit l'éclaboussure et son étiquette.
    -------------------------------------------------------------------------- */
 .menu__main {
   position: relative;
-  max-width: 1180px;
+  max-width: 1080px;
   margin: 0 auto;
   padding-top: 10px;
   overflow-x: clip;
@@ -182,50 +184,51 @@
 
 .menu-title {
   position: relative;
-  margin: clamp(48px, 12vw, 120px) 0 0 -6px;
-  transform: rotate(-7deg);
+  display: inline-block;
+  margin: clamp(26px, 7vw, 56px) 0 0 18px;
+  transform: rotate(-4deg);
   transform-origin: left;
 }
 
 .menu-title__splash {
   --paint: var(--paint-magenta);
   position: absolute;
-  left: -19%;
-  top: -55%;
-  width: 134%;
-  height: 210%;
-  animation: splash-in 0.55s 0.05s var(--ease-snap) both;
+  left: -24%;
+  top: -60%;
+  width: 166%;
+  height: 215%;
+  animation: splash-in 0.5s 0.05s var(--ease-snap) both;
 }
 
 .menu-title__word {
   position: relative;
   font-family: var(--font-caps);
   font-weight: 900;
-  font-size: clamp(3rem, 14.2vw, 8.4rem);
-  line-height: 0.88;
-  letter-spacing: -0.02em;
+  font-size: clamp(2.6rem, 11vw, 4.4rem);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 
 .menu-title__word .ink-word__l {
-  animation: letter-drop 0.5s var(--ease-pop) both;
-  animation-delay: calc(0.18s + var(--li) * 0.035s);
+  animation: letter-drop 0.45s var(--ease-pop) both;
+  animation-delay: calc(0.15s + var(--li) * 0.03s);
 }
 
 .menu-title__tag {
   position: relative;
-  margin: 6px 0 0 34%;
-  font-size: 1.05rem;
-  animation: tag-in 0.4s 0.6s var(--ease-out) both;
+  display: table;
+  margin: 8px 0 0 auto;
+  font-size: 0.9rem;
+  animation: tag-in 0.4s 0.5s var(--ease-out) both;
 }
 
 .menu-tagline {
   position: relative;
   z-index: 3;
-  max-width: 380px;
-  margin: 26px 0 0 4px;
-  color: var(--chalk);
-  font-weight: 500;
+  max-width: 400px;
+  margin: 22px 0 0 4px;
+  color: var(--chalk-mid);
   text-shadow:
     0 1px 2px var(--night),
     0 0 18px rgba(0, 0, 0, 0.8);
@@ -241,61 +244,64 @@
 @keyframes letter-drop {
   from {
     opacity: 0;
-    transform: translateY(-0.6em) rotate(calc(var(--lr) * 6));
+    transform: translateY(-0.5em);
   }
 }
 
 @keyframes tag-in {
   from {
     opacity: 0;
-    translate: -30px 0;
+    translate: -20px 0;
   }
 }
 
 .menu-stage {
   position: relative;
-  margin-top: 26px;
-  padding-bottom: 8px;
+  margin-top: 28px;
 }
 
-/* La cascade : tout le bloc est penché, chaque ligne décalée à la main */
 .cascade {
   position: relative;
   z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 18px 0 30px;
-  transform: rotate(-9deg);
+  gap: 2px;
+  padding: 6px 0 10px 6px;
+  transform: rotate(-3deg);
   transform-origin: 0 0;
-  margin-top: 44px;
 }
 
 .cascade__item {
-  --fs: calc(clamp(2.2rem, 10.6vw, 5.4rem) * var(--size, 1));
+  --fs: clamp(1.75rem, 7.6vw, 2.7rem);
   position: relative;
-  display: block;
-  margin-left: calc(var(--x, 0) * clamp(10px, 4vw, 44px));
-  margin-top: calc(var(--fs) * -0.1);
-  padding: 0 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: calc(var(--x, 0) * 10px);
+  padding: 4px 0.2em;
   color: var(--chalk);
   text-decoration: none;
   font-family: var(--font-caps);
   font-weight: 900;
   font-size: var(--fs);
-  line-height: 1;
-  letter-spacing: -0.015em;
-  text-shadow: 0 0.04em 0 rgba(0, 0, 0, 0.45);
+  line-height: 1.05;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
   -webkit-tap-highlight-color: transparent;
   outline: none;
-  animation: cascade-in 0.5s var(--ease-out) both;
-  animation-delay: calc(0.35s + var(--i) * 0.05s);
+  animation: cascade-in 0.4s var(--ease-out) both;
+  animation-delay: calc(0.25s + var(--i) * 0.04s);
+}
+
+/* Lettres juste un peu de travers ici : la liste doit rester lisible */
+.cascade__item .ink-word__l {
+  transform: translateY(calc(var(--ly, 0) * 0.35)) rotate(calc(var(--lr, 0deg) * 0.35));
 }
 
 @keyframes cascade-in {
   from {
     opacity: 0;
-    transform: translateX(-0.6em) skewX(-14deg);
+    transform: translateX(-0.5em);
   }
 }
 
@@ -303,36 +309,33 @@
   position: relative;
   z-index: 1;
   display: inline-block;
-  transition: transform 0.25s var(--ease-pop);
+  transition: transform 0.22s var(--ease-out);
 }
 
-/* Éclaboussure de sélection */
 .cascade__splash {
   position: absolute;
   z-index: 0;
-  left: -0.5em;
-  right: -0.65em;
-  top: -0.52em;
-  bottom: -0.5em;
+  left: -0.45em;
+  right: -0.6em;
+  top: -0.48em;
+  bottom: -0.44em;
   transform: scaleX(0);
   transform-origin: 0 50%;
   opacity: 0;
   transition:
-    transform 0.28s var(--ease-snap),
+    transform 0.25s var(--ease-snap),
     opacity 0.1s;
 }
 
 .cascade__tag {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  right: -0.2em;
-  bottom: -0.32em;
-  font-size: clamp(0.72rem, 2.8vw, 1rem);
+  font-size: clamp(0.7rem, 2.6vw, 0.85rem);
   opacity: 0;
-  transform: rotate(-2deg) translateY(6px);
+  transform: rotate(-2deg) translateX(-6px);
   transition:
     opacity 0.15s,
-    transform 0.25s var(--ease-pop);
+    transform 0.2s var(--ease-out);
   pointer-events: none;
 }
 
@@ -350,7 +353,7 @@
 }
 
 .cascade__item.is-active .cascade__word {
-  transform: translateX(0.12em) scale(1.04);
+  transform: translateX(0.1em);
 }
 
 .cascade__item.is-active .cascade__tag,
@@ -360,35 +363,25 @@
 }
 
 .cascade__item:focus-visible .cascade__word {
-  text-decoration: underline 3px;
+  text-decoration: underline 2px;
   text-underline-offset: 0.12em;
 }
 
-/* Choix validé : les lettres s'éparpillent, le reste se dissout, puis le volet blanc */
+/* Choix validé : les lettres s'éparpillent, le reste s'efface, puis le volet blanc */
 .menu.is-leaving .cascade__item:not(.is-chosen),
 .menu.is-leaving .menu-title,
 .menu.is-leaving .menu-tagline,
-.menu.is-leaving .menu-stats,
-.menu.is-leaving .prompt-tags,
+.menu.is-leaving .menu-portrait,
 .menu.is-leaving .menu__extras {
   opacity: 0;
   transition: opacity 0.25s;
 }
 
-.menu.is-leaving .ink-word__l {
+.menu.is-leaving .cascade__item.is-chosen .ink-word__l {
   transform: translate(var(--sx), var(--sy)) rotate(var(--sr)) scale(0.7);
   opacity: 0;
-  transition-duration: 0.45s;
-  transition-delay: calc(var(--li) * 0.012s);
-}
-
-.menu.is-leaving .cascade__item.is-chosen .ink-word__l {
-  transition-delay: calc(0.12s + var(--li) * 0.02s);
-}
-
-.menu.is-leaving .cascade__item.is-chosen .cascade__splash {
-  transform: scaleX(1.5) scaleY(1.4);
   transition-duration: 0.4s;
+  transition-delay: calc(0.08s + var(--li) * 0.015s);
 }
 
 .menu.is-leaving::after {
@@ -398,7 +391,7 @@
   z-index: 90;
   background: var(--chalk);
   clip-path: polygon(0 0, 0 0, -30% 100%, -30% 100%);
-  animation: wipe-white 0.36s 0.22s var(--ease-snap) forwards;
+  animation: wipe-white 0.34s 0.2s var(--ease-snap) forwards;
 }
 
 @keyframes wipe-white {
@@ -407,182 +400,48 @@
   }
 }
 
-/* Grand chiffre de la sélection, avec son étiquette verticale */
-.menu-numeral {
-  position: absolute;
-  z-index: 1;
-  right: -6px;
-  top: -30px;
-  display: flex;
-  align-items: flex-start;
-  pointer-events: none;
-}
-
-.menu-numeral__digit {
-  display: block;
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: clamp(8rem, 40vw, 19rem);
-  line-height: 0.8;
-  color: var(--chalk);
-  -webkit-text-stroke: 2px var(--ink);
-  text-shadow: 0.05em 0.05em 0 var(--paint);
-  transform: rotate(8deg);
-  animation: numeral-in 0.4s var(--ease-pop) both;
-}
-
-@keyframes numeral-in {
-  from {
-    opacity: 0;
-    transform: rotate(40deg) translateY(-0.2em) scale(0.6);
-  }
-}
-
-.menu-numeral__label {
-  margin-top: 0.6em;
-  padding: 0.5em 0.2em;
-  background: var(--paint);
-  color: var(--ink);
-  writing-mode: vertical-rl;
-  font-family: var(--font-caps);
-  font-weight: 900;
-  font-size: 1rem;
-  letter-spacing: 0.04em;
-  transition: background 0.3s;
-}
-
-/* Portrait de l'univers sélectionné, derrière la cascade */
+/* Portrait de l'univers sélectionné : seulement sur grand écran, à droite de la liste */
 .menu-portrait {
-  position: absolute;
-  z-index: 0;
-  right: -4%;
-  top: 40px;
-  width: min(66%, 520px);
-  height: 330px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(100deg, transparent 0%, #000 34%);
-  mask-image: linear-gradient(100deg, transparent 0%, #000 34%);
-  animation: portrait-in 0.45s var(--ease-out) both;
+  display: none;
 }
 
 .menu-portrait img,
 .menu-portrait__slot {
-  width: 44%;
-  height: 100%;
-  margin-left: -14%;
+  width: 40%;
+  margin-left: -10%;
   object-fit: contain;
   object-position: bottom;
-  filter: drop-shadow(10px 10px 0 rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(8px 8px 0 rgba(0, 0, 0, 0.45));
 }
 
 .menu-portrait img:nth-child(2) {
   z-index: 1;
-  width: 54%;
+  width: 48%;
 }
 
 .menu-portrait--framed img,
 .menu-portrait--framed .menu-portrait__slot {
-  width: 40%;
-  height: 72%;
-  margin-left: -8%;
+  width: 36%;
+  aspect-ratio: 3 / 4;
+  margin-left: -6%;
   object-fit: cover;
   object-position: center 18%;
   border: 3px solid var(--chalk);
-  box-shadow: 8px 8px 0 var(--paint);
+  box-shadow: 6px 6px 0 var(--paint);
   filter: none;
 }
 
 .menu-portrait--framed > :nth-child(1) {
-  transform: rotate(-8deg) translateY(-12%);
-}
-.menu-portrait--framed > :nth-child(2) {
-  transform: rotate(3deg);
+  transform: rotate(-6deg);
 }
 .menu-portrait--framed > :nth-child(3) {
-  transform: rotate(10deg) translateY(-6%);
+  transform: rotate(6deg);
 }
 
 @keyframes portrait-in {
   from {
     opacity: 0;
-    transform: translateX(14%) skewX(-6deg);
-  }
-}
-
-/* Encart de chiffres en bas à droite */
-.menu-stats {
-  position: relative;
-  z-index: 2;
-  display: grid;
-  gap: 6px;
-  width: min(270px, 70%);
-  margin: 6px 0 0 auto;
-}
-
-.menu-stats > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 2px 14px 2px 22px;
-  background: linear-gradient(90deg, transparent, rgba(8, 10, 12, 0.9) 18%);
-  border-top: 1px solid var(--chalk-line);
-}
-
-.menu-stats dt {
-  font-family: var(--font-caps);
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--chalk-mid);
-}
-
-.menu-stats dd {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 2rem;
-  line-height: 1.1;
-  letter-spacing: 0.04em;
-}
-
-/* Étiquettes de commande (Confirmer / Choisir), façon pied de menu de RPG */
-.prompt-tags {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.prompt-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 16px 5px 10px;
-  background: var(--chalk);
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.95rem;
-  clip-path: polygon(6% 0, 100% 0, 94% 100%, 0 100%);
-}
-
-.prompt-tag__key {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border: 1.5px solid var(--ink);
-  border-radius: 50%;
-  font-size: 0.75rem;
-}
-
-@media (hover: none) {
-  .prompt-tags {
-    display: none;
+    transform: translateX(8%);
   }
 }
 
@@ -595,65 +454,35 @@
     padding: 34px 48px 80px;
   }
 
-  .menu-title__word {
-    font-size: clamp(4.6rem, 7.4vw, 7rem);
-  }
-
-  .menu-tagline {
-    margin-left: 40px;
-  }
-
   .menu-stage {
-    min-height: 720px;
-    margin-top: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 24px;
   }
 
   .cascade {
-    margin-top: 40px;
-    padding-left: 30px;
+    grid-column: 1;
+    grid-row: 1;
   }
 
   .cascade__item {
-    --fs: calc(clamp(3.6rem, 6.4vw, 5.8rem) * var(--size, 1));
-    margin-left: calc(var(--x, 0) * 46px);
-  }
-
-  .menu-numeral {
-    top: -170px;
-    right: 0;
-  }
-
-  .menu-numeral__digit {
-    font-size: 17rem;
+    --fs: 2.9rem;
   }
 
   .menu-portrait {
-    top: -280px;
-    right: 3%;
-    width: 50%;
-    height: 760px;
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
     align-items: center;
+    justify-content: center;
+    height: 380px;
+    pointer-events: none;
+    animation: portrait-in 0.35s var(--ease-out) both;
   }
 
-  .menu-portrait:not(.menu-portrait--framed) img {
-    height: auto;
-    max-height: 560px;
-  }
-
-  .menu-stats {
-    position: absolute;
-    right: 0;
-    bottom: 60px;
-  }
-
-  .prompt-tags {
-    position: absolute;
-    right: 0;
-    bottom: 8px;
-  }
-
-  .menu__extras {
-    margin-top: 10px;
+  .menu-portrait img {
+    max-height: 340px;
   }
 }
 

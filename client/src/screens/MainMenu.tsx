@@ -43,17 +43,8 @@ function ShowcaseImage({ src }: { src: string }) {
   return <img src={url} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />;
 }
 
-// Décalage horizontal et taille de chaque ligne de la cascade : volontairement irrégulier.
-const CASCADE_LAYOUT = [
-  { x: 0.4, size: 1 },
-  { x: 1.6, size: 0.92 },
-  { x: 0, size: 1.06 },
-  { x: 1.1, size: 0.96 },
-  { x: 0.2, size: 1.02 },
-  { x: 1.9, size: 0.8 },
-  { x: 0.9, size: 0.86 },
-  { x: 2.3, size: 0.98 },
-];
+// Léger décalage horizontal de chaque ligne de la liste, pour un alignement "posé à la main".
+const CASCADE_OFFSETS = [0.5, 1.5, 0, 1, 0.3, 1.8, 0.8, 2.2];
 
 const LEAVE_MS = 560; // éparpillement des lettres + volet blanc (styles/metaphor.css)
 
@@ -122,13 +113,6 @@ export function MainMenu() {
         )}
 
         <section className="menu-stage" aria-label="Choisir un univers">
-          <div className="menu-numeral" aria-hidden="true">
-            <span key={active} className="menu-numeral__digit">
-              {active + 1}
-            </span>
-            <span className="menu-numeral__label">Univers</span>
-          </div>
-
           <div key={activeUniverse} className={`menu-portrait${activeCopy.framed ? ' menu-portrait--framed' : ''}`} aria-hidden="true">
             {activeCopy.showcase.map((src) => (
               <ShowcaseImage key={src} src={src} />
@@ -138,7 +122,6 @@ export function MainMenu() {
           <nav className="cascade" onKeyDown={onKeyDown}>
             {UNIVERSES.map((u, i) => {
               const copy = universeCopy(u);
-              const layout = CASCADE_LAYOUT[i % CASCADE_LAYOUT.length];
               const state = leaving === i ? ' is-chosen' : i === active ? ' is-active' : '';
               return (
                 <Link
@@ -149,7 +132,7 @@ export function MainMenu() {
                   to={`/play/${u}`}
                   data-universe={u}
                   className={`cascade__item${state}`}
-                  style={{ '--i': i, '--x': layout.x, '--size': layout.size } as CSSProperties}
+                  style={{ '--i': i, '--x': CASCADE_OFFSETS[i % CASCADE_OFFSETS.length] } as CSSProperties}
                   onMouseEnter={() => leaving === null && setActive(i)}
                   onFocus={() => leaving === null && setActive(i)}
                   onClick={(e) => confirm(i, e)}
@@ -163,26 +146,6 @@ export function MainMenu() {
               );
             })}
           </nav>
-
-          <dl className="menu-stats">
-            <div>
-              <dt>Joueurs</dt>
-              <dd>3–12</dd>
-            </div>
-            <div>
-              <dt>Univers</dt>
-              <dd>{UNIVERSES.length}</dd>
-            </div>
-          </dl>
-
-          <div className="prompt-tags" aria-hidden="true">
-            <span className="prompt-tag">
-              <span className="prompt-tag__key">⏎</span>Confirmer
-            </span>
-            <span className="prompt-tag">
-              <span className="prompt-tag__key">↕</span>Choisir
-            </span>
-          </div>
         </section>
 
         <div className="container menu__extras">
