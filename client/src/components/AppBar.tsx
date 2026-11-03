@@ -8,12 +8,18 @@ interface AppBarProps {
 /** Barre haute façon HUD de jeu : logo, titre de la phase, actions à droite. */
 export function AppBar({ title, right }: AppBarProps) {
   return (
-    <header className="hud">
-      <svg className="hud__logo" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <use href="#logo-mark" />
-      </svg>
-      <span className="hud__title">{title}</span>
-      {right && <div className="hud__right">{right}</div>}
-    </header>
+    <>
+      <header className="hud">
+        <svg className="hud__logo" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <use href="#logo-mark" />
+        </svg>
+        <span className="hud__title">{title}</span>
+        {right && <div className="hud__right">{right}</div>}
+      </header>
+      {/* Le nom de l'écran, en très grand et en biais au pied de la page (styles/metaphor.css) */}
+      <span key={title} className="screen-word" aria-hidden="true">
+        {title}
+      </span>
+    </>
   );
 }

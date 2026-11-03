@@ -1,0 +1,1016 @@
+/* ==========================================================================
+   Undercover — couche "peinture" de la DA Grimoire (voir l'en-tête de
+   grimoire.css). Chargé après grimoire.css : fond peint, éclaboussures,
+   mots en cascade, étiquettes inclinées, volets de transition.
+   Les formes de peinture sont des SVG en masque (public/paint/) : la
+   couleur vient toujours de --paint, posée par [data-universe].
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Fond peint (components/Backdrop.tsx)
+   -------------------------------------------------------------------------- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--night);
+  color: var(--chalk);
+}
+
+/* Couches de peinture : la texture grunge découpée par un dégradé qui dit où la peinture tient.
+   Plus grandes que l'écran pour pouvoir dériver lentement (transform, pas de repeinte). */
+.backdrop__paint {
+  position: absolute;
+  inset: -12%;
+  -webkit-mask-image: url('/paint/grunge.svg'), var(--where);
+  mask-image: url('/paint/grunge.svg'), var(--where);
+  -webkit-mask-size: var(--grain-size, 1000px), 100% 100%;
+  mask-size: var(--grain-size, 1000px), 100% 100%;
+  -webkit-mask-position: var(--grain-pos, 0 0), 0 0;
+  mask-position: var(--grain-pos, 0 0), 0 0;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  animation: paint-drift 38s ease-in-out infinite alternate;
+}
+
+.backdrop__paint--teal {
+  background: linear-gradient(160deg, #3fc4b4, #1f8d84 60%, #176b66);
+  --where: radial-gradient(ellipse 70% 75% at 18% 42%, #000 30%, transparent 78%);
+}
+
+.backdrop__paint--deep {
+  background: #0f4b49;
+  --grain-size: 760px;
+  --grain-pos: 310px 140px;
+  --where: radial-gradient(ellipse 60% 55% at 55% 20%, #000 20%, transparent 75%);
+  opacity: 0.9;
+  animation-duration: 46s;
+  animation-direction: alternate-reverse;
+}
+
+.backdrop__paint--red {
+  background: linear-gradient(200deg, #b31b31, #6d0f1d);
+  --grain-size: 880px;
+  --grain-pos: 520px 380px;
+  --where: radial-gradient(ellipse 55% 60% at 92% 88%, #000 25%, transparent 75%);
+  opacity: 0.85;
+  animation-duration: 52s;
+}
+
+@keyframes paint-drift {
+  from {
+    transform: translate3d(-1.5%, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(1.5%, -1%, 0) scale(1.04);
+  }
+}
+
+/* Teinte de l'univers, portée par l'écran (qui connaît [data-universe]) */
+.screen::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 45% at 100% 0%, var(--cool), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 0% 100%, var(--cool), transparent 70%);
+  transition: background 0.4s;
+}
+
+.backdrop__arcs {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 76% 42%;
+  animation: spin 220s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.backdrop__grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.32;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.backdrop__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 95% 80% at 50% 45%, transparent 50%, rgba(0, 0, 0, 0.7) 100%);
+}
+
+/* --------------------------------------------------------------------------
+   2. Peinture, mots imprimés, étiquettes
+   -------------------------------------------------------------------------- */
+.paint {
+  display: block;
+  background: var(--paint);
+  -webkit-mask: var(--paint-shape, url('/paint/stroke-1.svg')) center / 100% 100% no-repeat;
+  mask: var(--paint-shape, url('/paint/stroke-1.svg')) center / 100% 100% no-repeat;
+}
+
+.paint--stroke-1 {
+  --paint-shape: url('/paint/stroke-1.svg');
+}
+.paint--stroke-2 {
+  --paint-shape: url('/paint/stroke-2.svg');
+}
+.paint--stroke-3 {
+  --paint-shape: url('/paint/stroke-3.svg');
+}
+.paint--blot {
+  --paint-shape: url('/paint/blot.svg');
+}
+
+/* Mot composé lettre à lettre (components/InkWord.tsx) */
+.ink-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.ink-word__l {
+  display: inline-block;
+  transform: translateY(var(--ly, 0)) rotate(var(--lr, 0deg));
+  transition:
+    transform 0.5s var(--ease-snap),
+    opacity 0.4s,
+    color 0.15s;
+}
+
+.ink-word__space {
+  display: inline-block;
+  width: 0.28em;
+}
+
+/* Étiquette noire inclinée, petites capitales blanches : sous-titres, "Gaming edition"… */
+.ink-tag {
+  display: inline-block;
+  padding: 0.22em 0.7em 0.28em;
+  background: var(--ink);
+  color: var(--chalk);
+  font-family: var(--font-caps);
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  clip-path: polygon(2% 0, 100% 0, 98% 100%, 0 100%);
+  transform: rotate(-4deg);
+}
+
+/* --------------------------------------------------------------------------
+   3. Écran titre : la cascade
+   -------------------------------------------------------------------------- */
+.menu__main {
+  position: relative;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-top: 10px;
+  overflow-x: clip;
+}
+
+.menu-title {
+  position: relative;
+  margin: clamp(34px, 8.5vw, 120px) 0 0 -6px;
+  transform: rotate(-7deg);
+  transform-origin: left;
+}
+
+.menu-title__splash {
+  --paint: var(--paint-magenta);
+  position: absolute;
+  left: -19%;
+  top: -55%;
+  width: 134%;
+  height: 210%;
+  animation: splash-in 0.55s 0.05s var(--ease-snap) both;
+}
+
+.menu-title__word {
+  position: relative;
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: clamp(3.3rem, 16.5vw, 8.4rem);
+  line-height: 0.88;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.menu-title__word .ink-word__l {
+  animation: letter-drop 0.5s var(--ease-pop) both;
+  animation-delay: calc(0.18s + var(--li) * 0.035s);
+}
+
+.menu-title__tag {
+  position: relative;
+  margin: 6px 0 0 34%;
+  font-size: 1.05rem;
+  animation: tag-in 0.4s 0.6s var(--ease-out) both;
+}
+
+.menu-tagline {
+  position: relative;
+  z-index: 3;
+  max-width: 380px;
+  margin: 26px 0 0 4px;
+  color: var(--chalk);
+  font-weight: 500;
+  text-shadow:
+    0 1px 2px var(--night),
+    0 0 18px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes splash-in {
+  from {
+    transform: scale(0.2, 0.6) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+@keyframes letter-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-0.6em) rotate(calc(var(--lr) * 6));
+  }
+}
+
+@keyframes tag-in {
+  from {
+    opacity: 0;
+    translate: -30px 0;
+  }
+}
+
+.menu-stage {
+  position: relative;
+  margin-top: 26px;
+  padding-bottom: 8px;
+}
+
+/* La cascade : tout le bloc est penché, chaque ligne décalée à la main */
+.cascade {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 18px 0 30px;
+  transform: rotate(-9deg);
+  transform-origin: 0 0;
+  margin-top: 44px;
+}
+
+.cascade__item {
+  --fs: calc(clamp(2.2rem, 10.6vw, 5.4rem) * var(--size, 1));
+  position: relative;
+  display: block;
+  margin-left: calc(var(--x, 0) * clamp(10px, 4vw, 44px));
+  margin-top: calc(var(--fs) * -0.1);
+  padding: 0 0.1em;
+  color: var(--chalk);
+  text-decoration: none;
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: var(--fs);
+  line-height: 1;
+  letter-spacing: -0.015em;
+  text-shadow: 0 0.04em 0 rgba(0, 0, 0, 0.45);
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  animation: cascade-in 0.5s var(--ease-out) both;
+  animation-delay: calc(0.35s + var(--i) * 0.05s);
+}
+
+@keyframes cascade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-0.6em) skewX(-14deg);
+  }
+}
+
+.cascade__word {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  transition: transform 0.25s var(--ease-pop);
+}
+
+/* Éclaboussure de sélection */
+.cascade__splash {
+  position: absolute;
+  z-index: 0;
+  left: -0.5em;
+  right: -0.65em;
+  top: -0.52em;
+  bottom: -0.5em;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  opacity: 0;
+  transition:
+    transform 0.28s var(--ease-snap),
+    opacity 0.1s;
+}
+
+.cascade__tag {
+  position: absolute;
+  z-index: 2;
+  right: -0.2em;
+  bottom: -0.32em;
+  font-size: clamp(0.72rem, 2.8vw, 1rem);
+  opacity: 0;
+  transform: rotate(-2deg) translateY(6px);
+  transition:
+    opacity 0.15s,
+    transform 0.25s var(--ease-pop);
+  pointer-events: none;
+}
+
+.cascade__item.is-active,
+.cascade__item.is-chosen {
+  z-index: 3;
+  color: var(--ink);
+  text-shadow: none;
+}
+
+.cascade__item.is-active .cascade__splash,
+.cascade__item.is-chosen .cascade__splash {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+.cascade__item.is-active .cascade__word {
+  transform: translateX(0.12em) scale(1.04);
+}
+
+.cascade__item.is-active .cascade__tag,
+.cascade__item.is-chosen .cascade__tag {
+  opacity: 1;
+  transform: rotate(-2deg);
+}
+
+.cascade__item:focus-visible .cascade__word {
+  text-decoration: underline 3px;
+  text-underline-offset: 0.12em;
+}
+
+/* Choix validé : les lettres s'éparpillent, le reste se dissout, puis le volet blanc */
+.menu.is-leaving .cascade__item:not(.is-chosen),
+.menu.is-leaving .menu-title,
+.menu.is-leaving .menu-tagline,
+.menu.is-leaving .menu-stats,
+.menu.is-leaving .prompt-tags,
+.menu.is-leaving .menu__extras {
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.menu.is-leaving .ink-word__l {
+  transform: translate(var(--sx), var(--sy)) rotate(var(--sr)) scale(0.7);
+  opacity: 0;
+  transition-duration: 0.45s;
+  transition-delay: calc(var(--li) * 0.012s);
+}
+
+.menu.is-leaving .cascade__item.is-chosen .ink-word__l {
+  transition-delay: calc(0.12s + var(--li) * 0.02s);
+}
+
+.menu.is-leaving .cascade__item.is-chosen .cascade__splash {
+  transform: scaleX(1.5) scaleY(1.4);
+  transition-duration: 0.4s;
+}
+
+.menu.is-leaving::after {
+  content: '';
+  position: fixed;
+  inset: -10%;
+  z-index: 90;
+  background: var(--chalk);
+  clip-path: polygon(0 0, 0 0, -30% 100%, -30% 100%);
+  animation: wipe-white 0.36s 0.22s var(--ease-snap) forwards;
+}
+
+@keyframes wipe-white {
+  to {
+    clip-path: polygon(0 0, 130% 0, 100% 100%, -30% 100%);
+  }
+}
+
+/* Grand chiffre de la sélection, avec son étiquette verticale */
+.menu-numeral {
+  position: absolute;
+  z-index: 1;
+  right: -6px;
+  top: -30px;
+  display: flex;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.menu-numeral__digit {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(8rem, 40vw, 19rem);
+  line-height: 0.8;
+  color: var(--chalk);
+  -webkit-text-stroke: 2px var(--ink);
+  text-shadow: 0.05em 0.05em 0 var(--paint);
+  transform: rotate(8deg);
+  animation: numeral-in 0.4s var(--ease-pop) both;
+}
+
+@keyframes numeral-in {
+  from {
+    opacity: 0;
+    transform: rotate(40deg) translateY(-0.2em) scale(0.6);
+  }
+}
+
+.menu-numeral__label {
+  margin-top: 0.6em;
+  padding: 0.5em 0.2em;
+  background: var(--paint);
+  color: var(--ink);
+  writing-mode: vertical-rl;
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  transition: background 0.3s;
+}
+
+/* Portrait de l'univers sélectionné, derrière la cascade */
+.menu-portrait {
+  position: absolute;
+  z-index: 0;
+  right: -4%;
+  top: 40px;
+  width: min(66%, 520px);
+  height: 330px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(100deg, transparent 0%, #000 34%);
+  mask-image: linear-gradient(100deg, transparent 0%, #000 34%);
+  animation: portrait-in 0.45s var(--ease-out) both;
+}
+
+.menu-portrait img,
+.menu-portrait__slot {
+  width: 44%;
+  height: 100%;
+  margin-left: -14%;
+  object-fit: contain;
+  object-position: bottom;
+  filter: drop-shadow(10px 10px 0 rgba(0, 0, 0, 0.45));
+}
+
+.menu-portrait img:nth-child(2) {
+  z-index: 1;
+  width: 54%;
+}
+
+.menu-portrait--framed img,
+.menu-portrait--framed .menu-portrait__slot {
+  width: 40%;
+  height: 72%;
+  margin-left: -8%;
+  object-fit: cover;
+  object-position: center 18%;
+  border: 3px solid var(--chalk);
+  box-shadow: 8px 8px 0 var(--paint);
+  filter: none;
+}
+
+.menu-portrait--framed > :nth-child(1) {
+  transform: rotate(-8deg) translateY(-12%);
+}
+.menu-portrait--framed > :nth-child(2) {
+  transform: rotate(3deg);
+}
+.menu-portrait--framed > :nth-child(3) {
+  transform: rotate(10deg) translateY(-6%);
+}
+
+@keyframes portrait-in {
+  from {
+    opacity: 0;
+    transform: translateX(14%) skewX(-6deg);
+  }
+}
+
+/* Encart de chiffres en bas à droite */
+.menu-stats {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+  width: min(270px, 70%);
+  margin: 6px 0 0 auto;
+}
+
+.menu-stats > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 2px 14px 2px 22px;
+  background: linear-gradient(90deg, transparent, rgba(8, 10, 12, 0.9) 18%);
+  border-top: 1px solid var(--chalk-line);
+}
+
+.menu-stats dt {
+  font-family: var(--font-caps);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--chalk-mid);
+}
+
+.menu-stats dd {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 2rem;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+}
+
+/* Étiquettes de commande (Confirmer / Choisir), façon pied de menu de RPG */
+.prompt-tags {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.prompt-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px 5px 10px;
+  background: var(--chalk);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  clip-path: polygon(6% 0, 100% 0, 94% 100%, 0 100%);
+}
+
+.prompt-tag__key {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  font-size: 0.75rem;
+}
+
+@media (hover: none) {
+  .prompt-tags {
+    display: none;
+  }
+}
+
+.menu__extras {
+  margin-top: 30px;
+}
+
+@media (min-width: 900px) {
+  .menu__main {
+    padding: 34px 48px 80px;
+  }
+
+  .menu-title__word {
+    font-size: clamp(4.6rem, 7.4vw, 7rem);
+  }
+
+  .menu-tagline {
+    margin-left: 40px;
+  }
+
+  .menu-stage {
+    min-height: 720px;
+    margin-top: 0;
+  }
+
+  .cascade {
+    margin-top: 40px;
+    padding-left: 30px;
+  }
+
+  .cascade__item {
+    --fs: calc(clamp(3.6rem, 6.4vw, 5.8rem) * var(--size, 1));
+    margin-left: calc(var(--x, 0) * 46px);
+  }
+
+  .menu-numeral {
+    top: -170px;
+    right: 0;
+  }
+
+  .menu-numeral__digit {
+    font-size: 17rem;
+  }
+
+  .menu-portrait {
+    top: -280px;
+    right: 3%;
+    width: 50%;
+    height: 760px;
+    align-items: center;
+  }
+
+  .menu-portrait:not(.menu-portrait--framed) img {
+    height: auto;
+    max-height: 560px;
+  }
+
+  .menu-stats {
+    position: absolute;
+    right: 0;
+    bottom: 60px;
+  }
+
+  .prompt-tags {
+    position: absolute;
+    right: 0;
+    bottom: 8px;
+  }
+
+  .menu__extras {
+    margin-top: 10px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Surcharges des écrans : titres, boutons, panneaux, barres
+   -------------------------------------------------------------------------- */
+.eyebrow {
+  font-family: var(--font-caps);
+  font-weight: 700;
+  color: var(--gold-hi);
+  letter-spacing: 0.02em;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-caps);
+  font-weight: 900;
+}
+
+.section__title {
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: 2.2rem;
+  transform: rotate(-4deg);
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Boutons : étiquettes inclinées. Le principal est blanc sur une traînée de peinture. */
+.btn {
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: 1.35rem;
+  letter-spacing: 0.01em;
+  clip-path: polygon(3% 0, 100% 0, 97% 100%, 0 100%);
+  background: var(--chalk);
+  color: var(--ink);
+  box-shadow: none;
+  transition:
+    transform 0.14s var(--ease-out),
+    background 0.2s,
+    color 0.2s,
+    opacity 0.15s;
+}
+
+.btn:hover {
+  filter: none;
+}
+
+.btn-primary {
+  isolation: isolate;
+  background: var(--chalk);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+/* Traînée de peinture qui passe sous le texte du bouton principal */
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: -6%;
+  right: -6%;
+  top: 8%;
+  bottom: 8%;
+  background: var(--paint);
+  -webkit-mask: url('/paint/stroke-2.svg') center / 100% 100% no-repeat;
+  mask: url('/paint/stroke-2.svg') center / 100% 100% no-repeat;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 0.3s var(--ease-snap);
+}
+
+.btn-primary:hover::before,
+.btn-primary:focus-visible::before,
+.btn-primary:active::before {
+  transform: scaleX(1);
+}
+
+.btn-primary::after {
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  mix-blend-mode: soft-light;
+}
+
+.btn-secondary {
+  background: var(--ink);
+  color: var(--chalk);
+  box-shadow: inset 0 0 0 1.5px var(--chalk);
+}
+
+.btn-ghost {
+  background: rgba(8, 10, 12, 0.6);
+  color: var(--chalk);
+  border: 1.5px solid var(--chalk);
+  font-family: var(--font-caps);
+  font-weight: 700;
+}
+
+.btn-ghost:hover {
+  background: var(--chalk);
+  color: var(--ink);
+}
+
+.btn-danger {
+  background: var(--red);
+  color: var(--chalk);
+  box-shadow: none;
+}
+
+.icon-btn {
+  border-color: var(--chalk);
+  color: var(--chalk);
+  box-shadow: none;
+}
+
+.icon-btn:hover {
+  background: var(--chalk);
+  color: var(--ink);
+}
+
+.panel,
+.hud-frame {
+  background: rgba(8, 10, 12, 0.8);
+  box-shadow:
+    inset 0 0 0 1px var(--chalk-line),
+    6px 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+.hud-frame::before,
+.hud-frame::after {
+  background: var(--paint);
+}
+
+.hud {
+  background: linear-gradient(180deg, rgba(8, 10, 12, 0.96), rgba(8, 10, 12, 0.78));
+  border-bottom: 1px solid var(--chalk-line);
+}
+
+.hud::after {
+  background: var(--paint);
+}
+
+.hud__logo {
+  color: var(--paint);
+}
+
+.hud__title {
+  font-family: var(--font-caps);
+  font-weight: 900;
+  transform: rotate(-3deg);
+}
+
+.action-bar {
+  background: linear-gradient(0deg, rgba(8, 10, 12, 0.94) 55%, transparent);
+}
+
+/* Écran titre : la reprise de partie et les règles */
+.resume-card {
+  background: var(--paint);
+  color: var(--ink);
+  box-shadow: none;
+  clip-path: polygon(2% 0, 100% 0, 98% 100%, 0 100%);
+  transform: rotate(-2deg);
+  margin-top: 22px;
+  max-width: 460px;
+}
+
+.resume-card .eyebrow,
+.resume-card .text-mid,
+.resume-card__code {
+  color: var(--ink);
+}
+
+.howto summary {
+  font-family: var(--font-caps);
+  font-weight: 900;
+}
+
+.howto summary::after {
+  border-color: var(--chalk);
+}
+
+.howto__steps li::before {
+  background: var(--paint);
+  font-family: var(--font-display);
+  font-weight: 900;
+}
+
+/* --------------------------------------------------------------------------
+   5. Transitions : coup de peinture entre deux phases, volet blanc entre écrans
+   -------------------------------------------------------------------------- */
+.wipe {
+  top: 24vh;
+  height: 52vh;
+  background: var(--paint);
+  clip-path: none;
+  -webkit-mask: url('/paint/stroke-3.svg') center / 100% 100% no-repeat;
+  mask: url('/paint/stroke-3.svg') center / 100% 100% no-repeat;
+}
+
+@supports (view-transition-name: none) {
+  ::view-transition-old(root) {
+    animation: vt-out 0.32s var(--ease-snap) both;
+  }
+
+  ::view-transition-new(root) {
+    animation: vt-in 0.42s var(--ease-snap) both;
+  }
+}
+
+@keyframes vt-out {
+  to {
+    opacity: 0;
+    transform: translateX(-4%) skewX(4deg);
+  }
+}
+
+@keyframes vt-in {
+  from {
+    clip-path: polygon(100% 0, 130% 0, 130% 100%, 130% 100%);
+  }
+  to {
+    clip-path: polygon(-30% 0, 130% 0, 130% 100%, 0 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop__paint,
+  .backdrop__arcs {
+    animation: none;
+  }
+
+  .menu.is-leaving::after {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. Écrans de jeu : nom de l'écran en géant, chiffre de la manche
+   -------------------------------------------------------------------------- */
+/* Comme les sous-menus de la référence : le titre de l'écran énorme, en biais, au pied de la page */
+.screen-word {
+  position: fixed;
+  z-index: -1;
+  left: -0.06em;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  max-width: 140vw;
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: clamp(5rem, 24vw, 15rem);
+  line-height: 0.8;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(244, 242, 236, 0.32);
+  transform: rotate(-8deg);
+  transform-origin: 0 100%;
+  pointer-events: none;
+  animation: screen-word-in 0.6s var(--ease-out) both;
+}
+
+@keyframes screen-word-in {
+  from {
+    opacity: 0;
+    translate: -0.4em 0;
+  }
+}
+
+.round-numeral {
+  position: fixed;
+  z-index: -1;
+  right: 6px;
+  bottom: calc(250px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.round-numeral__digit {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(8rem, 36vw, 15rem);
+  line-height: 0.8;
+  color: rgba(244, 242, 236, 0.16);
+  -webkit-text-stroke: 1.5px rgba(244, 242, 236, 0.42);
+  text-shadow: 0.05em 0.05em 0 color-mix(in srgb, var(--paint) 45%, transparent);
+  transform: rotate(8deg);
+  animation: numeral-in 0.45s var(--ease-pop) both;
+}
+
+.round-numeral__label {
+  margin-top: 0.4em;
+  padding: 0.5em 0.2em;
+  background: var(--paint);
+  color: var(--ink);
+  writing-mode: vertical-rl;
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.hud__title {
+  font-size: 1.35rem;
+}
+
+/* Titre de la page d'univers (Home) : à l'encre sur une traînée de peinture */
+.logo__title {
+  display: inline-block;
+  margin-left: 14px;
+  font-family: var(--font-caps);
+  font-weight: 900;
+  color: var(--ink);
+  text-shadow: none;
+}
+
+.logo__title::before {
+  left: -0.45em;
+  top: -0.5em;
+  width: calc(100% + 0.95em);
+  height: 2em;
+  background: var(--paint);
+  transform: none;
+  clip-path: none;
+  -webkit-mask: url('/paint/stroke-1.svg') center / 100% 100% no-repeat;
+  mask: url('/paint/stroke-1.svg') center / 100% 100% no-repeat;
+  animation: splash-in 0.5s 0.15s var(--ease-snap) both;
+}
+
+.segmented__btn {
+  font-family: var(--font-caps);
+  font-weight: 700;
+}
+
+.segmented__btn[aria-pressed='true'],
+.segmented__btn[aria-selected='true'] {
+  background: var(--chalk);
+  color: var(--ink);
+  clip-path: polygon(3% 0, 100% 0, 97% 100%, 0 100%);
+}
+
+.btn[disabled]::before {
+  display: none;
+}
+
+/* Volet blanc qui se retire à l'arrivée sur la page d'univers (components/RouteWipe.tsx) */
+.route-wipe {
+  position: fixed;
+  inset: -10%;
+  z-index: 90;
+  pointer-events: none;
+  background: var(--chalk);
+  clip-path: polygon(0 0, 130% 0, 100% 100%, -30% 100%);
+  animation: wipe-white-out 0.42s 0.04s var(--ease-snap) forwards;
+}
+
+@keyframes wipe-white-out {
+  to {
+    clip-path: polygon(130% 0, 130% 0, 100% 100%, 100% 100%);
+  }
+}
