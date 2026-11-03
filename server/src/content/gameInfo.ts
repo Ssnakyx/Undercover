@@ -171,7 +171,7 @@ export const GAME_INFO: Record<string, GameInfo> = {
   Warframe: { wiki: 'Warframe', description: 'Shooter gratuit en ligne : on incarne des ninjas spatiaux en armure biomécanique, très mobiles, en coop.' },
   'Days Gone': { wiki: 'Days Gone', description: 'Monde ouvert post-apocalyptique : un motard survit dans l’Oregon envahi par des hordes d’infectés, les « Freakers ».' },
   'Dead Space': { wiki: 'Dead Space (2023 video game)', description: 'Survival horror dans l’espace : l’ingénieur Isaac Clarke découpe des monstres (Nécromorphes) membre par membre dans un vaisseau.' },
-  'Texas Chain Saw Massacre': { wiki: 'The Texas Chain Saw Massacre (video game)', description: 'Jeu asymétrique tiré du film d’horreur : une famille de tueurs traque des victimes qui tentent de s’échapper.' },
+  'Texas Chain Saw Massacre': { wiki: 'The Texas Chain Saw Massacre (2023 video game)', description: 'Jeu asymétrique tiré du film d’horreur : une famille de tueurs traque des victimes qui tentent de s’échapper.' },
   'PlateUp!': { wiki: 'PlateUp!', description: 'Gestion de restaurant en coop : on cuisine, sert et améliore son restaurant journée après journée, de plus en plus vite.' },
   'Légendes Pokémon : Arceus': { wiki: 'Pokémon Legends: Arceus', description: 'Pokémon dans la région de Hisui (ancienne Sinnoh) : on capture des Pokémon en pleine nature pour créer le premier Pokédex.' },
   'Story of Seasons': { wiki: 'Story of Seasons: Pioneers of Olive Town', description: 'Jeu de ferme japonais (ex-Harvest Moon) : cultures, animaux, et mariage avec un villageois.' },
@@ -281,7 +281,8 @@ async function searchTitle(name: string): Promise<string | null> {
   const data = await wikiJson<{ query?: { search?: { title: string }[] } }>(
     `${WIKI_API}?action=query&format=json&list=search&srlimit=5&srsearch=${encodeURIComponent(`${name} video game`)}`,
   );
-  return data.query?.search?.map((r) => r.title).find((t) => normalizeTitle(t).includes(normalizeTitle(name))) ?? null;
+  // Seulement un article de jeu : « The Texas Chain Saw Massacre » seul est le film de 1974.
+  return data.query?.search?.map((r) => r.title).find((t) => /game/i.test(t) && normalizeTitle(t).includes(normalizeTitle(name))) ?? null;
 }
 
 /**

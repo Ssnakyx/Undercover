@@ -75,7 +75,7 @@ describe('qualité des paires', () => {
     expect(characterImage('lol', 'Wukong')).toContain('/MonkeyKing_0.jpg');
     expect(characterImage('lol', "Kai'Sa")).toContain('/Kaisa_0.jpg');
     expect(characterImage('lol', 'Miss Fortune')).toContain('/MissFortune_0.jpg');
-    expect(characterImage('games', 'Minecraft')).toBeNull();
+    expect(characterImage('games', 'Minecraft')).toMatch(/^https:\/\/upload\.wikimedia\.org\//);
   });
 });
 
