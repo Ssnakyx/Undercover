@@ -75,7 +75,7 @@ describe('qualité des paires', () => {
     expect(characterImage('lol', 'Wukong')).toContain('/MonkeyKing_0.jpg');
     expect(characterImage('lol', "Kai'Sa")).toContain('/Kaisa_0.jpg');
     expect(characterImage('lol', 'Miss Fortune')).toContain('/MissFortune_0.jpg');
-    expect(characterImage('games', 'Minecraft')).toBeNull();
+    expect(characterImage('games', 'Minecraft')).toMatch(/^https:\/\/upload\.wikimedia\.org\//);
   });
 });
 
@@ -100,8 +100,8 @@ describe('univers Manga & Anime', () => {
     }
   });
 
-  it('pas d’image, mais les alias servent à la devinette de Mr White', () => {
-    expect(characterImage('anime', 'Luffy')).toBeNull();
+  it('image AniList versionnée, et les alias servent à la devinette de Mr White', () => {
+    expect(characterImage('anime', 'Luffy')).toMatch(/^https:\/\/s4\.anilist\.co\//);
     expect(characterAliases('anime', 'Goku')).toContain('Sangoku');
     expect(animeDescription('Luffy')).toBe('Personnage de « One Piece »');
   });
@@ -129,7 +129,7 @@ describe('univers mixtes Smash × Anime et LoL × Anime', () => {
 
   it('les images et descriptions suivent l’univers d’origine du personnage', () => {
     expect(characterImage('smash-anime', 'Link')).toMatch(/^\/img\/smash\//);
-    expect(characterImage('smash-anime', 'Luffy')).toBeNull();
+    expect(characterImage('smash-anime', 'Luffy')).toMatch(/^https:\/\/s4\.anilist\.co\//);
     expect(characterImage('lol-anime', 'Ahri')).toContain('/Ahri_0.jpg');
     expect(characterDescription('lol-anime', 'Ahri')).toContain('League of Legends');
     expect(characterDescription('smash-anime', 'Zoro')).toBe('Personnage de « One Piece »');

@@ -6,6 +6,8 @@
 // (voir prefetchGameCovers). Si l'API ne répond pas, le client garde sa jaquette typographique.
 // `wiki` vise un jeu précis quand le nom de la paire désigne une série (ex. "Halo").
 
+import { GAME_COVERS } from './remoteImages.generated.js';
+
 export interface GameInfo {
   /** Titre exact de l'article sur en.wikipedia.org. */
   wiki: string;
@@ -169,7 +171,7 @@ export const GAME_INFO: Record<string, GameInfo> = {
   Warframe: { wiki: 'Warframe', description: 'Shooter gratuit en ligne : on incarne des ninjas spatiaux en armure biomécanique, très mobiles, en coop.' },
   'Days Gone': { wiki: 'Days Gone', description: 'Monde ouvert post-apocalyptique : un motard survit dans l’Oregon envahi par des hordes d’infectés, les « Freakers ».' },
   'Dead Space': { wiki: 'Dead Space (2023 video game)', description: 'Survival horror dans l’espace : l’ingénieur Isaac Clarke découpe des monstres (Nécromorphes) membre par membre dans un vaisseau.' },
-  'Texas Chain Saw Massacre': { wiki: 'The Texas Chain Saw Massacre (video game)', description: 'Jeu asymétrique tiré du film d’horreur : une famille de tueurs traque des victimes qui tentent de s’échapper.' },
+  'Texas Chain Saw Massacre': { wiki: 'The Texas Chain Saw Massacre (2023 video game)', description: 'Jeu asymétrique tiré du film d’horreur : une famille de tueurs traque des victimes qui tentent de s’échapper.' },
   'PlateUp!': { wiki: 'PlateUp!', description: 'Gestion de restaurant en coop : on cuisine, sert et améliore son restaurant journée après journée, de plus en plus vite.' },
   'Légendes Pokémon : Arceus': { wiki: 'Pokémon Legends: Arceus', description: 'Pokémon dans la région de Hisui (ancienne Sinnoh) : on capture des Pokémon en pleine nature pour créer le premier Pokédex.' },
   'Story of Seasons': { wiki: 'Story of Seasons: Pioneers of Olive Town', description: 'Jeu de ferme japonais (ex-Harvest Moon) : cultures, animaux, et mariage avec un villageois.' },
@@ -184,12 +186,16 @@ export function gameDescription(name: string | null | undefined): string | null 
 
 const covers = new Map<string, string>();
 
+/**
+ * Jaquette du jeu : d'abord celle résolue à l'avance et versionnée (remoteImages.generated.ts,
+ * voir scripts/resolve-remote-images.ts), sinon celle trouvée au démarrage du serveur.
+ */
 export function gameCover(name: string | null | undefined): string | null {
   if (!name) return null;
-  return covers.get(name) ?? null;
+  return GAME_COVERS[name] ?? covers.get(name) ?? null;
 }
 
-const WIKI_SUMMARY = 'https://en.wikipedia.org/api/rest_v1/page/summary';
+const WIKI_API = 'https://en.wikipedia.org/w/api.php';
 // Wikimedia demande un User-Agent identifiable pour les appels automatisés.
 const USER_AGENT = 'UndercoverGame/1.0 (https://github.com/Ssnakyx/Undercover)';
 const FETCH_CONCURRENCY = 4;
@@ -199,17 +205,127 @@ interface WikiSummary {
   originalimage?: { source: string; width: number };
 }
 
-async function fetchCover(wikiTitle: string): Promise<string | null> {
-  const res = await fetch(`${WIKI_SUMMARY}/${encodeURIComponent(wikiTitle.replace(/ /g, '_'))}`, {
-    headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) return null;
-  const data = (await res.json()) as WikiSummary;
+async function wikiJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return (await res.json()) as T;
+}
+
+/** Image principale d'après le résumé REST. */
+async function summaryImage(title: string): Promise<string | null> {
+  const data = await wikiJson<WikiSummary>(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}`);
   // Les jaquettes (images non libres) sont petites : l'originale suffit et reste nette.
   const original = data.originalimage;
   if (original && original.width <= 800) return original.source;
   return data.thumbnail?.source ?? original?.source ?? null;
+}
+
+interface QueryPages<P> {
+  query?: { pages?: Record<string, P> };
+}
+
+/** Image de page via l'API d'action, licences non libres comprises (le résumé REST les écarte parfois). */
+async function pageImage(title: string): Promise<string | null> {
+  const data = await wikiJson<QueryPages<{ original?: { source: string; width: number }; thumbnail?: { source: string } }>>(
+    `${WIKI_API}?action=query&format=json&redirects=1&prop=pageimages&piprop=original|thumbnail&pithumbsize=640&pilicense=any&titles=${encodeURIComponent(title)}`,
+  );
+  const page = Object.values(data.query?.pages ?? {})[0];
+  if (!page) return null;
+  if (page.original && page.original.width <= 800) return page.original.source;
+  return page.thumbnail?.source ?? page.original?.source ?? null;
+}
+
+/** URL (640 px de large au plus) d'un fichier hébergé sur en.wikipedia ou Commons. */
+async function fileUrl(file: string): Promise<string | null> {
+  const info = await wikiJson<QueryPages<{ imageinfo?: { url: string; thumburl?: string }[] }>>(
+    `${WIKI_API}?action=query&format=json&prop=imageinfo&iiprop=url&iiurlwidth=640&titles=${encodeURIComponent(`File:${file}`)}`,
+  );
+  const ii = Object.values(info.query?.pages ?? {})[0]?.imageinfo?.[0];
+  return ii?.thumburl ?? ii?.url ?? null;
+}
+
+/** Image de l'infobox de l'article (paramètre image/logo/cover du wikitexte de l'intro). */
+async function infoboxImage(title: string): Promise<string | null> {
+  const data = await wikiJson<{ parse?: { wikitext?: string } }>(
+    `${WIKI_API}?action=parse&format=json&formatversion=2&prop=wikitext&section=0&redirects=1&page=${encodeURIComponent(title)}`,
+  );
+  const match = /\|\s*(?:image|cover|logo)\s*=\s*([^\n|}]+)/i.exec(data.parse?.wikitext ?? '');
+  const file = match?.[1]
+    .replace(/^\s*\[\[/, '')
+    .replace(/^(?:File|Image|Fichier):/i, '')
+    .replace(/<!--.*$/, '')
+    .trim();
+  return file && /\.(jpe?g|png|webp|gif|svg)$/i.test(file) ? fileUrl(file) : null;
+}
+
+/** Image (P18) ou logo (P154) de l'élément Wikidata lié à l'article, servi par Commons. */
+async function wikidataImage(title: string): Promise<string | null> {
+  const props = await wikiJson<QueryPages<{ pageprops?: { wikibase_item?: string } }>>(
+    `${WIKI_API}?action=query&format=json&redirects=1&prop=pageprops&ppprop=wikibase_item&titles=${encodeURIComponent(title)}`,
+  );
+  const id = Object.values(props.query?.pages ?? {})[0]?.pageprops?.wikibase_item;
+  if (!id) return null;
+  type Claim = { mainsnak?: { datavalue?: { value?: unknown } } };
+  const entity = await wikiJson<{ entities: Record<string, { claims?: Record<string, Claim[]> }> }>(
+    `https://www.wikidata.org/wiki/Special:EntityData/${id}.json`,
+  );
+  const claims = entity.entities[id]?.claims ?? {};
+  const file = [claims.P18, claims.P154].flatMap((c) => c ?? []).map((c) => c.mainsnak?.datavalue?.value).find((v): v is string => typeof v === 'string');
+  return file ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file.replace(/ /g, '_'))}?width=640` : null;
+}
+
+const normalizeTitle = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Titre de l'article du jeu trouvé par la recherche Wikipédia, s'il contient bien son nom. */
+async function searchTitle(name: string): Promise<string | null> {
+  const data = await wikiJson<{ query?: { search?: { title: string }[] } }>(
+    `${WIKI_API}?action=query&format=json&list=search&srlimit=5&srsearch=${encodeURIComponent(`${name} video game`)}`,
+  );
+  // Seulement un article de jeu : « The Texas Chain Saw Massacre » seul est le film de 1974.
+  return data.query?.search?.map((r) => r.title).find((t) => /game/i.test(t) && normalizeTitle(t).includes(normalizeTitle(name))) ?? null;
+}
+
+/**
+ * Jaquette d'un jeu sur Wikipédia (en) : résumé REST, puis image de page toutes licences,
+ * puis image de l'infobox, puis image ou logo Wikidata ; si rien, on recommence sur l'article
+ * trouvé par la recherche. `tried` dit ce qui a échoué, pour le journal du script de résolution.
+ */
+export async function findCover(wikiTitle: string, name = wikiTitle): Promise<{ url: string | null; tried: string[] }> {
+  const tried: string[] = [];
+  const chain = async (title: string): Promise<string | null> => {
+    const attempts: [string, () => Promise<string | null>][] = [
+      ['résumé', () => summaryImage(title)],
+      ['pageimages', () => pageImage(title)],
+      ['infobox', () => infoboxImage(title)],
+      ['wikidata', () => wikidataImage(title)],
+    ];
+    for (const [label, attempt] of attempts) {
+      try {
+        const url = await attempt();
+        if (url) return url;
+        tried.push(`${title} ${label}: rien`);
+      } catch (e) {
+        tried.push(`${title} ${label}: ${(e as Error).message}`);
+      }
+    }
+    return null;
+  };
+  const direct = await chain(wikiTitle);
+  if (direct) return { url: direct, tried };
+  try {
+    const found = await searchTitle(name);
+    if (found && found !== wikiTitle) {
+      const url = await chain(found);
+      if (url) return { url, tried };
+    } else tried.push(`recherche « ${name} » : rien`);
+  } catch (e) {
+    tried.push(`recherche: ${(e as Error).message}`);
+  }
+  return { url: null, tried };
+}
+
+export async function fetchCover(wikiTitle: string, name?: string): Promise<string | null> {
+  return (await findCover(wikiTitle, name)).url;
 }
 
 /**
@@ -217,13 +333,15 @@ async function fetchCover(wikiTitle: string): Promise<string | null> {
  * déjà pendant ce temps, et un jeu sans jaquette garde le rendu typographique côté client).
  */
 export async function prefetchGameCovers(): Promise<void> {
-  const queue = Object.entries(GAME_INFO).filter(([name]) => !covers.has(name));
+  // Les jaquettes déjà versionnées ne sont pas redemandées : seules les nouvelles le sont.
+  const queue = Object.entries(GAME_INFO).filter(([name]) => !covers.has(name) && !GAME_COVERS[name]);
+  if (queue.length === 0) return;
   let missing = 0;
   async function worker(): Promise<void> {
     for (let next = queue.shift(); next; next = queue.shift()) {
       const [name, info] = next;
       try {
-        const cover = await fetchCover(info.wiki);
+        const cover = await fetchCover(info.wiki, name);
         if (cover) covers.set(name, cover);
         else missing++;
       } catch {
@@ -233,5 +351,5 @@ export async function prefetchGameCovers(): Promise<void> {
   }
   await Promise.all(Array.from({ length: FETCH_CONCURRENCY }, worker));
   // eslint-disable-next-line no-console
-  console.log(`[games] ${covers.size} jaquettes chargées${missing ? `, ${missing} introuvables` : ''}`);
+  console.log(`[games] ${covers.size} jaquettes chargées en plus des versionnées${missing ? `, ${missing} introuvables` : ''}`);
 }
