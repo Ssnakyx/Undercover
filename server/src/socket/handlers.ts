@@ -29,6 +29,8 @@ import {
   MAX_CUSTOM_PAIRS_PER_ROOM,
   MAX_PLAYERS_PER_ROOM,
   MAX_SPECTATORS_PER_ROOM,
+  MAX_ACTIVE_ROOMS,
+  countRooms,
   cancelEmptyRoomExpiration,
   computeAvatarSeed,
   countConnectedPlayers,
@@ -501,6 +503,10 @@ export function registerSocketHandlers(io: IoServer): void {
       }
       if (!UNIVERSES.has(payload?.universe)) {
         ack({ ok: false, error: { code: 'INVALID_UNIVERSE', message: 'Univers invalide' } });
+        return;
+      }
+      if (countRooms() >= MAX_ACTIVE_ROOMS) {
+        ack({ ok: false, error: { code: 'SERVER_FULL', message: 'Le serveur est plein, réessaie dans quelques minutes.' } });
         return;
       }
       const room = createRoom(payload.universe);

@@ -60,8 +60,30 @@ fiable reste de les saisir manuellement dans le dashboard Render tel que décrit
 Blueprints Render cherchant `render.yaml` à la racine du repo par défaut, pas dans un
 sous-dossier.
 
-Le CORS du serveur est ouvert (`origin: '*'`, voir `src/index.ts`) : aucune configuration de
-domaine à faire côté serveur pour autoriser le client déployé sur Vercel.
+Le CORS du serveur est ouvert par défaut (`origin: '*'`, voir `src/index.ts`) : aucune
+configuration de domaine n'est obligatoire. Pour le restreindre, définir `ALLOWED_ORIGINS`
+(liste séparée par des virgules, sans slash final), par exemple
+`https://undercover.vercel.app,https://mon-domaine.fr`.
+
+### Ouverture au public : garde-fous
+
+`src/security/rateLimit.ts` limite les abus d'un serveur ouvert à tous (tout est en mémoire et
+remis à zéro au redémarrage) :
+
+- créations de salon : 6 par minute et par IP ; rejoindre : 20 par minute et par IP ;
+- chat : 6 messages par tranche de 8 secondes et par joueur ;
+- garde-fou global : 60 événements par 10 secondes et par socket ;
+- 15 connexions simultanées maximum par IP, 400 salons actifs maximum (`MAX_ACTIVE_ROOMS`) ;
+- messages Socket.io plafonnés à 32 Ko.
+
+Un appel refusé reçoit `{ ok: false, error: { code: 'RATE_LIMITED' } }`, affiché en toast côté client.
+
+### Plan gratuit Render : mise en veille
+
+Sur le plan free, le service s'endort après ~15 minutes sans trafic ; le réveil prend jusqu'à
+une minute et efface les salons en mémoire. Le client affiche alors un bandeau « le serveur se
+réveille ». Pour l'éviter : soit un moniteur gratuit (UptimeRobot, cron-job.org) qui appelle
+`https://<service>.onrender.com/health` toutes les 5 à 10 minutes, soit l'offre payante Starter.
 
 ## Lancer les tests unitaires
 
