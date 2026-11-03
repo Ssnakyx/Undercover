@@ -56,6 +56,14 @@ export interface PublicPlayer {
   /** Score cumulé de la room : +1 par partie où son camp l'a emporté, jamais réinitialisé par
    * game:restart — persiste tant que la room existe (mode Soirée, voir CONTRACT.md §5ter). */
   score: number;
+  /** Compte joueur rattaché (optionnel) : photo servie par GET /api/accounts/:id/photo?v=photoVersion. */
+  account?: PublicAccountTag | null;
+}
+
+export interface PublicAccountTag {
+  id: string;
+  username: string;
+  photoVersion: number;
 }
 
 /** Spectateur : rejoint une partie déjà en cours en lecture seule, promu joueur complet au
@@ -64,6 +72,7 @@ export interface PublicSpectator {
   playerId: string;
   name: string;
   avatarSeed: string;
+  account?: PublicAccountTag | null;
 }
 
 export interface RoomStatePublic {
@@ -275,6 +284,7 @@ export interface ClientToServerEvents {
   'player:kick': (payload: PlayerKickPayload, ack?: (res: AckResponse) => void) => void;
   'vote:forceClose': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
   'reveal:forceEnd': (payload: Record<string, never>, ack?: (res: AckResponse) => void) => void;
+  'account:attach': (payload: { token: string | null }, ack?: (res: AckResponse) => void) => void;
 }
 
 export interface ServerToClientEvents {

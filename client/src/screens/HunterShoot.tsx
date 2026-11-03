@@ -35,7 +35,7 @@ export function HunterShoot() {
         <div className="container">
           <div className="hud-frame ko-block tone-hunter">
             <span className="eyebrow">Dernière balle</span>
-            {shooter && <Avatar seed={shooter.avatarSeed} name={shooter.name} size="xl" dead />}
+            {shooter && <Avatar seed={shooter.avatarSeed} account={shooter.account} name={shooter.name} size="xl" dead />}
             <div className="ko-name">{shooter?.name ?? 'Le Chasseur'}</div>
             <span className="ko-role" style={{ animationDelay: '0s' }}>
               <RoleEmblem role="hunter" /> Chasseur
@@ -59,7 +59,7 @@ export function HunterShoot() {
                     disabled={submitted}
                     onClick={() => setTarget(p.playerId)}
                   >
-                    <Avatar seed={p.avatarSeed} name={p.name} size="lg" />
+                    <Avatar seed={p.avatarSeed} account={p.account} name={p.name} size="lg" />
                     <span className="select-tile__name">{p.name}</span>
                   </button>
                 ))}

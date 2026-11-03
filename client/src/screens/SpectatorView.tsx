@@ -52,7 +52,7 @@ export function SpectatorView() {
             <div className="player-grid">
               {roomState.players.map((p) => (
                 <div key={p.playerId} className={`player-tile${p.alive ? '' : ' player-tile--dead'}${p.connected ? '' : ' player-tile--offline'}`}>
-                  <Avatar seed={p.avatarSeed} name={p.name} host={p.isHost} dead={!p.alive} />
+                  <Avatar seed={p.avatarSeed} account={p.account} name={p.name} host={p.isHost} dead={!p.alive} />
                   <div className="player-tile__body">
                     <div className="player-tile__name">{p.name}</div>
                     <div className="player-tile__meta">{p.alive ? (roomState.votedPlayerIds.includes(p.playerId) ? 'A voté' : 'En jeu') : 'Éliminé'}</div>
@@ -72,7 +72,7 @@ export function SpectatorView() {
                   .filter((s) => s.playerId !== playerId)
                   .map((s) => (
                     <div key={s.playerId} className="player-tile">
-                      <Avatar seed={s.avatarSeed} name={s.name} size="sm" />
+                      <Avatar seed={s.avatarSeed} account={s.account} name={s.name} size="sm" />
                       <div className="player-tile__name">{s.name}</div>
                     </div>
                   ))}

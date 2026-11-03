@@ -50,8 +50,8 @@ process Node persistant (pas de serverless/edge functions à froid). Render conv
    - **Build Command** : `npm install && npm run build`
    - **Start Command** : `node dist/index.js`
    - **Health Check Path** : `/health`
-4. Aucune variable d'env obligatoire — Render fournit `PORT` automatiquement, déjà lu par
-   `src/index.ts`. Render assigne une URL publique du type
+4. Variable d'env à ajouter pour les comptes joueurs : `DATABASE_URL` (voir plus bas). Render
+   fournit `PORT` automatiquement, déjà lu par `src/index.ts`. Render assigne une URL publique du type
    `https://lolcover-server.onrender.com` : c'est cette URL qu'il faut renseigner comme
    `VITE_SERVER_URL` côté client (voir `client/README.md`).
 
@@ -62,6 +62,25 @@ sous-dossier.
 
 Le CORS du serveur est ouvert (`origin: '*'`, voir `src/index.ts`) : aucune configuration de
 domaine à faire côté serveur pour autoriser le client déployé sur Vercel.
+
+## Comptes joueurs (optionnels) : base de données
+
+On joue toujours sans compte. Un compte (pseudo + mot de passe) garde la photo de profil et les
+statistiques (parties jouées, gagnées, perdues, au global et par rôle). Code : `src/accounts/`.
+
+- Variable d'env **`DATABASE_URL`** : URL Postgres. Les tables (`accounts`,
+  `account_sessions`, `account_role_stats`) sont créées automatiquement au démarrage.
+- Sans `DATABASE_URL`, les comptes vivent en mémoire et **disparaissent à chaque redémarrage**
+  (pratique en local, inutilisable en prod sur Render qui s'endort).
+- Hébergement gratuit conseillé : **Neon** (neon.tech, free tier sans expiration ; la base se
+  met en veille et se réveille seule). Supabase marche aussi (prendre l'URL « Session pooler »),
+  mais un projet gratuit est mis en pause après une semaine sans activité. Éviter le Postgres
+  gratuit de Render, supprimé au bout de 30 jours.
+- Mots de passe hachés (scrypt), jetons de session stockés hachés, photos (JPEG/PNG/WebP,
+  200 Ko max, recadrées en 256×256 par le client) stockées en base et servies par
+  `GET /api/accounts/:id/photo`. Pas de récupération de mot de passe (pas d'e-mail).
+- Stats : enregistrées en fin de partie pour chaque joueur rattaché à un compte (événement
+  socket `account:attach`). Victoire = son camp gagne, comme le score de soirée.
 
 ## Lancer les tests unitaires
 

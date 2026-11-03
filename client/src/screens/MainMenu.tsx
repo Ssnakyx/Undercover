@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getLastRoomCode } from '../lib/session';
+import { useAccount } from '../socket/AccountProvider';
+import { Avatar } from '../components/Avatar';
 import { RoleEmblem } from '../components/RoleBadge';
 import { InkWord } from '../components/InkWord';
 import { roleDescription, roleLabel } from '../lib/roleInfo';
@@ -48,7 +50,25 @@ const CASCADE_OFFSETS = [0.5, 1.5, 0, 1, 0.3, 1.8, 0.8, 2.2];
 
 const LEAVE_MS = 560; // éparpillement des lettres + volet blanc (styles/metaphor.css)
 
-// Écran titre : cascade des univers façon menu de RPG, reprise de partie, règles.
+// Puce en haut à droite : accès au compte (facultatif) ou à sa création.
+function AccountChip() {
+  const { status, account } = useAccount();
+  return (
+    <Link to="/compte" className="account-chip" viewTransition>
+      {account ? (
+        <>
+          <Avatar seed={account.id} name={account.username} account={account} size="sm" />
+          <span className="account-chip__name">{account.username}</span>
+        </>
+      ) : (
+        <span className="account-chip__name" style={{ paddingLeft: 8 }}>
+          {status === 'loading' || status === 'offline' ? 'Mon compte' : 'Créer un compte'}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 // Écran titre : choix de l'univers, reprise de partie, règles.
 export function MainMenu() {
   const navigate = useNavigate();
@@ -88,6 +108,7 @@ export function MainMenu() {
 
   return (
     <div className={`screen menu${leaving !== null ? ' is-leaving' : ''}`} data-universe={activeUniverse}>
+      <AccountChip />
       <main className="main menu__main">
         <header className="menu-title">
           <span className="paint paint--blot menu-title__splash" aria-hidden="true" />
@@ -189,7 +210,7 @@ export function MainMenu() {
             </div>
           </details>
 
-          <p className="footnote">Aucun compte requis, un pseudo suffit. Projet de fans, non affilié à Riot Games, Nintendo, The Pokémon Company, Supercell ni aux éditeurs des mangas cités.</p>
+          <p className="footnote">Aucun compte requis, un pseudo suffit. Le compte sert seulement à garder tes stats et ta photo. Projet de fans, non affilié à Riot Games, Nintendo, The Pokémon Company, Supercell ni aux éditeurs des mangas cités.</p>
         </div>
       </main>
     </div>

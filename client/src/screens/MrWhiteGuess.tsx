@@ -40,7 +40,7 @@ export function MrWhiteGuess() {
           <div className="hud-frame ko-block tone-mrwhite">
             <span className="eyebrow">Mr White démasqué</span>
             <div className="ko-portrait">
-              {guesser && <Avatar seed={guesser.avatarSeed} name={guesser.name} size="xl" />}
+              {guesser && <Avatar seed={guesser.avatarSeed} account={guesser.account} name={guesser.name} size="xl" />}
             </div>
             <div className="ko-name">{guesser?.name ?? 'Mr White'}</div>
             <span className="ko-role" style={{ animationDelay: '0s' }}>

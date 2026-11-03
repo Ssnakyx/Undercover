@@ -49,7 +49,7 @@ export function Discussion() {
                 return (
                   <div className={`turn-item${i === 0 ? ' turn-item--first' : ''}`} key={id} style={{ animationDelay: `${i * 40}ms` }}>
                     <span className="turn-item__index">{String(i + 1).padStart(2, '0')}</span>
-                    <Avatar seed={p.avatarSeed} name={p.name} size="sm" host={p.isHost} />
+                    <Avatar seed={p.avatarSeed} account={p.account} name={p.name} size="sm" host={p.isHost} />
                     <span className="turn-item__name">
                       {p.name}
                       {p.playerId === playerId && <span className="text-low small"> (toi)</span>}

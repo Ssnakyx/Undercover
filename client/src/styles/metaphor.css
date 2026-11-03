@@ -229,7 +229,7 @@
   position: relative;
   max-width: 1080px;
   margin: 0 auto;
-  padding-top: 10px;
+  padding-top: 46px; /* place pour la puce du compte, en haut à droite */
   overflow-x: clip;
 }
 
@@ -894,4 +894,12 @@ h3 {
   to {
     clip-path: polygon(130% 0, 130% 0, 100% 100%, 100% 100%);
   }
+}
+
+.account-chip {
+  background: rgba(8, 10, 12, 0.8);
+  box-shadow: inset 0 0 0 1px var(--chalk-line);
+  font-family: var(--font-caps);
+  font-weight: 700;
+  clip-path: polygon(4% 0, 100% 0, 96% 100%, 0 100%);
 }
