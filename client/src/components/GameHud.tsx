@@ -8,16 +8,26 @@ export function GameHud({ title }: { title: string }) {
   const { roomState, playerId } = useRoom();
   if (!roomState) return null;
   const isHost = roomState.players.find((p) => p.playerId === playerId)?.isHost ?? false;
+  const round = Math.max(1, roomState.round);
   return (
-    <AppBar
-      title={title}
-      right={
-        <>
-          <span className="badge badge--accent">Manche {Math.max(1, roomState.round)}</span>
-          {isHost && <HostRestartButton />}
-          {isHost && <HostQuitButton />}
-        </>
-      }
-    />
+    <>
+      {/* Grand chiffre de la manche, avec son étiquette verticale (styles/metaphor.css) */}
+      <div className="round-numeral" aria-hidden="true">
+        <span key={round} className="round-numeral__digit">
+          {round}
+        </span>
+        <span className="round-numeral__label">Manche</span>
+      </div>
+      <AppBar
+        title={title}
+        right={
+          <>
+            <span className="badge badge--accent">Manche {round}</span>
+            {isHost && <HostRestartButton />}
+            {isHost && <HostQuitButton />}
+          </>
+        }
+      />
+    </>
   );
 }

@@ -1,10 +1,10 @@
-import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getLastRoomCode } from '../lib/session';
 import { useAccount } from '../socket/AccountProvider';
 import { Avatar } from '../components/Avatar';
 import { RoleEmblem } from '../components/RoleBadge';
-import { CharacterArt } from '../components/CharacterArt';
+import { InkWord } from '../components/InkWord';
 import { roleDescription, roleLabel } from '../lib/roleInfo';
 import { UNIVERSES, universeCopy } from '../lib/universe';
 import { isWikiRef, resolveWikiImage } from '../lib/wikiImage';
@@ -17,7 +17,7 @@ import {
   PROTECTOR_MIN_PLAYERS,
   SPY_MIN_PLAYERS,
 } from '../lib/roles';
-import type { Role, Universe } from '../types';
+import type { Role } from '../types';
 
 const ROLE_ROWS: { role: Role; minPlayers?: number }[] = [
   { role: 'civil' },
@@ -30,25 +30,7 @@ const ROLE_ROWS: { role: Role; minPlayers?: number }[] = [
   { role: 'jester', minPlayers: JESTER_MIN_PLAYERS },
 ];
 
-// Blason de l'écran titre : la carte d'un civil, et derrière elle celle de l'intrus, face cachée.
-function TitleCrest() {
-  return (
-    <div className="crest" aria-hidden="true">
-      <svg className="crest__ring" viewBox="0 0 400 400">
-        <circle cx="200" cy="200" r="190" fill="none" stroke="currentColor" strokeOpacity="0.8" strokeWidth="2.4" strokeDasharray="120 18 6 18" />
-        <circle cx="200" cy="200" r="170" fill="none" stroke="var(--gold)" strokeOpacity="0.35" strokeWidth="1" />
-      </svg>
-      <div className="crest__shard crest__shard--back">
-        <span>?</span>
-      </div>
-      <div className="crest__shard crest__shard--front">
-        <CharacterArt name="Link" image={universeCopy('smash').showcase[0]} universe="smash" />
-      </div>
-    </div>
-  );
-}
-
-// Image de la carte d'univers : URL directe, ou "wiki:Titre" résolu via Wikipédia (lib/wikiImage).
+// Image du portrait : URL directe, ou "wiki:Titre" résolu via Wikipédia (lib/wikiImage).
 function ShowcaseImage({ src }: { src: string }) {
   const [url, setUrl] = useState<string | null>(isWikiRef(src) ? null : src);
   useEffect(() => {
@@ -59,50 +41,14 @@ function ShowcaseImage({ src }: { src: string }) {
       alive = false;
     };
   }, [src]);
-  if (!url) return <span className="universe-card__slot" />;
+  if (!url) return <span className="menu-portrait__slot" />;
   return <img src={url} alt="" loading="lazy" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />;
 }
 
-const OPEN_PACK_MS = 420; // durée de l'animation strip-out (styles/grimoire.css)
+// Léger décalage horizontal de chaque ligne de la liste, pour un alignement "posé à la main".
+const CASCADE_OFFSETS = [0.5, 1.5, 0, 1, 0.3, 1.8, 0.8, 2.2];
 
-function UniverseCard({ universe }: { universe: Universe }) {
-  const copy = universeCopy(universe);
-  const navigate = useNavigate();
-  const [opening, setOpening] = useState(false);
-
-  function open(e: MouseEvent<HTMLAnchorElement>) {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-    e.preventDefault();
-    if (opening) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      navigate(`/play/${universe}`);
-      return;
-    }
-    setOpening(true);
-    navigator.vibrate?.(20);
-    window.setTimeout(() => navigate(`/play/${universe}`), OPEN_PACK_MS);
-  }
-
-  return (
-    <Link to={`/play/${universe}`} className={`universe-card${opening ? ' is-opening' : ''}`} data-universe={universe} onClick={open}>
-      {copy.showcase.length > 0 ? (
-        <div className={`universe-card__art universe-card__art--${copy.framed ? 'framed' : universe}`} aria-hidden="true">
-          {copy.showcase.map((src) => (
-            <ShowcaseImage key={src} src={src} />
-          ))}
-        </div>
-      ) : (
-        <div className="universe-card__pad" aria-hidden="true">
-          <svg viewBox="0 0 64 40" fill="none">
-            <use href={universe.includes('anime') ? '#manga-bubble' : '#gamepad'} />
-          </svg>
-        </div>
-      )}
-      <span className="universe-card__name">{copy.name}</span>
-      <span className="universe-card__franchise">{copy.franchise}</span>
-    </Link>
-  );
-}
+const LEAVE_MS = 560; // éparpillement des lettres + volet blanc (styles/metaphor.css)
 
 // Puce en haut à droite : accès au compte (facultatif) ou à sa création.
 function AccountChip() {
@@ -129,38 +75,101 @@ export function MainMenu() {
   // Toute room avec une session encore valide en localStorage est proposée en reprise ici (voir
   // lib/session.ts) — quitter un onglet ne doit pas être un cul-de-sac.
   const [lastRoomCode] = useState(() => getLastRoomCode());
+  const [active, setActive] = useState(0);
+  const [leaving, setLeaving] = useState<number | null>(null);
+  const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const activeUniverse = UNIVERSES[active];
+  const activeCopy = universeCopy(activeUniverse);
+
+  function confirm(index: number, e?: MouseEvent<HTMLAnchorElement>) {
+    if (e && (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0)) return;
+    e?.preventDefault();
+    if (leaving !== null) return;
+    const target = `/play/${UNIVERSES[index]}`;
+    setActive(index);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      navigate(target);
+      return;
+    }
+    setLeaving(index);
+    navigator.vibrate?.(20);
+    window.setTimeout(() => navigate(target, { state: { wipe: true } }), LEAVE_MS);
+  }
+
+  // Flèches haut/bas : on parcourt la cascade comme un menu de jeu (le focus suit la sélection).
+  function onKeyDown(e: KeyboardEvent<HTMLElement>) {
+    const delta = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+    if (!delta) return;
+    e.preventDefault();
+    const next = (active + delta + UNIVERSES.length) % UNIVERSES.length;
+    setActive(next);
+    itemRefs.current[next]?.focus();
+  }
 
   return (
-    <div className="screen" data-universe="games">
+    <div className={`screen menu${leaving !== null ? ' is-leaving' : ''}`} data-universe={activeUniverse}>
       <AccountChip />
-      <main className="main">
-        <div className="container">
-          <div className="logo">
-            <TitleCrest />
-            <h1 className="logo__title">Undercover</h1>
-            <div className="logo__sub">Gaming edition</div>
-            <p className="logo__tagline">
-              Tout le monde a le même personnage en tête… sauf un intrus. Décris le tien sans le nommer, et démasque l'Undercover.
-            </p>
-          </div>
+      <main className="main menu__main">
+        <header className="menu-title">
+          <span className="paint paint--blot menu-title__splash" aria-hidden="true" />
+          <h1 className="menu-title__word">
+            <InkWord text="Undercover" seed={3} />
+          </h1>
+          <span className="ink-tag menu-title__tag">Gaming edition</span>
+        </header>
 
-          {lastRoomCode && (
-            <button type="button" className="resume-card" onClick={() => navigate(`/room/${lastRoomCode}`)}>
-              <span style={{ flex: 1 }}>
-                <span className="eyebrow">Partie en cours</span>
-                <br />
-                <span className="small text-mid">Reprendre la partie</span>
-              </span>
-              <span className="resume-card__code">{lastRoomCode}</span>
-            </button>
-          )}
+        <p className="menu-tagline">
+          Tout le monde a le même personnage en tête… sauf un intrus. Décris le tien sans le nommer, et démasque l'Undercover.
+        </p>
 
-          <div className="universe-grid">
-            {UNIVERSES.map((u) => (
-              <UniverseCard key={u} universe={u} />
+        {lastRoomCode && (
+          <button type="button" className="resume-card" onClick={() => navigate(`/room/${lastRoomCode}`, { viewTransition: true })}>
+            <span style={{ flex: 1 }}>
+              <span className="eyebrow">Partie en cours</span>
+              <br />
+              <span className="small text-mid">Reprendre la partie</span>
+            </span>
+            <span className="resume-card__code">{lastRoomCode}</span>
+          </button>
+        )}
+
+        <section className="menu-stage" aria-label="Choisir un univers">
+          <div key={activeUniverse} className={`menu-portrait${activeCopy.framed ? ' menu-portrait--framed' : ''}`} aria-hidden="true">
+            {activeCopy.showcase.map((src) => (
+              <ShowcaseImage key={src} src={src} />
             ))}
           </div>
 
+          <nav className="cascade" onKeyDown={onKeyDown}>
+            {UNIVERSES.map((u, i) => {
+              const copy = universeCopy(u);
+              const state = leaving === i ? ' is-chosen' : i === active ? ' is-active' : '';
+              return (
+                <Link
+                  key={u}
+                  ref={(el) => {
+                    itemRefs.current[i] = el;
+                  }}
+                  to={`/play/${u}`}
+                  data-universe={u}
+                  className={`cascade__item${state}`}
+                  style={{ '--i': i, '--x': CASCADE_OFFSETS[i % CASCADE_OFFSETS.length] } as CSSProperties}
+                  onMouseEnter={() => leaving === null && setActive(i)}
+                  onFocus={() => leaving === null && setActive(i)}
+                  onClick={(e) => confirm(i, e)}
+                >
+                  <span className={`paint paint--stroke-${(i % 3) + 1} cascade__splash`} aria-hidden="true" />
+                  <span className="cascade__word">
+                    <InkWord text={copy.name} seed={i + 11} />
+                  </span>
+                  <span className="ink-tag cascade__tag">{copy.franchise}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </section>
+
+        <div className="container menu__extras">
           <details className="howto panel">
             <summary>Comment jouer</summary>
             <ol className="howto__steps">

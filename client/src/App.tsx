@@ -5,6 +5,7 @@ import { AccountProvider } from './socket/AccountProvider';
 import { IconDefs } from './components/IconDefs';
 import { Backdrop } from './components/Backdrop';
 import { Toasts } from './components/Toasts';
+import { RouteWipe } from './components/RouteWipe';
 import { MainMenu } from './screens/MainMenu';
 import { Home } from './screens/Home';
 import { GameRoute } from './routes/GameRoute';
@@ -23,6 +24,7 @@ export default function App() {
             <Route path="/room/:roomCode" element={<GameRoute />} />
             <Route path="/compte" element={<Profile />} />
           </Routes>
+          <RouteWipe />
         </BrowserRouter>
         <Toasts />
         <Analytics />

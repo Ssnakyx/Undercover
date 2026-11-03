@@ -1,0 +1,905 @@
+/* ==========================================================================
+   Undercover — couche "peinture" de la DA Grimoire (voir l'en-tête de
+   grimoire.css). Chargé après grimoire.css : fond peint, éclaboussures,
+   mots en cascade, étiquettes inclinées, volets de transition.
+   Les formes de peinture sont des SVG en masque (public/paint/) : la
+   couleur vient toujours de --paint, posée par [data-universe].
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Fond peint (components/Backdrop.tsx)
+   -------------------------------------------------------------------------- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 10%, #11201f 0%, transparent 70%),
+    var(--night);
+  color: var(--chalk);
+}
+
+/* Grands coups de pinceau nets posés en biais sur l'encre (formes de public/paint/ en masque).
+   Peu nombreux et sombres pour laisser le contenu respirer ; ils glissent très lentement. */
+.backdrop__stroke {
+  position: absolute;
+  background: var(--c);
+  -webkit-mask: var(--shape) center / 100% 100% no-repeat;
+  mask: var(--shape) center / 100% 100% no-repeat;
+  transform: rotate(var(--r));
+  animation: stroke-drift 30s ease-in-out infinite alternate;
+}
+
+.backdrop__stroke--1 {
+  --shape: url('/paint/stroke-1.svg');
+  --c: linear-gradient(90deg, #1d8a80, #27a99b 55%, #1b7770);
+  --r: -18deg;
+  left: -30vw;
+  top: 4vh;
+  width: max(120vw, 900px);
+  height: max(30vh, 220px);
+  opacity: 0.55;
+}
+
+.backdrop__stroke--2 {
+  --shape: url('/paint/stroke-3.svg');
+  --c: #10403d;
+  --r: -14deg;
+  left: -10vw;
+  top: 34vh;
+  width: max(90vw, 700px);
+  height: max(22vh, 160px);
+  opacity: 0.9;
+  animation-duration: 38s;
+  animation-direction: alternate-reverse;
+}
+
+.backdrop__stroke--3 {
+  --shape: url('/paint/stroke-2.svg');
+  --c: linear-gradient(90deg, #6d0f1d, #a3182c);
+  --r: -20deg;
+  right: -34vw;
+  bottom: -2vh;
+  width: max(100vw, 760px);
+  height: max(26vh, 190px);
+  opacity: 0.6;
+  animation-duration: 44s;
+}
+
+@keyframes stroke-drift {
+  to {
+    transform: rotate(var(--r)) translateX(2.5%);
+  }
+}
+
+/* Bandes de personnages qui défilent en biais. La piste contient deux copies de la bande et
+   glisse d'une demi-longueur : la boucle ne saute pas. Atténuées pour ne pas gêner la lecture. */
+.parade {
+  position: absolute;
+  left: -30vw;
+  right: -30vw;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(26px, 6vh, 70px);
+  transform: translateY(-50%) rotate(-12deg);
+  opacity: 0.2;
+  filter: grayscale(0.35) contrast(1.05);
+}
+
+.parade__row {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(18px, 3vw, 40px);
+  width: max-content;
+  animation: parade var(--d, 90s) linear infinite;
+}
+
+.parade__row--reverse {
+  animation-direction: reverse;
+}
+
+.parade__row:nth-child(2) {
+  margin-left: -8vw;
+}
+
+.parade__row img {
+  height: clamp(96px, 17vh, 170px);
+  width: auto;
+  flex: none;
+  object-fit: contain;
+  filter: drop-shadow(6px 6px 0 rgba(0, 0, 0, 0.6));
+}
+
+@keyframes parade {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Teinte de l'univers, portée par l'écran (qui connaît [data-universe]) */
+.screen::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 45% at 100% 0%, var(--cool), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 0% 100%, var(--cool), transparent 70%);
+  transition: background 0.4s;
+}
+
+.backdrop__arcs {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 76% 42%;
+  animation: spin 220s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.backdrop__grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.32;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.backdrop__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 95% 80% at 50% 45%, transparent 50%, rgba(0, 0, 0, 0.7) 100%);
+}
+
+/* --------------------------------------------------------------------------
+   2. Peinture, mots imprimés, étiquettes
+   -------------------------------------------------------------------------- */
+.paint {
+  display: block;
+  background: var(--paint);
+  -webkit-mask: var(--paint-shape, url('/paint/stroke-1.svg')) center / 100% 100% no-repeat;
+  mask: var(--paint-shape, url('/paint/stroke-1.svg')) center / 100% 100% no-repeat;
+}
+
+.paint--stroke-1 {
+  --paint-shape: url('/paint/stroke-1.svg');
+}
+.paint--stroke-2 {
+  --paint-shape: url('/paint/stroke-2.svg');
+}
+.paint--stroke-3 {
+  --paint-shape: url('/paint/stroke-3.svg');
+}
+.paint--blot {
+  --paint-shape: url('/paint/blot.svg');
+}
+
+/* Mot composé lettre à lettre (components/InkWord.tsx) */
+.ink-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.ink-word__l {
+  display: inline-block;
+  transform: translateY(var(--ly, 0)) rotate(var(--lr, 0deg));
+  transition:
+    transform 0.5s var(--ease-snap),
+    opacity 0.4s,
+    color 0.15s;
+}
+
+.ink-word__space {
+  display: inline-block;
+  width: 0.28em;
+}
+
+/* Étiquette noire inclinée, petites capitales blanches : sous-titres, "Gaming edition"… */
+.ink-tag {
+  display: inline-block;
+  padding: 0.22em 0.7em 0.28em;
+  background: var(--ink);
+  color: var(--chalk);
+  font-family: var(--font-caps);
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  clip-path: polygon(2% 0, 100% 0, 98% 100%, 0 100%);
+  transform: rotate(-4deg);
+}
+
+/* --------------------------------------------------------------------------
+   3. Écran titre : la liste des univers
+   Version sobre : une colonne lisible, légèrement penchée ; seule la ligne
+   sélectionnée reçoit l'éclaboussure et son étiquette.
+   -------------------------------------------------------------------------- */
+.menu__main {
+  position: relative;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-top: 46px; /* place pour la puce du compte, en haut à droite */
+  overflow-x: clip;
+}
+
+.menu-title {
+  position: relative;
+  display: inline-block;
+  margin: clamp(26px, 7vw, 56px) 0 0 18px;
+  transform: rotate(-4deg);
+  transform-origin: left;
+}
+
+.menu-title__splash {
+  --paint: var(--paint-magenta);
+  position: absolute;
+  left: -24%;
+  top: -60%;
+  width: 166%;
+  height: 215%;
+  animation: splash-in 0.5s 0.05s var(--ease-snap) both;
+}
+
+.menu-title__word {
+  position: relative;
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: clamp(2.6rem, 11vw, 4.4rem);
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.menu-title__word .ink-word__l {
+  animation: letter-drop 0.45s var(--ease-pop) both;
+  animation-delay: calc(0.15s + var(--li) * 0.03s);
+}
+
+.menu-title__tag {
+  position: relative;
+  display: table;
+  margin: 8px 0 0 auto;
+  font-size: 0.9rem;
+  animation: tag-in 0.4s 0.5s var(--ease-out) both;
+}
+
+.menu-tagline {
+  position: relative;
+  z-index: 3;
+  max-width: 400px;
+  margin: 22px 0 0 4px;
+  color: var(--chalk-mid);
+  text-shadow:
+    0 1px 2px var(--night),
+    0 0 18px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes splash-in {
+  from {
+    transform: scale(0.2, 0.6) rotate(-8deg);
+    opacity: 0;
+  }
+}
+
+@keyframes letter-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5em);
+  }
+}
+
+@keyframes tag-in {
+  from {
+    opacity: 0;
+    translate: -20px 0;
+  }
+}
+
+.menu-stage {
+  position: relative;
+  margin-top: 28px;
+}
+
+.cascade {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px 0 10px 6px;
+  transform: rotate(-3deg);
+  transform-origin: 0 0;
+}
+
+.cascade__item {
+  --fs: clamp(1.75rem, 7.6vw, 2.7rem);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: calc(var(--x, 0) * 10px);
+  padding: 4px 0.2em;
+  color: var(--chalk);
+  text-decoration: none;
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: var(--fs);
+  line-height: 1.05;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  animation: cascade-in 0.4s var(--ease-out) both;
+  animation-delay: calc(0.25s + var(--i) * 0.04s);
+}
+
+/* Lettres juste un peu de travers ici : la liste doit rester lisible */
+.cascade__item .ink-word__l {
+  transform: translateY(calc(var(--ly, 0) * 0.35)) rotate(calc(var(--lr, 0deg) * 0.35));
+}
+
+@keyframes cascade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-0.5em);
+  }
+}
+
+.cascade__word {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  transition: transform 0.22s var(--ease-out);
+}
+
+.cascade__splash {
+  position: absolute;
+  z-index: 0;
+  left: -0.45em;
+  right: -0.6em;
+  top: -0.48em;
+  bottom: -0.44em;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  opacity: 0;
+  transition:
+    transform 0.25s var(--ease-snap),
+    opacity 0.1s;
+}
+
+.cascade__tag {
+  position: relative;
+  z-index: 2;
+  font-size: clamp(0.7rem, 2.6vw, 0.85rem);
+  opacity: 0;
+  transform: rotate(-2deg) translateX(-6px);
+  transition:
+    opacity 0.15s,
+    transform 0.2s var(--ease-out);
+  pointer-events: none;
+}
+
+.cascade__item.is-active,
+.cascade__item.is-chosen {
+  z-index: 3;
+  color: var(--ink);
+  text-shadow: none;
+}
+
+.cascade__item.is-active .cascade__splash,
+.cascade__item.is-chosen .cascade__splash {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+.cascade__item.is-active .cascade__word {
+  transform: translateX(0.1em);
+}
+
+.cascade__item.is-active .cascade__tag,
+.cascade__item.is-chosen .cascade__tag {
+  opacity: 1;
+  transform: rotate(-2deg);
+}
+
+.cascade__item:focus-visible .cascade__word {
+  text-decoration: underline 2px;
+  text-underline-offset: 0.12em;
+}
+
+/* Choix validé : les lettres s'éparpillent, le reste s'efface, puis le volet blanc */
+.menu.is-leaving .cascade__item:not(.is-chosen),
+.menu.is-leaving .menu-title,
+.menu.is-leaving .menu-tagline,
+.menu.is-leaving .menu-portrait,
+.menu.is-leaving .menu__extras {
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.menu.is-leaving .cascade__item.is-chosen .ink-word__l {
+  transform: translate(var(--sx), var(--sy)) rotate(var(--sr)) scale(0.7);
+  opacity: 0;
+  transition-duration: 0.4s;
+  transition-delay: calc(0.08s + var(--li) * 0.015s);
+}
+
+.menu.is-leaving::after {
+  content: '';
+  position: fixed;
+  inset: -10%;
+  z-index: 90;
+  background: var(--chalk);
+  clip-path: polygon(0 0, 0 0, -30% 100%, -30% 100%);
+  animation: wipe-white 0.34s 0.2s var(--ease-snap) forwards;
+}
+
+@keyframes wipe-white {
+  to {
+    clip-path: polygon(0 0, 130% 0, 100% 100%, -30% 100%);
+  }
+}
+
+/* Portrait de l'univers sélectionné : seulement sur grand écran, à droite de la liste */
+.menu-portrait {
+  display: none;
+}
+
+.menu-portrait img,
+.menu-portrait__slot {
+  width: 40%;
+  margin-left: -10%;
+  object-fit: contain;
+  object-position: bottom;
+  filter: drop-shadow(8px 8px 0 rgba(0, 0, 0, 0.45));
+}
+
+.menu-portrait img:nth-child(2) {
+  z-index: 1;
+  width: 48%;
+}
+
+.menu-portrait--framed img,
+.menu-portrait--framed .menu-portrait__slot {
+  width: 36%;
+  aspect-ratio: 3 / 4;
+  margin-left: -6%;
+  object-fit: cover;
+  object-position: center 18%;
+  border: 3px solid var(--chalk);
+  box-shadow: 6px 6px 0 var(--paint);
+  filter: none;
+}
+
+.menu-portrait--framed > :nth-child(1) {
+  transform: rotate(-6deg);
+}
+.menu-portrait--framed > :nth-child(3) {
+  transform: rotate(6deg);
+}
+
+@keyframes portrait-in {
+  from {
+    opacity: 0;
+    transform: translateX(8%);
+  }
+}
+
+.menu__extras {
+  margin-top: 30px;
+}
+
+@media (min-width: 900px) {
+  .menu__main {
+    padding: 34px 48px 80px;
+  }
+
+  .menu-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 24px;
+  }
+
+  .cascade {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .cascade__item {
+    --fs: 2.9rem;
+  }
+
+  .menu-portrait {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 380px;
+    pointer-events: none;
+    animation: portrait-in 0.35s var(--ease-out) both;
+  }
+
+  .menu-portrait img {
+    max-height: 340px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Surcharges des écrans : titres, boutons, panneaux, barres
+   -------------------------------------------------------------------------- */
+.eyebrow {
+  font-family: var(--font-caps);
+  font-weight: 700;
+  color: var(--gold-hi);
+  letter-spacing: 0.02em;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-caps);
+  font-weight: 900;
+}
+
+.section__title {
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: 2.2rem;
+  transform: rotate(-4deg);
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Boutons : étiquettes inclinées. Le principal est blanc sur une traînée de peinture. */
+.btn {
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: 1.35rem;
+  letter-spacing: 0.01em;
+  clip-path: polygon(3% 0, 100% 0, 97% 100%, 0 100%);
+  background: var(--chalk);
+  color: var(--ink);
+  box-shadow: none;
+  transition:
+    transform 0.14s var(--ease-out),
+    background 0.2s,
+    color 0.2s,
+    opacity 0.15s;
+}
+
+.btn:hover {
+  filter: none;
+}
+
+.btn-primary {
+  isolation: isolate;
+  background: var(--chalk);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+/* Traînée de peinture qui passe sous le texte du bouton principal */
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: -6%;
+  right: -6%;
+  top: 8%;
+  bottom: 8%;
+  background: var(--paint);
+  -webkit-mask: url('/paint/stroke-2.svg') center / 100% 100% no-repeat;
+  mask: url('/paint/stroke-2.svg') center / 100% 100% no-repeat;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 0.3s var(--ease-snap);
+}
+
+.btn-primary:hover::before,
+.btn-primary:focus-visible::before,
+.btn-primary:active::before {
+  transform: scaleX(1);
+}
+
+.btn-primary::after {
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  mix-blend-mode: soft-light;
+}
+
+.btn-secondary {
+  background: var(--ink);
+  color: var(--chalk);
+  box-shadow: inset 0 0 0 1.5px var(--chalk);
+}
+
+.btn-ghost {
+  background: rgba(8, 10, 12, 0.6);
+  color: var(--chalk);
+  border: 1.5px solid var(--chalk);
+  font-family: var(--font-caps);
+  font-weight: 700;
+}
+
+.btn-ghost:hover {
+  background: var(--chalk);
+  color: var(--ink);
+}
+
+.btn-danger {
+  background: var(--red);
+  color: var(--chalk);
+  box-shadow: none;
+}
+
+.icon-btn {
+  border-color: var(--chalk);
+  color: var(--chalk);
+  box-shadow: none;
+}
+
+.icon-btn:hover {
+  background: var(--chalk);
+  color: var(--ink);
+}
+
+.panel,
+.hud-frame {
+  background: rgba(8, 10, 12, 0.8);
+  box-shadow:
+    inset 0 0 0 1px var(--chalk-line),
+    6px 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+.hud-frame::before,
+.hud-frame::after {
+  background: var(--paint);
+}
+
+.hud {
+  background: linear-gradient(180deg, rgba(8, 10, 12, 0.96), rgba(8, 10, 12, 0.78));
+  border-bottom: 1px solid var(--chalk-line);
+}
+
+.hud::after {
+  background: var(--paint);
+}
+
+.hud__logo {
+  color: var(--paint);
+}
+
+.hud__title {
+  font-family: var(--font-caps);
+  font-weight: 900;
+  transform: rotate(-3deg);
+}
+
+.action-bar {
+  background: linear-gradient(0deg, rgba(8, 10, 12, 0.94) 55%, transparent);
+}
+
+/* Écran titre : la reprise de partie et les règles */
+.resume-card {
+  background: var(--paint);
+  color: var(--ink);
+  box-shadow: none;
+  clip-path: polygon(2% 0, 100% 0, 98% 100%, 0 100%);
+  transform: rotate(-2deg);
+  margin-top: 22px;
+  max-width: 460px;
+}
+
+.resume-card .eyebrow,
+.resume-card .text-mid,
+.resume-card__code {
+  color: var(--ink);
+}
+
+.howto summary {
+  font-family: var(--font-caps);
+  font-weight: 900;
+}
+
+.howto summary::after {
+  border-color: var(--chalk);
+}
+
+.howto__steps li::before {
+  background: var(--paint);
+  font-family: var(--font-display);
+  font-weight: 900;
+}
+
+/* --------------------------------------------------------------------------
+   5. Transitions : coup de peinture entre deux phases, volet blanc entre écrans
+   -------------------------------------------------------------------------- */
+.wipe {
+  top: 24vh;
+  height: 52vh;
+  background: var(--paint);
+  clip-path: none;
+  -webkit-mask: url('/paint/stroke-3.svg') center / 100% 100% no-repeat;
+  mask: url('/paint/stroke-3.svg') center / 100% 100% no-repeat;
+}
+
+@supports (view-transition-name: none) {
+  ::view-transition-old(root) {
+    animation: vt-out 0.32s var(--ease-snap) both;
+  }
+
+  ::view-transition-new(root) {
+    animation: vt-in 0.42s var(--ease-snap) both;
+  }
+}
+
+@keyframes vt-out {
+  to {
+    opacity: 0;
+    transform: translateX(-4%) skewX(4deg);
+  }
+}
+
+@keyframes vt-in {
+  from {
+    clip-path: polygon(100% 0, 130% 0, 130% 100%, 130% 100%);
+  }
+  to {
+    clip-path: polygon(-30% 0, 130% 0, 130% 100%, 0 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop__stroke,
+  .parade__row,
+  .backdrop__arcs {
+    animation: none;
+  }
+
+  .menu.is-leaving::after {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. Écrans de jeu : nom de l'écran en géant, chiffre de la manche
+   -------------------------------------------------------------------------- */
+/* Comme les sous-menus de la référence : le titre de l'écran énorme, en biais, au pied de la page */
+.screen-word {
+  position: fixed;
+  z-index: -1;
+  left: -0.06em;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  max-width: 140vw;
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: clamp(5rem, 24vw, 15rem);
+  line-height: 0.8;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(244, 242, 236, 0.32);
+  transform: rotate(-8deg);
+  transform-origin: 0 100%;
+  pointer-events: none;
+  animation: screen-word-in 0.6s var(--ease-out) both;
+}
+
+@keyframes screen-word-in {
+  from {
+    opacity: 0;
+    translate: -0.4em 0;
+  }
+}
+
+.round-numeral {
+  position: fixed;
+  z-index: -1;
+  right: 6px;
+  bottom: calc(250px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.round-numeral__digit {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(8rem, 36vw, 15rem);
+  line-height: 0.8;
+  color: rgba(244, 242, 236, 0.16);
+  -webkit-text-stroke: 1.5px rgba(244, 242, 236, 0.42);
+  text-shadow: 0.05em 0.05em 0 color-mix(in srgb, var(--paint) 45%, transparent);
+  transform: rotate(8deg);
+  animation: numeral-in 0.45s var(--ease-pop) both;
+}
+
+.round-numeral__label {
+  margin-top: 0.4em;
+  padding: 0.5em 0.2em;
+  background: var(--paint);
+  color: var(--ink);
+  writing-mode: vertical-rl;
+  font-family: var(--font-caps);
+  font-weight: 900;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.hud__title {
+  font-size: 1.35rem;
+}
+
+/* Titre de la page d'univers (Home) : à l'encre sur une traînée de peinture */
+.logo__title {
+  display: inline-block;
+  margin-left: 14px;
+  font-family: var(--font-caps);
+  font-weight: 900;
+  color: var(--ink);
+  text-shadow: none;
+}
+
+.logo__title::before {
+  left: -0.45em;
+  top: -0.5em;
+  width: calc(100% + 0.95em);
+  height: 2em;
+  background: var(--paint);
+  transform: none;
+  clip-path: none;
+  -webkit-mask: url('/paint/stroke-1.svg') center / 100% 100% no-repeat;
+  mask: url('/paint/stroke-1.svg') center / 100% 100% no-repeat;
+  animation: splash-in 0.5s 0.15s var(--ease-snap) both;
+}
+
+.segmented__btn {
+  font-family: var(--font-caps);
+  font-weight: 700;
+}
+
+.segmented__btn[aria-pressed='true'],
+.segmented__btn[aria-selected='true'] {
+  background: var(--chalk);
+  color: var(--ink);
+  clip-path: polygon(3% 0, 100% 0, 97% 100%, 0 100%);
+}
+
+.btn[disabled]::before {
+  display: none;
+}
+
+/* Volet blanc qui se retire à l'arrivée sur la page d'univers (components/RouteWipe.tsx) */
+.route-wipe {
+  position: fixed;
+  inset: -10%;
+  z-index: 90;
+  pointer-events: none;
+  background: var(--chalk);
+  clip-path: polygon(0 0, 130% 0, 100% 100%, -30% 100%);
+  animation: wipe-white-out 0.42s 0.04s var(--ease-snap) forwards;
+}
+
+@keyframes wipe-white-out {
+  to {
+    clip-path: polygon(130% 0, 130% 0, 100% 100%, 100% 100%);
+  }
+}
+
+.account-chip {
+  background: rgba(8, 10, 12, 0.8);
+  box-shadow: inset 0 0 0 1px var(--chalk-line);
+  font-family: var(--font-caps);
+  font-weight: 700;
+  clip-path: polygon(4% 0, 100% 0, 96% 100%, 0 100%);
+}
