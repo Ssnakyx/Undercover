@@ -6,6 +6,8 @@
 // (voir prefetchGameCovers). Si l'API ne répond pas, le client garde sa jaquette typographique.
 // `wiki` vise un jeu précis quand le nom de la paire désigne une série (ex. "Halo").
 
+import { GAME_COVERS } from './remoteImages.generated.js';
+
 export interface GameInfo {
   /** Titre exact de l'article sur en.wikipedia.org. */
   wiki: string;
@@ -184,9 +186,13 @@ export function gameDescription(name: string | null | undefined): string | null 
 
 const covers = new Map<string, string>();
 
+/**
+ * Jaquette du jeu : d'abord celle résolue à l'avance et versionnée (remoteImages.generated.ts,
+ * voir scripts/resolve-remote-images.ts), sinon celle trouvée au démarrage du serveur.
+ */
 export function gameCover(name: string | null | undefined): string | null {
   if (!name) return null;
-  return covers.get(name) ?? null;
+  return GAME_COVERS[name] ?? covers.get(name) ?? null;
 }
 
 const WIKI_SUMMARY = 'https://en.wikipedia.org/api/rest_v1/page/summary';
@@ -199,7 +205,7 @@ interface WikiSummary {
   originalimage?: { source: string; width: number };
 }
 
-async function fetchCover(wikiTitle: string): Promise<string | null> {
+export async function fetchCover(wikiTitle: string): Promise<string | null> {
   const res = await fetch(`${WIKI_SUMMARY}/${encodeURIComponent(wikiTitle.replace(/ /g, '_'))}`, {
     headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     signal: AbortSignal.timeout(10_000),
@@ -217,7 +223,9 @@ async function fetchCover(wikiTitle: string): Promise<string | null> {
  * déjà pendant ce temps, et un jeu sans jaquette garde le rendu typographique côté client).
  */
 export async function prefetchGameCovers(): Promise<void> {
-  const queue = Object.entries(GAME_INFO).filter(([name]) => !covers.has(name));
+  // Les jaquettes déjà versionnées ne sont pas redemandées : seules les nouvelles le sont.
+  const queue = Object.entries(GAME_INFO).filter(([name]) => !covers.has(name) && !GAME_COVERS[name]);
+  if (queue.length === 0) return;
   let missing = 0;
   async function worker(): Promise<void> {
     for (let next = queue.shift(); next; next = queue.shift()) {
@@ -233,5 +241,5 @@ export async function prefetchGameCovers(): Promise<void> {
   }
   await Promise.all(Array.from({ length: FETCH_CONCURRENCY }, worker));
   // eslint-disable-next-line no-console
-  console.log(`[games] ${covers.size} jaquettes chargées${missing ? `, ${missing} introuvables` : ''}`);
+  console.log(`[games] ${covers.size} jaquettes chargées en plus des versionnées${missing ? `, ${missing} introuvables` : ''}`);
 }

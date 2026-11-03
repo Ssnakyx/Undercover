@@ -9,6 +9,7 @@
 // typographique, plutôt que d'afficher le mauvais « Law » ou le mauvais « Ray ».
 
 import { ANIME_INFO } from './animeInfo.js';
+import { ANIME_IMAGES } from './remoteImages.generated.js';
 
 const ANILIST = 'https://graphql.anilist.co';
 // Requêtes groupées (plusieurs recherches par appel) et espacées : AniList limite à
@@ -130,10 +131,14 @@ const SEARCH_OVERRIDES: Record<string, string> = {
 
 const images = new Map<string, string>();
 
-/** Illustration AniList du personnage (null tant qu'elle n'est pas chargée ou si introuvable). */
+/**
+ * Illustration AniList du personnage : d'abord celle résolue à l'avance et versionnée
+ * (remoteImages.generated.ts, voir scripts/resolve-remote-images.ts), sinon celle trouvée au
+ * démarrage du serveur ; null si introuvable.
+ */
 export function animeImage(name: string | null | undefined): string | null {
   if (!name) return null;
-  return images.get(name) ?? null;
+  return ANIME_IMAGES[name] ?? images.get(name) ?? null;
 }
 
 const normalize = (s: string): string =>
@@ -205,12 +210,9 @@ async function fetchBatch(batch: string[]): Promise<Record<string, { characters:
   }
 }
 
-/**
- * Récupère l'illustration de chaque personnage d'anime au démarrage (en tâche de fond : le
- * serveur répond déjà pendant ce temps, et un personnage sans image garde la carte typographique).
- */
-export async function prefetchAnimeImages(): Promise<void> {
-  const names = Object.keys(ANIME_INFO).filter((n) => !images.has(n));
+/** Cherche l'illustration de chaque personnage donné sur AniList (requêtes groupées et espacées). */
+export async function resolveAnimeImages(names: string[]): Promise<{ found: Record<string, string>; missing: string[] }> {
+  const found: Record<string, string> = {};
   const missing: string[] = [];
   for (let i = 0; i < names.length; i += BATCH_SIZE) {
     const batch = names.slice(i, i + BATCH_SIZE);
@@ -218,7 +220,7 @@ export async function prefetchAnimeImages(): Promise<void> {
       const data = await fetchBatch(batch);
       batch.forEach((name, j) => {
         const url = pickCharacterImage(ANIME_INFO[name].series, data[`c${j}`]?.characters ?? []);
-        if (url) images.set(name, url);
+        if (url) found[name] = url;
         else missing.push(name);
       });
     } catch {
@@ -226,9 +228,21 @@ export async function prefetchAnimeImages(): Promise<void> {
     }
     if (i + BATCH_SIZE < names.length) await sleep(DELAY_MS);
   }
+  return { found, missing };
+}
+
+/**
+ * Au démarrage, en tâche de fond : cherche seulement les personnages qui n'ont pas encore
+ * d'image versionnée (un personnage sans image garde la carte typographique côté client).
+ */
+export async function prefetchAnimeImages(): Promise<void> {
+  const names = Object.keys(ANIME_INFO).filter((n) => !images.has(n) && !ANIME_IMAGES[n]);
+  if (names.length === 0) return;
+  const { found, missing } = await resolveAnimeImages(names);
+  for (const [name, url] of Object.entries(found)) images.set(name, url);
   // eslint-disable-next-line no-console
   console.log(
-    `[anime] ${images.size} images de personnages chargées` +
+    `[anime] ${images.size} images de personnages chargées en plus des versionnées` +
       (missing.length ? `, ${missing.length} introuvables : ${missing.join(', ')}` : ''),
   );
 }

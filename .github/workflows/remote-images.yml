@@ -1,0 +1,44 @@
+name: Images distantes
+
+# Résout les jaquettes Wikipédia des jeux et les illustrations AniList des personnages d'anime
+# (server/scripts/resolve-remote-images.ts) et affiche le fichier généré dans le journal, avec
+# la liste de ce qui reste introuvable. Lancé quand les listes de jeux / personnages changent,
+# ou à la main depuis l'onglet Actions.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - server/src/content/gameInfo.ts
+      - server/src/content/animeInfo.ts
+      - server/src/content/animeImages.ts
+      - server/scripts/resolve-remote-images.ts
+      - .github/workflows/remote-images.yml
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    name: Résoudre les images
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve images
+        run: npx tsx scripts/resolve-remote-images.ts --print
+
+      - name: Differences with the committed file
+        run: git diff --stat -- src/content/remoteImages.generated.ts
