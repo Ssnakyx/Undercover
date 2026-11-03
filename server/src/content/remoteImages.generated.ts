@@ -144,6 +144,7 @@ export const GAME_COVERS: Record<string, string> = {
   "Temple Run": "https://upload.wikimedia.org/wikipedia/en/c/c4/TempleRun.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
   "Terraria": "https://upload.wikimedia.org/wikipedia/en/1/1a/Terraria_Steam_artwork.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
   "Tetris": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/31/Tetris_logo_2019.svg/960px-Tetris_logo_2019.svg.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail",
+  "Texas Chain Saw Massacre": "https://upload.wikimedia.org/wikipedia/en/8/8d/The_Texas_Chain_Saw_Massacre_%282023%29_cover.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
   "The Last of Us": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/47/The_Last_of_Us_logo.svg/960px-The_Last_of_Us_logo.svg.png?utm_source=en.wikipedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
   "The Talos Principle": "https://upload.wikimedia.org/wikipedia/en/a/ac/The_Talos_Principle.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
   "The Witcher 3": "https://upload.wikimedia.org/wikipedia/en/0/0c/Witcher_3_cover_art.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
