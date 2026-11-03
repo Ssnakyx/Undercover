@@ -201,7 +201,7 @@
   position: relative;
   font-family: var(--font-caps);
   font-weight: 900;
-  font-size: clamp(3.3rem, 16.5vw, 8.4rem);
+  font-size: clamp(3rem, 14.2vw, 8.4rem);
   line-height: 0.88;
   letter-spacing: -0.02em;
   color: var(--ink);
