@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { socket } from './client';
 import { saveSession, loadSession, clearSession } from '../lib/session';
 import { roleLabel } from '../lib/roleInfo';
+import { getAccountToken, subscribeAccountToken } from '../lib/account';
 import type {
   ChatMessage,
   ErrorPayload,
@@ -392,6 +393,29 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const markChatRead = useCallback(() => setChatUnreadCount(0), []);
 
   const clearError = useCallback(() => setLastError(null), []);
+
+  // Comptes joueurs : rattache le compte connecté à chaque nouveau siège (création, arrivée,
+  // spectateur, reprise), et à nouveau à chaque connexion/déconnexion de compte en cours de room.
+  const attachAccount = useCallback(
+    (token: string | null) => {
+      socket.emit('account:attach', { token }, (res) => {
+        if (!res.ok && res.error?.code === 'ACCOUNT_IN_USE') pushToast({ kind: 'error', text: res.error.message });
+      });
+    },
+    [pushToast]
+  );
+  const seatKey = session ? `${session.roomCode}:${session.playerId}` : null;
+  useEffect(() => {
+    const token = getAccountToken();
+    if (seatKey && token) attachAccount(token);
+  }, [seatKey, attachAccount]);
+  useEffect(
+    () =>
+      subscribeAccountToken((token) => {
+        if (sessionRef.current) attachAccount(token);
+      }),
+    [attachAccount]
+  );
 
   const playerId = session?.playerId ?? null;
   const isSpectator = playerId !== null && (roomState?.spectators.some((s) => s.playerId === playerId) ?? false);

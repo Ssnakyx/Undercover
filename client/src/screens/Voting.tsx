@@ -108,7 +108,7 @@ export function Voting() {
                   disabled={disabled}
                   onClick={() => (protecting ? setProtectSelected(p.playerId) : setSelected(p.playerId))}
                 >
-                  <Avatar seed={p.avatarSeed} name={p.name} size="lg" host={p.isHost} />
+                  <Avatar seed={p.avatarSeed} account={p.account} name={p.name} size="lg" host={p.isHost} />
                   <span className="select-tile__name">{p.name}</span>
                   <span className={`select-tile__status${voted ? ' select-tile__status--done' : ''}`}>{voted ? '✓ a voté' : 'réfléchit…'}</span>
                 </button>

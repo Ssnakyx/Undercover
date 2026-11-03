@@ -3349,3 +3349,202 @@ details.fold > summary::-webkit-details-marker {
 .reveal-tile--dead {
   filter: grayscale(0.7) brightness(0.8);
 }
+
+/* --------------------------------------------------------------------------
+   Comptes joueurs (optionnels) : photo dans la gemme, puce du menu, profil
+   -------------------------------------------------------------------------- */
+.avatar__photo {
+  position: absolute;
+  inset: calc(var(--size) * 0.07);
+  width: calc(100% - var(--size) * 0.14);
+  height: calc(100% - var(--size) * 0.14);
+  object-fit: cover;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+.account-chip {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: 16px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 60vw;
+  padding: 4px 14px 4px 6px;
+  background: rgba(10, 8, 7, 0.72);
+  box-shadow: var(--sunk);
+  color: var(--chalk);
+  font-family: var(--font-label);
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.account-chip__name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.account-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--chalk-low);
+}
+
+.account-hint a {
+  color: var(--gold-hi);
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.profile-head__photo {
+  position: relative;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.profile-head__edit {
+  position: absolute;
+  right: 0;
+  bottom: 4px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: var(--gold);
+  color: var(--ink);
+  font-size: 0.95rem;
+  transform: rotate(45deg);
+}
+
+.profile-head__name {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(1.8rem, 8vw, 2.6rem);
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 520px) {
+  .stat-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 14px 8px;
+  background: var(--veil);
+  box-shadow: var(--sunk);
+}
+
+.stat-tile__value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--gold-hi);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-tile--won .stat-tile__value {
+  color: var(--role-civil);
+}
+
+.stat-tile--lost .stat-tile__value {
+  color: var(--role-undercover);
+}
+
+.stat-tile__label {
+  font-family: var(--font-label);
+  font-size: 0.85rem;
+  color: var(--chalk-mid);
+  text-align: center;
+}
+
+.role-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.role-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--veil);
+  box-shadow: var(--sunk);
+}
+
+.role-stat--empty {
+  opacity: 0.55;
+}
+
+.role-stat__icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  padding: 7px;
+  background: var(--role-color, var(--gold));
+  color: var(--chalk);
+  clip-path: polygon(10% 0, 100% 6%, 90% 100%, 0 94%);
+}
+
+.role-stat__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.role-stat__name {
+  font-weight: 700;
+}
+
+.role-stat__meta {
+  font-size: 0.85rem;
+  color: var(--chalk-mid);
+}
+
+.role-stat__bar {
+  height: 4px;
+  margin-top: 6px;
+  background: rgba(241, 230, 204, 0.12);
+}
+
+.role-stat__bar span {
+  display: block;
+  height: 100%;
+  background: var(--role-color, var(--gold));
+}
+
+.role-stat__rate {
+  flex: none;
+  min-width: 3ch;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--gold-hi);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

@@ -1,6 +1,8 @@
 import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getLastRoomCode } from '../lib/session';
+import { useAccount } from '../socket/AccountProvider';
+import { Avatar } from '../components/Avatar';
 import { RoleEmblem } from '../components/RoleBadge';
 import { CharacterArt } from '../components/CharacterArt';
 import { roleDescription, roleLabel } from '../lib/roleInfo';
@@ -102,6 +104,25 @@ function UniverseCard({ universe }: { universe: Universe }) {
   );
 }
 
+// Puce en haut à droite : accès au compte (facultatif) ou à sa création.
+function AccountChip() {
+  const { status, account } = useAccount();
+  return (
+    <Link to="/compte" className="account-chip" viewTransition>
+      {account ? (
+        <>
+          <Avatar seed={account.id} name={account.username} account={account} size="sm" />
+          <span className="account-chip__name">{account.username}</span>
+        </>
+      ) : (
+        <span className="account-chip__name" style={{ paddingLeft: 8 }}>
+          {status === 'loading' || status === 'offline' ? 'Mon compte' : 'Créer un compte'}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 // Écran titre : choix de l'univers, reprise de partie, règles.
 export function MainMenu() {
   const navigate = useNavigate();
@@ -111,6 +132,7 @@ export function MainMenu() {
 
   return (
     <div className="screen" data-universe="games">
+      <AccountChip />
       <main className="main">
         <div className="container">
           <div className="logo">
@@ -179,7 +201,7 @@ export function MainMenu() {
             </div>
           </details>
 
-          <p className="footnote">Aucun compte requis, un pseudo suffit. Projet de fans, non affilié à Riot Games, Nintendo, The Pokémon Company, Supercell ni aux éditeurs des mangas cités.</p>
+          <p className="footnote">Aucun compte requis, un pseudo suffit. Le compte sert seulement à garder tes stats et ta photo. Projet de fans, non affilié à Riot Games, Nintendo, The Pokémon Company, Supercell ni aux éditeurs des mangas cités.</p>
         </div>
       </main>
     </div>

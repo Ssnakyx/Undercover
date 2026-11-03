@@ -64,7 +64,7 @@ export function AllCardsButton() {
                       <CharacterArt className="reveal-tile__art" name={p.champion} image={p.championImage} universe={roomState.universe} />
                     ) : (
                       <div className="reveal-tile__art char-art" style={{ display: 'grid', placeItems: 'center' }}>
-                        <Avatar seed={player?.avatarSeed ?? p.playerId} name={p.name} size="lg" />
+                        <Avatar seed={player?.avatarSeed ?? p.playerId} account={player?.account} name={p.name} size="lg" />
                       </div>
                     )}
                     <div className="reveal-tile__body">

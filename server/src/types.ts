@@ -95,6 +95,20 @@ export interface PublicPlayer {
   /** Score cumulé de la room (voir §5ter) : +1 par partie où son camp l'a emporté, jamais
    * réinitialisé par game:restart — persiste tant que la room existe. */
   score: number;
+  /** Compte joueur rattaché (optionnel) : sa photo est servie par GET /api/accounts/:id/photo?v=photoVersion. */
+  account?: PublicAccountTag | null;
+}
+
+/** Ce qu'une room montre du compte d'un joueur : jamais rien de privé. */
+export interface PublicAccountTag {
+  id: string;
+  username: string;
+  photoVersion: number;
+}
+
+export interface AccountAttachPayload {
+  /** Jeton de session du compte (voir accounts/routes.ts), null pour se détacher. */
+  token: string | null;
 }
 
 /** Spectateur : rejoint une partie déjà en cours en lecture seule, promu joueur complet au
@@ -103,6 +117,7 @@ export interface PublicSpectator {
   playerId: string;
   name: string;
   avatarSeed: string;
+  account?: PublicAccountTag | null;
 }
 
 export interface RoomStatePublic {
@@ -335,6 +350,8 @@ export interface Player {
   protectUsedThisGame: boolean; // "Protecteur" : capacité à usage unique par partie
   ghostVoteAvailable: boolean; // "Revenant" : true pendant exactement un round après son élimination par vote direct
   score: number; // score cumulé de la room (voir §5ter), jamais réinitialisé par game:restart
+  /** Compte joueur rattaché via account:attach : ses stats sont mises à jour en fin de partie. */
+  account?: PublicAccountTag | null;
 }
 
 export interface VoteRecord {

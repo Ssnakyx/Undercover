@@ -4,6 +4,7 @@ import { useRoom } from '../socket/RoomProvider';
 import { isUniverse, universeCopy } from '../lib/universe';
 import { loadPseudo, savePseudo } from '../lib/session';
 import { AppBar } from '../components/AppBar';
+import { useAccount } from '../socket/AccountProvider';
 
 const CODE_LENGTH = 5;
 const PSEUDO_MAX_LENGTH = 18;
@@ -28,7 +29,11 @@ export function Home() {
   const invitedCode = searchParams.get('code');
 
   const [mode, setMode] = useState<'create' | 'join'>(invitedCode ? 'join' : 'create');
-  const [pseudo, setPseudo] = useState(() => loadPseudo());
+  const { account } = useAccount();
+  // null = jamais modifié ici : on propose le pseudo mémorisé, sinon celui du compte (chargé en
+  // différé au premier affichage).
+  const [typedPseudo, setPseudo] = useState<string | null>(() => loadPseudo() || null);
+  const pseudo = typedPseudo ?? account?.username ?? '';
   const [busy, setBusy] = useState<'create' | 'join' | 'spectate' | null>(null);
   const [error, setError] = useState<{ message: string; code: string | null } | null>(null);
   const [codeCells, setCodeCells] = useState<string[]>(() => toCells(extractCode(invitedCode ?? '')));
@@ -128,6 +133,15 @@ export function Home() {
         onChange={(e) => updatePseudo(e.target.value)}
       />
       <span className="field__hint">Visible par tous. Mémorisé sur cet appareil.</span>
+      <span className="account-hint">
+        {account ? (
+          <>Connecté en tant que {account.username} : cette partie comptera dans tes stats.</>
+        ) : (
+          <>
+            Pas de compte ? Tu peux jouer sans. <Link to="/compte">En créer un</Link> pour garder tes stats.
+          </>
+        )}
+      </span>
     </div>
   );
 

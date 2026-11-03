@@ -4,7 +4,7 @@
 // `room:state` résultant et programme les timers de phase avec `setTimeout`). Ça garde ce
 // fichier testable unitairement sans faux serveur socket.
 
-import type { ChampionPair, GameEndedPayload, Player, Room, RoundResultPayload, Winner } from '../types.js';
+import type { ChampionPair, GameEndedPayload, Player, Role, Room, RoundResultPayload, Winner } from '../types.js';
 import { characterAliases, characterImage } from '../content/characterImages.js';
 import { assignRoles, type RoleRequest } from './roles.js';
 import { computeInitialTurnOrder, recomputeTurnOrderAfterElimination } from './turnOrder.js';
@@ -620,12 +620,14 @@ export function enterGameOver(room: Room): void {
  */
 export function awardScoreForWinner(room: Room, winner: Winner): void {
   for (const player of room.players.values()) {
-    const onWinningTeam =
-      winner === 'civils'
-        ? !!player.role && CIVIL_ALIGNED_ROLES.has(player.role)
-        : player.role === winner;
-    if (onWinningTeam) player.score += 1;
+    if (isOnWinningTeam(player.role, winner)) player.score += 1;
   }
+}
+
+/** Le rôle appartient-il au camp vainqueur ? Partagé par le score de soirée et les stats de compte. */
+export function isOnWinningTeam(role: Role | null, winner: Winner): boolean {
+  if (!role) return false;
+  return winner === 'civils' ? CIVIL_ALIGNED_ROLES.has(role) : role === winner;
 }
 
 export function buildGameEndedReveal(room: Room): GameEndedPayload['reveal'] {
