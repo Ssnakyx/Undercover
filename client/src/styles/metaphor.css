@@ -15,56 +15,107 @@
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
-  background: var(--night);
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 10%, #11201f 0%, transparent 70%),
+    var(--night);
   color: var(--chalk);
 }
 
-/* Couches de peinture : la texture grunge découpée par un dégradé qui dit où la peinture tient.
-   Plus grandes que l'écran pour pouvoir dériver lentement (transform, pas de repeinte). */
-.backdrop__paint {
+/* Grands coups de pinceau nets posés en biais sur l'encre (formes de public/paint/ en masque).
+   Peu nombreux et sombres pour laisser le contenu respirer ; ils glissent très lentement. */
+.backdrop__stroke {
   position: absolute;
-  inset: -12%;
-  -webkit-mask-image: url('/paint/grunge.svg'), var(--where);
-  mask-image: url('/paint/grunge.svg'), var(--where);
-  -webkit-mask-size: var(--grain-size, 1000px), 100% 100%;
-  mask-size: var(--grain-size, 1000px), 100% 100%;
-  -webkit-mask-position: var(--grain-pos, 0 0), 0 0;
-  mask-position: var(--grain-pos, 0 0), 0 0;
-  -webkit-mask-composite: source-in;
-  mask-composite: intersect;
-  animation: paint-drift 38s ease-in-out infinite alternate;
+  background: var(--c);
+  -webkit-mask: var(--shape) center / 100% 100% no-repeat;
+  mask: var(--shape) center / 100% 100% no-repeat;
+  transform: rotate(var(--r));
+  animation: stroke-drift 30s ease-in-out infinite alternate;
 }
 
-.backdrop__paint--teal {
-  background: linear-gradient(160deg, #3fc4b4, #1f8d84 60%, #176b66);
-  --where: radial-gradient(ellipse 70% 75% at 18% 42%, #000 30%, transparent 78%);
+.backdrop__stroke--1 {
+  --shape: url('/paint/stroke-1.svg');
+  --c: linear-gradient(90deg, #1d8a80, #27a99b 55%, #1b7770);
+  --r: -18deg;
+  left: -30vw;
+  top: 4vh;
+  width: max(120vw, 900px);
+  height: max(30vh, 220px);
+  opacity: 0.55;
 }
 
-.backdrop__paint--deep {
-  background: #0f4b49;
-  --grain-size: 760px;
-  --grain-pos: 310px 140px;
-  --where: radial-gradient(ellipse 60% 55% at 55% 20%, #000 20%, transparent 75%);
+.backdrop__stroke--2 {
+  --shape: url('/paint/stroke-3.svg');
+  --c: #10403d;
+  --r: -14deg;
+  left: -10vw;
+  top: 34vh;
+  width: max(90vw, 700px);
+  height: max(22vh, 160px);
   opacity: 0.9;
-  animation-duration: 46s;
+  animation-duration: 38s;
   animation-direction: alternate-reverse;
 }
 
-.backdrop__paint--red {
-  background: linear-gradient(200deg, #b31b31, #6d0f1d);
-  --grain-size: 880px;
-  --grain-pos: 520px 380px;
-  --where: radial-gradient(ellipse 55% 60% at 92% 88%, #000 25%, transparent 75%);
-  opacity: 0.85;
-  animation-duration: 52s;
+.backdrop__stroke--3 {
+  --shape: url('/paint/stroke-2.svg');
+  --c: linear-gradient(90deg, #6d0f1d, #a3182c);
+  --r: -20deg;
+  right: -34vw;
+  bottom: -2vh;
+  width: max(100vw, 760px);
+  height: max(26vh, 190px);
+  opacity: 0.6;
+  animation-duration: 44s;
 }
 
-@keyframes paint-drift {
-  from {
-    transform: translate3d(-1.5%, 0, 0) scale(1);
-  }
+@keyframes stroke-drift {
   to {
-    transform: translate3d(1.5%, -1%, 0) scale(1.04);
+    transform: rotate(var(--r)) translateX(2.5%);
+  }
+}
+
+/* Bandes de personnages qui défilent en biais. La piste contient deux copies de la bande et
+   glisse d'une demi-longueur : la boucle ne saute pas. Atténuées pour ne pas gêner la lecture. */
+.parade {
+  position: absolute;
+  left: -30vw;
+  right: -30vw;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(26px, 6vh, 70px);
+  transform: translateY(-50%) rotate(-12deg);
+  opacity: 0.2;
+  filter: grayscale(0.35) contrast(1.05);
+}
+
+.parade__row {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(18px, 3vw, 40px);
+  width: max-content;
+  animation: parade var(--d, 90s) linear infinite;
+}
+
+.parade__row--reverse {
+  animation-direction: reverse;
+}
+
+.parade__row:nth-child(2) {
+  margin-left: -8vw;
+}
+
+.parade__row img {
+  height: clamp(96px, 17vh, 170px);
+  width: auto;
+  flex: none;
+  object-fit: contain;
+  filter: drop-shadow(6px 6px 0 rgba(0, 0, 0, 0.6));
+}
+
+@keyframes parade {
+  to {
+    transform: translateX(-50%);
   }
 }
 
@@ -710,7 +761,8 @@ h3 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .backdrop__paint,
+  .backdrop__stroke,
+  .parade__row,
   .backdrop__arcs {
     animation: none;
   }
