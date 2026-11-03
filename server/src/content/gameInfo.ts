@@ -211,9 +211,9 @@ async function wikiJson<T>(url: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-/** Image principale d'après le résumé REST (en ou fr). */
-async function summaryImage(lang: 'en' | 'fr', title: string): Promise<string | null> {
-  const data = await wikiJson<WikiSummary>(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}`);
+/** Image principale d'après le résumé REST. */
+async function summaryImage(title: string): Promise<string | null> {
+  const data = await wikiJson<WikiSummary>(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}`);
   // Les jaquettes (images non libres) sont petites : l'originale suffit et reste nette.
   const original = data.originalimage;
   if (original && original.width <= 800) return original.source;
@@ -235,42 +235,90 @@ async function pageImage(title: string): Promise<string | null> {
   return page.thumbnail?.source ?? page.original?.source ?? null;
 }
 
-/** Dernier recours : premier fichier de l'article dont le nom évoque une jaquette ou un logo. */
-async function articleCoverFile(title: string): Promise<string | null> {
-  const list = await wikiJson<QueryPages<{ images?: { title: string }[] }>>(
-    `${WIKI_API}?action=query&format=json&redirects=1&prop=images&imlimit=100&titles=${encodeURIComponent(title)}`,
-  );
-  const files = Object.values(list.query?.pages ?? {})[0]?.images?.map((i) => i.title) ?? [];
-  const file = files.find((f) => /cover|box ?art|boxart|jaquette|logo|key ?art/i.test(f) && /\.(jpe?g|png|webp|svg)$/i.test(f));
-  if (!file) return null;
+/** URL (640 px de large au plus) d'un fichier hébergé sur en.wikipedia ou Commons. */
+async function fileUrl(file: string): Promise<string | null> {
   const info = await wikiJson<QueryPages<{ imageinfo?: { url: string; thumburl?: string }[] }>>(
-    `${WIKI_API}?action=query&format=json&prop=imageinfo&iiprop=url&iiurlwidth=640&titles=${encodeURIComponent(file)}`,
+    `${WIKI_API}?action=query&format=json&prop=imageinfo&iiprop=url&iiurlwidth=640&titles=${encodeURIComponent(`File:${file}`)}`,
   );
   const ii = Object.values(info.query?.pages ?? {})[0]?.imageinfo?.[0];
   return ii?.thumburl ?? ii?.url ?? null;
 }
 
+/** Image de l'infobox de l'article (paramètre image/logo/cover du wikitexte de l'intro). */
+async function infoboxImage(title: string): Promise<string | null> {
+  const data = await wikiJson<{ parse?: { wikitext?: string } }>(
+    `${WIKI_API}?action=parse&format=json&formatversion=2&prop=wikitext&section=0&redirects=1&page=${encodeURIComponent(title)}`,
+  );
+  const match = /\|\s*(?:image|cover|logo)\s*=\s*([^\n|}]+)/i.exec(data.parse?.wikitext ?? '');
+  const file = match?.[1]
+    .replace(/^\s*\[\[/, '')
+    .replace(/^(?:File|Image|Fichier):/i, '')
+    .replace(/<!--.*$/, '')
+    .trim();
+  return file && /\.(jpe?g|png|webp|gif|svg)$/i.test(file) ? fileUrl(file) : null;
+}
+
+/** Image (P18) ou logo (P154) de l'élément Wikidata lié à l'article, servi par Commons. */
+async function wikidataImage(title: string): Promise<string | null> {
+  const props = await wikiJson<QueryPages<{ pageprops?: { wikibase_item?: string } }>>(
+    `${WIKI_API}?action=query&format=json&redirects=1&prop=pageprops&ppprop=wikibase_item&titles=${encodeURIComponent(title)}`,
+  );
+  const id = Object.values(props.query?.pages ?? {})[0]?.pageprops?.wikibase_item;
+  if (!id) return null;
+  type Claim = { mainsnak?: { datavalue?: { value?: unknown } } };
+  const entity = await wikiJson<{ entities: Record<string, { claims?: Record<string, Claim[]> }> }>(
+    `https://www.wikidata.org/wiki/Special:EntityData/${id}.json`,
+  );
+  const claims = entity.entities[id]?.claims ?? {};
+  const file = [claims.P18, claims.P154].flatMap((c) => c ?? []).map((c) => c.mainsnak?.datavalue?.value).find((v): v is string => typeof v === 'string');
+  return file ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file.replace(/ /g, '_'))}?width=640` : null;
+}
+
+const normalizeTitle = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Titre de l'article du jeu trouvé par la recherche Wikipédia, s'il contient bien son nom. */
+async function searchTitle(name: string): Promise<string | null> {
+  const data = await wikiJson<{ query?: { search?: { title: string }[] } }>(
+    `${WIKI_API}?action=query&format=json&list=search&srlimit=5&srsearch=${encodeURIComponent(`${name} video game`)}`,
+  );
+  return data.query?.search?.map((r) => r.title).find((t) => normalizeTitle(t).includes(normalizeTitle(name))) ?? null;
+}
+
 /**
- * Jaquette d'un jeu sur Wikipédia : résumé REST anglais, puis image de page (toutes licences),
- * puis résumé français, puis un fichier « cover/logo » de l'article. `tried` dit ce qui a
- * échoué, pour le journal du script de résolution.
+ * Jaquette d'un jeu sur Wikipédia (en) : résumé REST, puis image de page toutes licences,
+ * puis image de l'infobox, puis image ou logo Wikidata ; si rien, on recommence sur l'article
+ * trouvé par la recherche. `tried` dit ce qui a échoué, pour le journal du script de résolution.
  */
 export async function findCover(wikiTitle: string, name = wikiTitle): Promise<{ url: string | null; tried: string[] }> {
-  const attempts: [string, () => Promise<string | null>][] = [
-    ['résumé en', () => summaryImage('en', wikiTitle)],
-    ['pageimages en', () => pageImage(wikiTitle)],
-    ['résumé fr', () => summaryImage('fr', name)],
-    ['fichier cover/logo', () => articleCoverFile(wikiTitle)],
-  ];
   const tried: string[] = [];
-  for (const [label, attempt] of attempts) {
-    try {
-      const url = await attempt();
-      if (url) return { url, tried };
-      tried.push(`${label}: rien`);
-    } catch (e) {
-      tried.push(`${label}: ${(e as Error).message}`);
+  const chain = async (title: string): Promise<string | null> => {
+    const attempts: [string, () => Promise<string | null>][] = [
+      ['résumé', () => summaryImage(title)],
+      ['pageimages', () => pageImage(title)],
+      ['infobox', () => infoboxImage(title)],
+      ['wikidata', () => wikidataImage(title)],
+    ];
+    for (const [label, attempt] of attempts) {
+      try {
+        const url = await attempt();
+        if (url) return url;
+        tried.push(`${title} ${label}: rien`);
+      } catch (e) {
+        tried.push(`${title} ${label}: ${(e as Error).message}`);
+      }
     }
+    return null;
+  };
+  const direct = await chain(wikiTitle);
+  if (direct) return { url: direct, tried };
+  try {
+    const found = await searchTitle(name);
+    if (found && found !== wikiTitle) {
+      const url = await chain(found);
+      if (url) return { url, tried };
+    } else tried.push(`recherche « ${name} » : rien`);
+  } catch (e) {
+    tried.push(`recherche: ${(e as Error).message}`);
   }
   return { url: null, tried };
 }
