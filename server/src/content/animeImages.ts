@@ -129,6 +129,38 @@ const SEARCH_OVERRIDES: Record<string, string> = {
   Cobra: 'Cobra',
 };
 
+// Autres noms à essayer quand la recherche principale ne donne rien : AniList écrit les
+// voyelles longues en double (« Tanjirou », « Hyuuga », « Yuuji ») et nomme certains
+// personnages autrement que nos surnoms FR.
+const SEARCH_FALLBACKS: Record<string, string[]> = {
+  'Tortue Géniale': ['Muten Roushi', 'Kame Sennin', 'Master Roshi'],
+  Hinata: ['Hinata Hyuuga', 'Hinata'],
+  Obito: ['Obito Uchiha', 'Tobi', 'Obito'],
+  Neji: ['Neji Hyuuga', 'Neji'],
+  'Barbe Blanche': ['Edward Newgate', 'Whitebeard'],
+  'Barbe Noire': ['Marshall D. Teach', 'Blackbeard', 'Teach'],
+  Garp: ['Garp', 'Monkey D. Garp'],
+  Zeke: ['Zeke Jaeger', 'Zeke', 'Beast Titan'],
+  Tanjiro: ['Tanjirou Kamado', 'Tanjirou'],
+  Rengoku: ['Kyoujurou Rengoku', 'Rengoku'],
+  Kokushibo: ['Kokushibou', 'Michikatsu Tsugikuni', 'Kokushibo'],
+  'Yuji Itadori': ['Yuuji Itadori', 'Itadori'],
+  Sukuna: ['Ryoumen Sukuna', 'Sukuna'],
+  Dabi: ['Dabi', 'Touya Todoroki'],
+  Nausicaä: ['Nausicaä', 'Nausicaa'],
+  Senku: ['Senkuu Ishigami', 'Senkuu', 'Senku'],
+  Oikawa: ['Tooru Oikawa', 'Oikawa'],
+  'Mazinger Z': ['Kouji Kabuto', 'Kabuto Kouji', 'Mazinger Z'],
+  'Nicky Larson': ['Ryou Saeba', 'Ryo Saeba', 'Saeba'],
+};
+
+/** Tous les termes à essayer pour ce personnage, le principal d'abord, sans doublon. */
+export function animeSearchTerms(name: string): string[] {
+  const strip = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const terms = [animeSearchTerm(name), ...(SEARCH_FALLBACKS[name] ?? []), ...(ANIME_INFO[name]?.aliases ?? []).map(strip), strip(name)];
+  return [...new Set(terms)];
+}
+
 const images = new Map<string, string>();
 
 /**
@@ -190,13 +222,13 @@ function buildQuery(batch: string[]): string {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function fetchBatch(batch: string[]): Promise<Record<string, { characters: AniListCharacter[] } | null>> {
-  const variables = Object.fromEntries(batch.map((name, i) => [`s${i}`, animeSearchTerm(name)]));
+async function fetchBatch(terms: string[]): Promise<Record<string, { characters: AniListCharacter[] } | null>> {
+  const variables = Object.fromEntries(terms.map((term, i) => [`s${i}`, term]));
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(ANILIST, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ query: buildQuery(batch), variables }),
+      body: JSON.stringify({ query: buildQuery(terms), variables }),
       signal: AbortSignal.timeout(15_000),
     });
     if (res.status === 429 && attempt < MAX_RETRIES) {
@@ -210,23 +242,42 @@ async function fetchBatch(batch: string[]): Promise<Record<string, { characters:
   }
 }
 
-/** Cherche l'illustration de chaque personnage donné sur AniList (requêtes groupées et espacées). */
+/**
+ * Cherche l'illustration de chaque personnage donné sur AniList (requêtes groupées et
+ * espacées) : d'abord le terme principal de chacun, puis, pour ceux restés sans image, tous
+ * leurs autres noms (SEARCH_FALLBACKS, alias, nom FR) en une requête par personnage.
+ */
 export async function resolveAnimeImages(names: string[]): Promise<{ found: Record<string, string>; missing: string[] }> {
   const found: Record<string, string> = {};
-  const missing: string[] = [];
+  const pending: string[] = [];
   for (let i = 0; i < names.length; i += BATCH_SIZE) {
     const batch = names.slice(i, i + BATCH_SIZE);
     try {
-      const data = await fetchBatch(batch);
+      const data = await fetchBatch(batch.map(animeSearchTerm));
       batch.forEach((name, j) => {
         const url = pickCharacterImage(ANIME_INFO[name].series, data[`c${j}`]?.characters ?? []);
         if (url) found[name] = url;
-        else missing.push(name);
+        else pending.push(name);
       });
     } catch {
-      missing.push(...batch);
+      pending.push(...batch);
     }
-    if (i + BATCH_SIZE < names.length) await sleep(DELAY_MS);
+    await sleep(DELAY_MS);
+  }
+  const missing: string[] = [];
+  for (const name of pending) {
+    const terms = animeSearchTerms(name).slice(0, BATCH_SIZE);
+    try {
+      const data = await fetchBatch(terms);
+      const url = terms
+        .map((_, j) => pickCharacterImage(ANIME_INFO[name].series, data[`c${j}`]?.characters ?? []))
+        .find((u): u is string => !!u);
+      if (url) found[name] = url;
+      else missing.push(`${name} (essayé : ${terms.join(', ')})`);
+    } catch (e) {
+      missing.push(`${name} (${(e as Error).message})`);
+    }
+    await sleep(DELAY_MS);
   }
   return { found, missing };
 }

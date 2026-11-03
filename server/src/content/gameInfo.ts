@@ -195,7 +195,7 @@ export function gameCover(name: string | null | undefined): string | null {
   return GAME_COVERS[name] ?? covers.get(name) ?? null;
 }
 
-const WIKI_SUMMARY = 'https://en.wikipedia.org/api/rest_v1/page/summary';
+const WIKI_API = 'https://en.wikipedia.org/w/api.php';
 // Wikimedia demande un User-Agent identifiable pour les appels automatisés.
 const USER_AGENT = 'UndercoverGame/1.0 (https://github.com/Ssnakyx/Undercover)';
 const FETCH_CONCURRENCY = 4;
@@ -205,17 +205,78 @@ interface WikiSummary {
   originalimage?: { source: string; width: number };
 }
 
-export async function fetchCover(wikiTitle: string): Promise<string | null> {
-  const res = await fetch(`${WIKI_SUMMARY}/${encodeURIComponent(wikiTitle.replace(/ /g, '_'))}`, {
-    headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!res.ok) return null;
-  const data = (await res.json()) as WikiSummary;
+async function wikiJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' }, signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return (await res.json()) as T;
+}
+
+/** Image principale d'après le résumé REST (en ou fr). */
+async function summaryImage(lang: 'en' | 'fr', title: string): Promise<string | null> {
+  const data = await wikiJson<WikiSummary>(`https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}`);
   // Les jaquettes (images non libres) sont petites : l'originale suffit et reste nette.
   const original = data.originalimage;
   if (original && original.width <= 800) return original.source;
   return data.thumbnail?.source ?? original?.source ?? null;
+}
+
+interface QueryPages<P> {
+  query?: { pages?: Record<string, P> };
+}
+
+/** Image de page via l'API d'action, licences non libres comprises (le résumé REST les écarte parfois). */
+async function pageImage(title: string): Promise<string | null> {
+  const data = await wikiJson<QueryPages<{ original?: { source: string; width: number }; thumbnail?: { source: string } }>>(
+    `${WIKI_API}?action=query&format=json&redirects=1&prop=pageimages&piprop=original|thumbnail&pithumbsize=640&pilicense=any&titles=${encodeURIComponent(title)}`,
+  );
+  const page = Object.values(data.query?.pages ?? {})[0];
+  if (!page) return null;
+  if (page.original && page.original.width <= 800) return page.original.source;
+  return page.thumbnail?.source ?? page.original?.source ?? null;
+}
+
+/** Dernier recours : premier fichier de l'article dont le nom évoque une jaquette ou un logo. */
+async function articleCoverFile(title: string): Promise<string | null> {
+  const list = await wikiJson<QueryPages<{ images?: { title: string }[] }>>(
+    `${WIKI_API}?action=query&format=json&redirects=1&prop=images&imlimit=100&titles=${encodeURIComponent(title)}`,
+  );
+  const files = Object.values(list.query?.pages ?? {})[0]?.images?.map((i) => i.title) ?? [];
+  const file = files.find((f) => /cover|box ?art|boxart|jaquette|logo|key ?art/i.test(f) && /\.(jpe?g|png|webp|svg)$/i.test(f));
+  if (!file) return null;
+  const info = await wikiJson<QueryPages<{ imageinfo?: { url: string; thumburl?: string }[] }>>(
+    `${WIKI_API}?action=query&format=json&prop=imageinfo&iiprop=url&iiurlwidth=640&titles=${encodeURIComponent(file)}`,
+  );
+  const ii = Object.values(info.query?.pages ?? {})[0]?.imageinfo?.[0];
+  return ii?.thumburl ?? ii?.url ?? null;
+}
+
+/**
+ * Jaquette d'un jeu sur Wikipédia : résumé REST anglais, puis image de page (toutes licences),
+ * puis résumé français, puis un fichier « cover/logo » de l'article. `tried` dit ce qui a
+ * échoué, pour le journal du script de résolution.
+ */
+export async function findCover(wikiTitle: string, name = wikiTitle): Promise<{ url: string | null; tried: string[] }> {
+  const attempts: [string, () => Promise<string | null>][] = [
+    ['résumé en', () => summaryImage('en', wikiTitle)],
+    ['pageimages en', () => pageImage(wikiTitle)],
+    ['résumé fr', () => summaryImage('fr', name)],
+    ['fichier cover/logo', () => articleCoverFile(wikiTitle)],
+  ];
+  const tried: string[] = [];
+  for (const [label, attempt] of attempts) {
+    try {
+      const url = await attempt();
+      if (url) return { url, tried };
+      tried.push(`${label}: rien`);
+    } catch (e) {
+      tried.push(`${label}: ${(e as Error).message}`);
+    }
+  }
+  return { url: null, tried };
+}
+
+export async function fetchCover(wikiTitle: string, name?: string): Promise<string | null> {
+  return (await findCover(wikiTitle, name)).url;
 }
 
 /**
@@ -231,7 +292,7 @@ export async function prefetchGameCovers(): Promise<void> {
     for (let next = queue.shift(); next; next = queue.shift()) {
       const [name, info] = next;
       try {
-        const cover = await fetchCover(info.wiki);
+        const cover = await fetchCover(info.wiki, name);
         if (cover) covers.set(name, cover);
         else missing++;
       } catch {
