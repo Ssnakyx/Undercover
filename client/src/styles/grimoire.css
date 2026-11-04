@@ -2896,6 +2896,38 @@ details.fold > summary::-webkit-details-marker {
   }
 }
 
+/* Grand écran : le chat devient un panneau fixe à droite, toujours ouvert
+   (components/ChatBox.tsx, DOCK_QUERY), et la page se décale pour lui laisser la place. */
+@media (min-width: 1100px) {
+  :root {
+    --chat-dock-w: 340px;
+  }
+
+  body.chat-docked {
+    padding-right: var(--chat-dock-w);
+  }
+
+  body.chat-docked .action-bar {
+    right: var(--chat-dock-w);
+  }
+
+  body.chat-docked .fab-stack {
+    right: calc(var(--chat-dock-w) + 28px);
+  }
+
+  .chat-panel.chat-panel--docked {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--chat-dock-w);
+    height: auto;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    box-shadow: var(--lift-hi), inset 1px 0 0 rgba(0, 0, 0, 0.4);
+    animation: none;
+  }
+}
+
 /* --------------------------------------------------------------------------
    Éliminé : cartes et rôles de tous (components/AllCardsButton.tsx)
    -------------------------------------------------------------------------- */

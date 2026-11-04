@@ -109,16 +109,12 @@ export function Lobby() {
   }
 
   function copyCode() {
-    navigator.clipboard?.writeText(roomState!.roomCode).then(() => flash('code'), () => {});
+    copyText(roomState!.roomCode).then(() => flash('code'), () => {});
   }
 
-  // Partage natif sur mobile (WhatsApp, Discord...), copie du lien sinon.
-  function shareLink() {
-    if (navigator.share) {
-      navigator.share({ title: copy.name, text: `Rejoins ma partie ${copy.name} !`, url: inviteLink }).catch(() => {});
-      return;
-    }
-    navigator.clipboard?.writeText(inviteLink).then(() => flash('link'), () => {});
+  // Le bouton Inviter copie uniquement le lien du salon, sans texte autour ni partage natif.
+  function copyInviteLink() {
+    copyText(inviteLink).then(() => flash('link'), () => {});
   }
 
   // Active d'un coup tous les rôles optionnels disponibles pour N (jamais ceux sous le seuil :
@@ -176,7 +172,7 @@ export function Lobby() {
               <button className="btn btn-secondary btn-sm" type="button" onClick={copyCode}>
                 {copied === 'code' ? '✓ Copié' : 'Copier le code'}
               </button>
-              <button className="btn btn-primary btn-sm" type="button" onClick={shareLink}>
+              <button className="btn btn-primary btn-sm" type="button" onClick={copyInviteLink}>
                 {copied === 'link' ? '✓ Lien copié' : 'Inviter'}
               </button>
             </div>
@@ -423,4 +419,23 @@ export function Lobby() {
       </ActionBar>
     </div>
   );
+}
+
+// Copie dans le presse-papier, avec repli execCommand si l'API Clipboard est absente
+// (contexte non sécurisé, vieux navigateurs).
+function copyText(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
+  return new Promise((resolve, reject) => {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(area);
+    if (ok) resolve();
+    else reject(new Error('copy failed'));
+  });
 }
