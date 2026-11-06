@@ -42,6 +42,7 @@ export const ANIME_INFO: Record<string, AnimeCharacter> = {
   Cell: { series: DB },
   Bulma: { series: DB },
   'Tortue Géniale': { series: DB, aliases: ['Muten Roshi', 'Kame Sennin', 'Maître Roshi'] },
+  Boo: { series: DB, aliases: ['Buu', 'Majin Boo', 'Majin Buu'] },
 
   // Naruto
   Naruto: { series: NARUTO, aliases: ['Naruto Uzumaki', 'Uzumaki Naruto'] },
@@ -62,6 +63,14 @@ export const ANIME_INFO: Record<string, AnimeCharacter> = {
   Neji: { series: NARUTO, aliases: ['Neji Hyuga', 'Neji Hyûga'] },
   Kisame: { series: NARUTO, aliases: ['Kisame Hoshigaki'] },
   Kurama: { series: NARUTO, aliases: ['Kyubi', 'Kyûbi', 'Démon renard à neuf queues'] },
+  Ino: { series: NARUTO, aliases: ['Ino Yamanaka', 'Yamanaka Ino'] },
+  'Rock Lee': { series: NARUTO, aliases: ['Lee'] },
+  Gaï: { series: NARUTO, aliases: ['Gai', 'Gaï Maito', 'Gai Maito', 'Might Guy', 'Maito Gai'] },
+  Tsunade: { series: NARUTO, aliases: ['Tsunade Senju'] },
+  Pain: { series: NARUTO, aliases: ['Pein', 'Nagato'] },
+  Deidara: { series: NARUTO },
+  Sasori: { series: NARUTO },
+  Boruto: { series: NARUTO, aliases: ['Boruto Uzumaki', 'Uzumaki Boruto'] },
 
   // One Piece
   Luffy: { series: OP, aliases: ['Monkey D. Luffy'] },
@@ -91,6 +100,7 @@ export const ANIME_INFO: Record<string, AnimeCharacter> = {
   Sengoku: { series: OP },
   Doflamingo: { series: OP, aliases: ['Donquixote Doflamingo'] },
   Crocodile: { series: OP, aliases: ['Sir Crocodile'] },
+  Hancock: { series: OP, aliases: ['Boa Hancock'] },
 
   // L'Attaque des Titans
   Eren: { series: SNK, aliases: ['Eren Jäger', 'Eren Jaeger', 'Eren Yeager'] },
@@ -100,6 +110,7 @@ export const ANIME_INFO: Record<string, AnimeCharacter> = {
   Erwin: { series: SNK, aliases: ['Erwin Smith'] },
   Reiner: { series: SNK, aliases: ['Reiner Braun'] },
   Bertholdt: { series: SNK, aliases: ['Bertolt', 'Berthold'] },
+  Armin: { series: SNK, aliases: ['Armin Arlert'] },
 
   // Demon Slayer
   Tanjiro: { series: KNY, aliases: ['Tanjiro Kamado', 'Tanjirō'] },
@@ -114,6 +125,7 @@ export const ANIME_INFO: Record<string, AnimeCharacter> = {
   Akaza: { series: KNY },
   Doma: { series: KNY, aliases: ['Douma'] },
   Kokushibo: { series: KNY, aliases: ['Kokushibō'] },
+  Giyu: { series: KNY, aliases: ['Giyu Tomioka', 'Giyuu', 'Tomioka'] },
 
   // Jujutsu Kaisen
   Gojo: { series: JJK, aliases: ['Satoru Gojo', 'Gojo Satoru'] },
@@ -138,6 +150,7 @@ export const ANIME_INFO: Record<string, AnimeCharacter> = {
   L: { series: DN, aliases: ['Lawliet', 'L Lawliet', 'Ryuzaki'] },
   Near: { series: DN },
   Misa: { series: DN, aliases: ['Misa Amane'] },
+  Mello: { series: DN, aliases: ['Mihael Keehl'] },
 
   // Hunter x Hunter
   Gon: { series: HXH, aliases: ['Gon Freecss'] },

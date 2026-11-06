@@ -127,6 +127,12 @@ const SEARCH_OVERRIDES: Record<string, string> = {
   'Lupin III': 'Lupin III',
   Albator: 'Captain Harlock',
   Cobra: 'Cobra',
+  Boo: 'Majin Buu',
+  Gaï: 'Might Guy',
+  Tsunade: 'Tsunade',
+  Pain: 'Pain',
+  Giyu: 'Giyuu Tomioka',
+  Mello: 'Mello',
 };
 
 // Autres noms à essayer quand la recherche principale ne donne rien : AniList écrit les
@@ -152,6 +158,10 @@ const SEARCH_FALLBACKS: Record<string, string[]> = {
   Oikawa: ['Tooru Oikawa', 'Oikawa'],
   'Mazinger Z': ['Kouji Kabuto', 'Kabuto Kouji', 'Mazinger Z'],
   'Nicky Larson': ['Ryou Saeba', 'Ryo Saeba', 'Saeba'],
+  Boo: ['Majin Buu', 'Buu', 'Majin Boo'],
+  Gaï: ['Might Guy', 'Gai Maito', 'Maito Gai', 'Guy'],
+  Pain: ['Pain', 'Nagato', 'Tendou Pain'],
+  Giyu: ['Giyuu Tomioka', 'Tomioka'],
 };
 
 /** Tous les termes à essayer pour ce personnage, le principal d'abord, sans doublon. */
