@@ -2,8 +2,9 @@
 // src/content/remoteImages.generated.ts :
 //   - jaquette Wikipédia (en) de chaque jeu de content/gameInfo.ts ;
 //   - illustration AniList de chaque personnage de content/animeInfo.ts.
-// Lancé par .github/workflows/remote-images.yml (le bac à sable de dev n'a pas accès à ces
-// API) ; le fichier généré est affiché dans le journal pour être recopié et versionné.
+// À lancer à la main depuis une machine qui accède à Wikipédia et AniList (depuis server/),
+// puis versionner le fichier généré. Sans ça, le serveur résout les images manquantes à son
+// démarrage.
 //
 // Seules les images absentes du fichier versionné sont cherchées (les autres sont gardées),
 // sauf avec --all qui repart de zéro.
