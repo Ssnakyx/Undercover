@@ -812,6 +812,22 @@ describe('enterDiscussion — minuteur optionnel', () => {
   });
 });
 
+describe('enterDiscussion — Mr White ne commence jamais', () => {
+  it('le Mr White n\'est jamais premier dans l\'ordre de passage', () => {
+    for (let i = 0; i < 200; i++) {
+      _resetRoomStoreForTests();
+      const room = createRoom();
+      addPlayer(room, { joinOrder: 0 });
+      addPlayer(room, { joinOrder: 1 });
+      addPlayer(room, { joinOrder: 2, role: 'undercover' });
+      const white = addPlayer(room, { joinOrder: 3, role: 'mrwhite' });
+      engine.enterDiscussion(room);
+      expect(room.turnOrder[0]).not.toBe(white.playerId);
+      expect(room.turnOrder).toHaveLength(4);
+    }
+  });
+});
+
 describe('tallyVotesAndEliminate — votes publics', () => {
   it('expose le détail des votes uniquement si settings.publicVotes', () => {
     _resetRoomStoreForTests();

@@ -155,7 +155,7 @@ hunter_shoot → round_result   [tir traité, retour round_result pour round:con
   les joueurs ont confirmé avoir vu leur rôle (ou après un délai).
 - **discussion** : aucune interaction applicative — l'app affiche uniquement l'ordre de
   passage (`turnOrder`, mélangé aléatoirement au round 1, recalculé chaque round en retirant
-  les éliminés en conservant l'ordre relatif) avec le nom de chaque joueur, à titre indicatif.
+  les éliminés en conservant l'ordre relatif ; un Mr White n'est jamais placé en premier) avec le nom de chaque joueur, à titre indicatif.
   Les joueurs décrivent leur champion à voix haute, hors app, dans cet ordre. **Pas de
   minuteur, pas de saisie d'indice.** Quand la discussion est terminée, l'hôte déclenche
   `round:startVoting` pour passer à `voting` — c'est lui seul qui juge le moment venu.

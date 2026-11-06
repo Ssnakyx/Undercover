@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeInitialTurnOrder,
+  ensureAllowedFirst,
   recomputeTurnOrderAfterElimination,
 } from '../src/game/turnOrder.js';
 
@@ -62,5 +63,39 @@ describe('recomputeTurnOrderAfterElimination', () => {
     const copy = [...previous];
     recomputeTurnOrderAfterElimination(previous, ['a']);
     expect(previous).toEqual(copy);
+  });
+});
+
+describe('Mr White ne commence jamais', () => {
+  it('round 1 : jamais en tête, quel que soit le tirage', () => {
+    const ids = ['a', 'b', 'white', 'c', 'd'];
+    for (let i = 0; i < 500; i++) {
+      const order = computeInitialTurnOrder(ids, Math.random, ['white']);
+      expect(order[0]).not.toBe('white');
+      expect(new Set(order)).toEqual(new Set(ids));
+    }
+  });
+
+  it('rounds suivants : si le premier est éliminé et que Mr White se retrouve en tête, il est décalé', () => {
+    const previous = ['a', 'white', 'b', 'c'];
+    expect(recomputeTurnOrderAfterElimination(previous, ['white', 'b', 'c'], ['white'])).toEqual([
+      'b',
+      'white',
+      'c',
+    ]);
+  });
+
+  it('plusieurs Mr White en tête : le premier joueur autorisé passe devant', () => {
+    expect(ensureAllowedFirst(['w1', 'w2', 'a', 'b'], ['w1', 'w2'])).toEqual(['a', 'w1', 'w2', 'b']);
+  });
+
+  it('ordre inchangé si personne d\'autre ne peut commencer', () => {
+    expect(ensureAllowedFirst(['w1', 'w2'], ['w1', 'w2'])).toEqual(['w1', 'w2']);
+  });
+
+  it('ne mute pas l\'ordre passé', () => {
+    const order = ['white', 'a'];
+    ensureAllowedFirst(order, ['white']);
+    expect(order).toEqual(['white', 'a']);
   });
 });
