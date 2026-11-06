@@ -7,7 +7,7 @@
 import type { ChampionPair, GameEndedPayload, Player, Role, Room, RoundResultPayload, Winner } from '../types.js';
 import { characterAliases, characterImage } from '../content/characterImages.js';
 import { assignRoles, type RoleRequest } from './roles.js';
-import { computeInitialTurnOrder, recomputeTurnOrderAfterElimination } from './turnOrder.js';
+import { computeInitialTurnOrder, ensureAllowedFirst, recomputeTurnOrderAfterElimination } from './turnOrder.js';
 import { evaluateWinConditions, isCorrectMrWhiteGuess } from './winConditions.js';
 
 // Rôles considérés comme des variantes du camp civils pour les décomptes de victoire (voir
@@ -192,6 +192,11 @@ export function assignRolesAndEnterReveal(room: Room, options: StartGameOptions)
 // reveal -> discussion
 // ---------------------------------------------------------------------------
 
+/** Ids des Mr White : ils ne doivent jamais parler en premier (voir turnOrder.ts). */
+function mrWhitePlayerIds(room: Room): string[] {
+  return [...room.players.values()].filter((p) => p.role === 'mrwhite').map((p) => p.playerId);
+}
+
 /** true si tous les joueurs vivants ont confirmé avoir vu leur rôle. */
 export function haveAllAlivePlayersAckedReveal(room: Room): boolean {
   return alivePlayers(room).every((p) => p.hasAckedReveal);
@@ -216,8 +221,8 @@ export function enterDiscussion(room: Room, options: { rng?: () => number } = {}
   room.round += 1;
   room.turnOrder =
     room.round === 1
-      ? computeInitialTurnOrder(alive, options.rng)
-      : recomputeTurnOrderAfterElimination(room.turnOrder, alive);
+      ? computeInitialTurnOrder(alive, options.rng, mrWhitePlayerIds(room))
+      : recomputeTurnOrderAfterElimination(room.turnOrder, alive, mrWhitePlayerIds(room));
   room.phase = 'discussion';
   // Minuteur optionnel (settings.discussionSeconds) : le serveur programme le passage au vote
   // automatique à cette échéance (voir socket/handlers.ts#scheduleDiscussionTimeout).
@@ -410,7 +415,7 @@ export function tallyVotesAndEliminate(room: Room): TallyResult {
         room.phase = 'round_result';
         room.phaseDeadline = null;
         room.protectorPendingTargetId = null;
-        room.turnOrder = recomputeTurnOrderAfterElimination(room.turnOrder, alivePlayerIds(room));
+        room.turnOrder = recomputeTurnOrderAfterElimination(room.turnOrder, alivePlayerIds(room), mrWhitePlayerIds(room));
         return { result, winner: 'jester', enterMrWhiteGuess: false, enterHunterShoot: false };
       }
 
@@ -439,7 +444,7 @@ export function tallyVotesAndEliminate(room: Room): TallyResult {
   room.phase = 'round_result';
   room.phaseDeadline = null;
   room.protectorPendingTargetId = null;
-  room.turnOrder = recomputeTurnOrderAfterElimination(room.turnOrder, alivePlayerIds(room));
+  room.turnOrder = recomputeTurnOrderAfterElimination(room.turnOrder, alivePlayerIds(room), mrWhitePlayerIds(room));
 
   if (eliminatedPlayerId && eliminatedRole === 'mrwhite') {
     room.mrWhiteGuessPlayerId = eliminatedPlayerId;
@@ -557,7 +562,7 @@ function resolveHunterShot(room: Room, targetPlayerId: string | null): HunterSho
   room.lastRoundResult = result;
   room.phase = 'round_result';
   room.phaseDeadline = null;
-  room.turnOrder = recomputeTurnOrderAfterElimination(room.turnOrder, alivePlayerIds(room));
+  room.turnOrder = recomputeTurnOrderAfterElimination(room.turnOrder, alivePlayerIds(room), mrWhitePlayerIds(room));
 
   const winner = evaluateWinConditions(countAliveRoles(room));
   return { winner };
@@ -690,7 +695,10 @@ export function evaluateCurrentWinner(room: Room): Winner | null {
  * partie) — purement cosmétique, aucune logique de tour ne dépend de `turnOrder` côté serveur.
  */
 export function removeFromTurnOrder(room: Room, playerId: string): void {
-  room.turnOrder = room.turnOrder.filter((id) => id !== playerId);
+  room.turnOrder = ensureAllowedFirst(
+    room.turnOrder.filter((id) => id !== playerId),
+    mrWhitePlayerIds(room)
+  );
 }
 
 /**
